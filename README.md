@@ -157,7 +157,32 @@ Borrow Kit lends at most up to health ≈ 1.236 at the $75k price (about 70% LTV
 - **Destination:** a webhook to `https://<server>/api/stream?key=<WEBHOOK_SECRET>`.
 - **Why.** The server stores the matches (shown under "Arc activity" on the dashboard) and wakes the bot, which re-reads the loan at once instead of waiting for the next timer tick.
 
-Setup: create the Stream in the QuickNode dashboard with the settings above, paste `stream/filter.js` as the filter, and point the webhook at your deployed server (or a tunnel). Streams bill per block processed, so pause it when nobody is testing.
+**Setup.**
+1. Create the Stream in the QuickNode dashboard with the settings above.
+2. Paste `stream/filter.js` as the filter. To test it in QuickNode's editor, use block `72746520`: that block holds our live save's repay and should return one `our loan: repay` match.
+3. Point the webhook at the server's public link (`npm run tunnel` prints it).
+
+Streams bill per block processed, so pause it when nobody is testing.
+
+## Running it with a public link
+
+The demo server runs on a laptop, and a free Cloudflare quick tunnel gives it a public https link (no account).
+
+```bash
+npm start          # the live bot + dashboard on http://localhost:3000
+npm run tunnel     # in a second terminal
+```
+
+`npm run tunnel` does three things:
+- starts `cloudflared` (put `cloudflared-windows-amd64.exe` from [Cloudflare's releases](https://github.com/cloudflare/cloudflared/releases) at `tools/cloudflared.exe`, or have `cloudflared` on PATH);
+- waits until the public link answers, then registers it as the loan's Borrow Kit webhook;
+- prints the URL to use as the QuickNode Stream destination.
+
+The link changes on every restart: re-run `npm run tunnel` and update the Stream's destination. Everything stops when the laptop sleeps.
+
+POST routes reached through the tunnel always need `WEBHOOK_SECRET`. The localhost shortcut never applies to proxied requests.
+
+Only ever run one live bot per wallet. Two bots would both repay.
 
 ## 7. The crash replay
 
@@ -282,6 +307,7 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | Savings round trip with no human input (M2) | ✅ live |
 | Live save and give-back by the bot, on the dashboard | ✅ live: danger to safe in 4 s on-chain |
 | Crash replay with the real rule | ✅ numbers above |
-| Borrow Kit webhook (needs the server on a public URL) | ⏳ code ready (`npm run webhook:register`), not yet registered |
-| QuickNode Stream deliveries (needs a QuickNode account + public URL) | ⏳ filter written and tested offline, Stream not yet created |
-| Deployed server that stays on | ⏳ |
+| Public link (Cloudflare quick tunnel) with key-protected POST routes | ✅ live; requests without the key, or faking localhost, get 401 |
+| Borrow Kit webhook | ✅ registered for our loan. Circle's Borrow Service called it through the tunnel and woke the bot (log: "Woke up: Borrow Kit webhook"). |
+| QuickNode Stream deliveries | ⏳ The endpoint accepts a QuickNode-shaped delivery through the tunnel and wakes the bot; the Stream itself is not created yet (needs a QuickNode account). |
+| Server that stays on without a laptop | ⏳ not chosen; the demo runs on a laptop with a tunnel |

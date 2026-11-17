@@ -19,3 +19,6 @@ Thumbs.db
 
 # local tooling
 .claude/
+
+# downloaded tools (cloudflared)
+tools/

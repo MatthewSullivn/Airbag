@@ -25,16 +25,21 @@ store.log("info", `Airbag started (${config.mode}${config.dryRun ? ", dry run" :
 
 const app = express();
 app.disable("x-powered-by");
-app.set("trust proxy", true);
+app.set("trust proxy", "loopback");
 app.use(express.json({ limit: "5mb" }));
 app.use(express.static(join(root, "public")));
 
-// ---- auth for POST routes: shared secret in header x-airbag-key or ?key=. With no secret set, localhost only.
+// ---- auth for POST routes: shared secret in header x-airbag-key or ?key=.
+// With no secret set, only direct requests from this machine pass. A tunnel (cloudflared) also
+// connects from this machine, so anything carrying proxy headers is treated as remote.
 const safeEq = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+const viaProxy = (req: Request) => ["x-forwarded-for", "cf-connecting-ip", "forwarded", "x-real-ip"].some((h) => req.headers[h] != null);
+const loopback = (req: Request) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress ?? "");
 function auth(req: Request, res: Response, next: NextFunction) {
   const given = String(req.get("x-airbag-key") ?? req.query.key ?? "");
-  if (config.webhookSecret ? safeEq(given, config.webhookSecret) : ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.ip ?? "")) return next();
-  res.status(401).json({ error: "missing or wrong key" });
+  const ok = config.webhookSecret ? safeEq(given, config.webhookSecret) : loopback(req) && !viaProxy(req);
+  if (ok) return next();
+  res.status(401).json({ error: config.webhookSecret ? "missing or wrong key" : "set WEBHOOK_SECRET to accept requests from outside this machine" });
 }
 
 // ---- status for the dashboard (polled every 1-2 s). No secrets in here.
@@ -98,6 +103,7 @@ app.get("/healthz", (_req, res) => res.json({ ok: true, ticks: bot.ticks }));
 app.get("/api/borrow-webhook", (_req, res) => res.json({ ok: true }));
 app.post("/api/borrow-webhook", auth, (req, res) => {
   const b = req.body ?? {};
+  console.log(`[borrow-webhook] payload: ${JSON.stringify(b).slice(0, 600)}`);   // to document what Circle sends
   const band = b.healthFactorBand ?? b.band ?? b.data?.healthFactorBand ?? b.data?.band;
   bot.wake("Borrow Kit webhook", band ? `band ${band}` : undefined);
   res.json({ ok: true });
