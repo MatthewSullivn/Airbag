@@ -50,9 +50,12 @@ async function ready(url: string) {
   }
   mkdirSync("data", { recursive: true });
   writeFileSync("data/public-url.txt", url + "\n");
+  // the full Stream destination, key included, goes in a git-ignored file to copy from (not to the screen)
+  const full = `${url}/api/stream${config.webhookSecret ? `?key=${encodeURIComponent(config.webhookSecret)}` : ""}`;
+  writeFileSync("data/stream-webhook-url.txt", full + "\n", { mode: 0o600 });
   const key = config.webhookSecret ? "?key=<WEBHOOK_SECRET from .env>" : "";
   console.log(`\nPublic dashboard:           ${url}`);
-  console.log(`QuickNode Stream webhook:   ${url}/api/stream${key}`);
+  console.log(`QuickNode Stream webhook:   ${url}/api/stream${key}   (full URL with the key: data/stream-webhook-url.txt)`);
   console.log(`Borrow Kit webhook:         ${url}/api/borrow-webhook${key}`);
   if (register && config.mode === "live" && config.privateKey) {
     try {
