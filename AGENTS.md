@@ -14,7 +14,7 @@ Airbag protects a bitcoin-backed USDC loan on Arc Testnet.
 **Status:**
 - Works live on Arc Testnet: open loan, savings round trip, a bot save and a bot give-back. The transaction links are in README "Live proof".
 - The Borrow Kit webhook works through a Cloudflare tunnel.
-- The QuickNode Stream is not created yet (see "What's left").
+- The QuickNode Stream `airbag-arc-testnet` delivers our loan's and wallet's activity to `/api/stream`. Verified live.
 
 ## Quick start
 
@@ -28,7 +28,7 @@ npm run sim                     # http://localhost:3000, simulated loan + live G
 
 1. **Testnet only.** The bot wallet is a testnet-only key. Never put a key that holds real funds in `.env`.
 2. **Never commit or print secrets.**
-   - `.env` (`PRIVATE_KEY`, `WEBHOOK_SECRET`), `data/` (includes `stream-webhook-url.txt`, whose URL contains the key) and `tools/` are git-ignored. Keep them that way.
+   - `.env` (`PRIVATE_KEY`, `WEBHOOK_SECRET`), `data/` (runtime state) and `tools/` are git-ignored. Keep them that way.
    - Agents: don't echo `.env` values into chat, logs, commits or docs.
    - Share the team key privately, if at all.
 3. **One live bot per wallet.** Two `npm start` processes on the same wallet would both repay. Use `npm run sim` for UI work, and `DRY_RUN=true` to try rule changes against the live loan.
@@ -136,6 +136,11 @@ Read these before touching `src/arc.ts`.
     - Tunnel traffic arrives from localhost, so auth ignores loopback when proxy headers are present.
 11. **Windows quirks.** `node --test` needs a quoted glob (`"test/**/*.test.mjs"`). Git's LF→CRLF warnings are harmless.
 12. **The QuickNode filter must stay a plain script** (no `import`/`export`). The test loads it the same way QuickNode does.
+    - QuickNode hands it `{ data: [{ block, receipts }] }` in batches of 5 blocks (the minimum on Arc).
+13. **`/api/stream` needs no key, by design.**
+    - It can't move money, and it re-checks every delivery against the transaction receipt on Arc (`src/stream-verify.mjs`), so fake or mislabelled deliveries are dropped.
+    - Keep it that way: don't put `WEBHOOK_SECRET` in third-party URLs.
+    - The savings vault (Morpho Vault V2) doesn't emit standard ERC-4626 events, so its moves show up as "bot wallet transaction".
 
 ## Code conventions
 
@@ -154,7 +159,11 @@ Read these before touching `src/arc.ts`.
 
 ## What's left
 
-- [ ] **QuickNode Stream.** Create it (steps in README §6) and point it at `data/stream-webhook-url.txt`. Run `npm run roundtrip -- 0.1` and check "Woke up: QuickNode Stream" appears in the log. Add a screenshot to README §6.
+- [ ] **Keep the QuickNode Stream pointed at the live link.**
+  - The Stream `airbag-arc-testnet` is created and verified.
+  - Every time the tunnel restarts, paste the new `…/api/stream` URL that `npm run tunnel` prints into the Stream's destination (QuickNode → Streams → airbag-arc-testnet → Settings).
+  - Resume the Stream if QuickNode paused it after failed deliveries.
+  - Pause it when nobody is testing, since it bills per block.
 - [ ] **Keep the bot wallet funded:** USDC for gas, at least 2 USDC in savings, more cirBTC for a bigger loan.
 - [ ] **Optional:**
   - always-on hosting instead of the laptop tunnel

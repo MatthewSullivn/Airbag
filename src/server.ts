@@ -12,6 +12,9 @@ import { GeminiOdds } from "./gemini.js";
 import { Store, type StreamEvent } from "./state.js";
 import { Bot } from "./bot.js";
 import { RULE } from "./brain.mjs";
+import { describeReceipt, isTxHash } from "./stream-verify.mjs";
+import { createPublicClient, http } from "viem";
+import { arcTestnet } from "viem/chains";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const store = new Store(join(root, "data", `state.${config.mode}.json`), { fresh: config.mode === "sim" });
@@ -110,16 +113,46 @@ app.post("/api/borrow-webhook", auth, (req, res) => {
 });
 
 // ---- alarm (c): QuickNode Stream (filter in stream/filter.js) posts matching Arc activity here.
-app.post("/api/stream", auth, (req, res) => {
+// No key needed: this route can't move money, and every reported transaction is fetched from Arc
+// and kept only if it really touches our market or wallet (src/stream-verify.mjs). With the key
+// (header or ?key=) deliveries are trusted as before, which is also how the simulator is fed.
+const arcClient = createPublicClient({ chain: arcTestnet, transport: http(config.rpcUrl) });
+const recentUnkeyed: number[] = [];
+async function verifiedEvents(matches: any[]): Promise<StreamEvent[]> {
+  const hashes = [...new Set(matches.map((m) => m?.tx ?? m?.transactionHash).filter(isTxHash))].slice(0, 10) as `0x${string}`[];
+  const out: StreamEvent[] = [];
+  for (const hash of hashes) {
+    try {
+      const receipt = await arcClient.getTransactionReceipt({ hash });
+      const d = describeReceipt(receipt, { wallet: arc.address, marketId: arc.marketId ?? "" });
+      if (d) out.push({ t: Date.now(), block: Number(receipt.blockNumber), tx: hash, kind: d.kind, detail: d.detail });
+    } catch { /* unknown transaction: dropped */ }
+  }
+  return out;
+}
+app.post("/api/stream", async (req, res) => {
   const body = req.body ?? {};
   const matches: any[] = Array.isArray(body.matches) ? body.matches : Array.isArray(body) ? body : [];
-  const events: StreamEvent[] = matches.slice(0, 50).map((m) => ({
-    t: Date.now(),
-    block: m.block != null ? Number(m.block) : null,
-    tx: m.tx ?? m.transactionHash ?? null,
-    kind: String(m.kind ?? m.event ?? "activity"),
-    detail: String(m.detail ?? m.address ?? ""),
-  }));
+  const given = String(req.get("x-airbag-key") ?? req.query.key ?? "");
+  const keyed = config.webhookSecret ? safeEq(given, config.webhookSecret) : loopback(req) && !viaProxy(req);
+  let events: StreamEvent[];
+  if (keyed) {
+    events = matches.slice(0, 50).map((m) => ({
+      t: Date.now(),
+      block: m.block != null ? Number(m.block) : null,
+      tx: m.tx ?? m.transactionHash ?? null,
+      kind: String(m.kind ?? m.event ?? "activity"),
+      detail: String(m.detail ?? m.address ?? ""),
+    }));
+  } else {
+    if (config.mode !== "live") return res.status(401).json({ error: "the simulator only accepts keyed deliveries" });
+    const now = Date.now();
+    while (recentUnkeyed.length && now - recentUnkeyed[0] > 60_000) recentUnkeyed.shift();
+    if (recentUnkeyed.length >= 60) return res.status(429).json({ error: "too many deliveries" });
+    recentUnkeyed.push(now);
+    events = await verifiedEvents(matches);
+    if (!events.length) return res.json({ ok: true, received: 0, note: "nothing in this delivery touches our market or wallet" });
+  }
   if (events.length) store.addStream(events);
   const liquidated = events.find((e) => /OUR LOAN LIQUIDATED/.test(e.kind));
   if (liquidated) store.log("error", `QuickNode Stream saw our loan being liquidated in block ${liquidated.block ?? "?"}.`, liquidated.tx && config.mode === "live" ? [{ label: "liquidation", hash: liquidated.tx, url: `${config.explorer}/tx/${liquidated.tx}` }] : undefined);

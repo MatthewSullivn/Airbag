@@ -154,15 +154,33 @@ Borrow Kit lends at most up to health ≈ 1.236 at the $75k price (about 70% LTV
   - the bot wallet's deposits and withdrawals in the savings vault.
 
   Everything else returns `null`, so nothing is sent. A liquidation of our own loan is labelled `OUR LOAN LIQUIDATED`.
-- **Destination:** a webhook to `https://<server>/api/stream?key=<WEBHOOK_SECRET>`.
+- **Destination:** a webhook to `https://<server>/api/stream`. The URL holds no secret.
+  - The route can't move money, and the server doesn't trust what a delivery says. It fetches every reported transaction from Arc and keeps only those that really touch our market or wallet ([`src/stream-verify.mjs`](src/stream-verify.mjs)).
+  - It also computes the label itself, so a fake delivery can't invent a liquidation. Deliveries carrying `WEBHOOK_SECRET` are trusted as-is.
 - **Why.** The server stores the matches (shown under "Arc activity" on the dashboard) and wakes the bot, which re-reads the loan at once instead of waiting for the next timer tick.
 
-**Setup.**
-1. Create the Stream in the QuickNode dashboard with the settings above.
-2. Paste `stream/filter.js` as the filter. To test it in QuickNode's editor, use block `72746520`: that block holds our live save's repay and should return one `our loan: repay` match.
-3. Point the webhook at the server's public link (`npm run tunnel` prints it).
+**Our Stream (live since Nov 17, 2026):**
+- `airbag-arc-testnet`: Arc Testnet, Block with Receipts in batches of 5, starting at the latest block.
+- The filter above, a webhook to the tunnel.
+- In QuickNode's filter editor, block `72746520` (our live save) returns one `our loan: repay` match.
 
-Streams bill per block processed, so pause it when nobody is testing.
+**Verified live:** a 0.1 USDC savings round trip produced four Stream deliveries within seconds. Each one woke the bot:
+- `bot wallet transaction` (savings withdraw), block 72754872
+- `our loan: repay`, block 72754880
+- `our loan: borrow`, block 72754888
+- `bot wallet transaction` (savings deposit), block 72754893
+
+The savings vault is a Morpho Vault V2, which emits different events from the ERC-4626 ones the filter looks for. Its moves are still caught, as transactions of the bot wallet.
+
+![Arc activity on the dashboard, delivered by the QuickNode Stream](docs/4-quicknode-stream-activity.jpg)
+
+**Setup:**
+1. In QuickNode, open Streams → New stream. Choose Arc / Testnet, start at the latest block, run until paused.
+2. Set the dataset to Block with Receipts.
+3. Customize the payload: choose JavaScript and paste `stream/filter.js`.
+4. Set the destination to Webhook, with the URL `npm run tunnel` prints. Run the connection check, then create the Stream.
+
+Streams bill per block processed, so pause it when nobody is testing. QuickNode pauses a Stream by itself after 3 failed deliveries, for example when the laptop or tunnel is off.
 
 ## Running it with a public link
 
@@ -311,5 +329,5 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | Crash replay with the real rule | ✅ numbers above |
 | Public link (Cloudflare quick tunnel) with key-protected POST routes | ✅ live; requests without the key, or faking localhost, get 401 |
 | Borrow Kit webhook | ✅ registered for our loan. Circle's Borrow Service called it through the tunnel and woke the bot (log: "Woke up: Borrow Kit webhook"). |
-| QuickNode Stream deliveries | ⏳ The endpoint accepts a QuickNode-shaped delivery through the tunnel and wakes the bot; the Stream itself is not created yet (needs a QuickNode account). |
+| QuickNode Stream deliveries | ✅ The `airbag-arc-testnet` Stream delivered our live round trip (4 transactions, blocks 72754872–72754893); each delivery was verified on-chain and woke the bot. |
 | Server that stays on without a laptop | ⏳ not chosen; the demo runs on a laptop with a tunnel |
