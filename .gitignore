@@ -1,0 +1,21 @@
+# secrets: never commit these
+.env
+.env.*
+!.env.example
+
+# dependencies and build output
+node_modules/
+dist/
+
+# runtime state written by the bot (log, odds samples, money moved)
+data/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# local tooling
+.claude/
