@@ -4,9 +4,11 @@
 
 Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's Borrow Kit). It reads the odds of bitcoin falling under the loan's liquidation line from Gemini's prediction market. When those odds pass your limit, it moves USDC from a savings vault (Circle's Earn Kit) into the loan. When the market calms down, it moves the money back. Nobody presses anything.
 
-> Status (Nov 17, 2026): the brain, bot loop, dashboard, crash replay and QuickNode filter are built and tested.
-> On Arc Testnet we have verified the read side (market, vaults, max-borrow quotes, the oracle price).
-> The live loan and live save are next: see [What is verified](#what-is-verified-and-what-is-not).
+**Live on Arc Testnet (Nov 17, 2026):** we pushed a real loan into danger and Airbag saved it with no human input. The push landed at 21:53:55 UTC. The bot read the odds at 42% (limit 5%), withdrew 0.78 USDC from savings and repaid the loan. The repay landed at 21:53:59, and the odds were back to 0.8%. Two transactions, 0.0154 USDC of gas. See [Live proof](#live-proof).
+
+| 1. Pushed to the edge: 42%, over the limit | 2. Four seconds later, saved by Airbag: 0.8% |
+|---|---|
+| ![Dashboard after the push: 42% chance, red, health 1.06](docs/1-pushed-to-the-edge.jpg) | ![Dashboard after the save: 0.8% chance, green, health 1.25](docs/2-saved-by-airbag.jpg) |
 
 ---
 
@@ -87,6 +89,9 @@ All on **Arc Testnet** (chain id `5042002`, RPC `https://rpc.testnet.arc.io`, ex
 | What | Address / id |
 |---|---|
 | Borrow Kit market cirBTC → USDC (Morpho, LLTV 0.86) | `0xf8a71f6df9dc7725d1c2fd848e4635d1e9ddca11da4e2dc2f9801005bd2b5d58` |
+| Morpho Blue (the lending contract under Borrow Kit) | `0x65f435eb4ff05f1481618694bc1ff7ee4680c0a4` |
+| The market's price oracle (returns a fixed 75,000) | `0x917E3d9F366B0561c13155BECdBC8d79E4ED7BA3` |
+| Our loan (Borrow Kit loan id) | `e4c53980-53a9-5564-a385-73ba1ac933f9` |
 | cirBTC (8 decimals) | `0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF` |
 | USDC (ERC-20 view of native USDC, 6 decimals) | `0x3600000000000000000000000000000000000000` |
 | Earn Kit savings vault "EarnKit USDC Vault (Arc Testnet)", 4.2% APY | `0xaabbef1d3971c710276ed41ec791bbe14cdb8e88` |
@@ -101,6 +106,14 @@ Kit calls in [`src/arc.ts`](src/arc.ts):
 
 Wallet balances are read directly with viem.
 
+**What running it live taught us** (each one is handled in the code):
+1. **Use the `/next` adapter.** Borrow Kit needs an atomic batch. An ordinary wallet (EOA) can only do one on Arc through the adapter build at `@circle-fin/adapter-viem-v2/next`, which uses Arc's sender-preserving batcher. The default import fails with `INPUT_UNSUPPORTED_ACTION`.
+2. **The local clock matters.** Borrow Kit signs each write with a deadline about 2 minutes out and checks it against the local clock. Our laptop was 157 s fast, so every write failed with "execution deadline has expired". [`src/clock.ts`](src/clock.ts) measures the skew against Arc's latest block at startup and corrects it for the process.
+   - A failed opening still registers a loan id. It is completed with `borrow({ loanId })`, which `npm run loan:open` now does.
+3. **Borrow Kit's position can be stale.** Right after a repay, `getPosition` said `READY` but still showed the old debt, which could make a bot repay twice. Airbag reads the loan straight from Morpho (`position`, `market` and the oracle's `price`) and savings straight from the vault (ERC-4626 `balanceOf` + `convertToAssets`). The kits' read APIs are the fallback.
+
+Borrow Kit only took as much cirBTC as its borrowing cap needs (0.0000757 of our 0.0001). The script then posts the rest with `addCollateral`.
+
 **Testnet quirk (measured Nov 17).** Arc Testnet's lending market prices cirBTC at a **fixed $75,000** (from Borrow Kit's quotes: health × liquidation price). Real bitcoin was about $64,000 that day. A loan priced at a frozen $75k never gets closer to liquidation when bitcoin moves, and its line would not line up with Gemini's ladder.
 
 So by default (`PRICE_SOURCE=real`) Airbag values the collateral at Gemini's live BTC price, the way a mainnet price feed would. Borrow Kit's own on-chain health is shown next to it on the dashboard. On mainnet the two prices agree and this setting changes nothing.
@@ -113,8 +126,8 @@ Borrow Kit lends at most up to health ≈ 1.236 at the $75k price (about 70% LTV
 - **When it moves.** Only when the odds pass the user's limit (default 5%) or health drops under 1.10, and only as much as needed to reach the target line.
 - **When it comes back.** When odds are under half the limit and health is above 1.40. It is borrowed back out of the same loan and re-deposited.
 - **What it costs.**
-  - Arc gas is paid in USDC: about 0.002 USDC per transfer in our faucet test.
-  - Borrow Kit charges no fee on repay or borrow-more. Fees only apply when a loan is first opened, and Circle's fee is 0%.
+  - Arc gas is paid in USDC. Measured on our live run: a save (withdraw + repay) cost 0.0154 USDC; a give-back (borrow + deposit) cost 0.0162 USDC.
+  - Borrow Kit charges no fee on repay or borrow-more. Fees only apply when a loan is first opened; ours showed `fees: []`.
   - Moving money into the loan gives up the vault yield on that money while it is there.
 - **Who holds the keys.** In this demo, the server holds a testnet-only private key in `.env`. A real version would use Circle Wallets, or a small contract that can only repay its owner's own loan.
 
@@ -243,15 +256,32 @@ POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no se
 
 All settings are in [`.env.example`](.env.example).
 
+## Live proof
+
+Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5…3F0C`. Testnet tokens only.
+
+| Step | What happened | Transactions |
+|---|---|---|
+| Open the loan (M1) | Borrowed 3.95 USDC against 0.0001 cirBTC, no fees | [borrow](https://explorer.testnet.arc.io/tx/0xee2cb114b06c6be823eea50b317067d2719f9aaf471e1f0cdd8fdc73737ce2cf), [add collateral](https://explorer.testnet.arc.io/tx/0x702f205a0cd758da7af514c1e98db77afca0b28a62a51bac314bf27c3516afd8) |
+| Fill the savings pot | 10 USDC into the Earn Kit vault | [deposit](https://explorer.testnet.arc.io/tx/0xdd31d7d30c22d2c8511011406fb7c39f542e9d95df78f9e50de6a6d71cff0368) |
+| Savings round trip (M2), no human input | withdraw → repay (3.6 s), borrow → deposit (3.0 s); debt 3.951 → 3.701 → 3.951 | [withdraw](https://explorer.testnet.arc.io/tx/0x2f670763782e66c960f8982cc9d1ee44fcfd737acef60ec4e79a2512d46117f1), [repay](https://explorer.testnet.arc.io/tx/0x3b4c6038c58fdf041a6b09fe3d803711a46b3449bd296eeca99a64aad8f61e9d), [borrow](https://explorer.testnet.arc.io/tx/0x0bfe9cec5b544ca35a4037afa800d4a014be09f7a2b3a9522f2c2c29c8ebb861), [deposit](https://explorer.testnet.arc.io/tx/0x8bf30960d7cdb7f892cb24aaeb7552f78bd6572c5e2a75728ef9c9482ac66424) |
+| "Push it to the edge" | Borrowed 1.24 USDC more: health 1.40 → 1.06, odds <0.1% → 42% | [borrow more](https://explorer.testnet.arc.io/tx/0xb82f1377894d3fdab3882e34057ab8465c7fad8323360baae170823458eef69e) (21:53:55 UTC) |
+| **The save, by the bot alone** | Moved 0.78 USDC from savings into the loan: health 1.25, line $60,361 → $51,291, odds 0.8% | [withdraw](https://explorer.testnet.arc.io/tx/0xcdbb3219824b862d5fdf35834e89f00f4d5b8a61f04e7d7af6f3240165d01d41) (21:53:57), [repay](https://explorer.testnet.arc.io/tx/0x1b566cce68a7247928a296dba45b6b32ef78e210ba5ebeff863ebabe885c37dc) (21:53:59) |
+| "Reset" | Repaid 0.72 USDC from the wallet: health 1.50 | [repay](https://explorer.testnet.arc.io/tx/0xe50f280f378add056d40ff1b88f27bfce7b0386fb0f560c395bb63d4e01c9d60) |
+| **The give-back, by the bot alone** | Calm again, so it borrowed 0.55 USDC back into savings, stopping at health 1.30. Then it sat still. | [borrow](https://explorer.testnet.arc.io/tx/0x42dae1b0f36370e73b4021c959930f34f3a604006d4f01d1ebfa77a7b753e9d7), [deposit](https://explorer.testnet.arc.io/tx/0xab4900f8da65f7973a67c0d3359a91eb31ea92dbce035a3cbc2d6a97ea4782f6) |
+
+![The bot's log and the odds chart after the save and the give-back](docs/3-bot-log-and-odds.jpg)
+
 ## What is verified, and what is not
 
 | | Status |
 |---|---|
 | Brain + odds model (19 automated checks, on real Gemini ladders from Nov 17) | ✅ passing |
 | Live Gemini ladders, field names, discovery, BTC price | ✅ read live |
-| Arc Testnet reads: market, LLTV, vaults, max-borrow quote, fixed $75k oracle price | ✅ read live |
-| Full loop end to end against the simulated Arc (push → odds 38% → bot repays from savings → 0.8%) | ✅ |
+| Opening a loan with Borrow Kit on Arc Testnet (M1) | ✅ live, links above |
+| Savings round trip with no human input (M2) | ✅ live |
+| Live save and give-back by the bot, on the dashboard | ✅ live: danger to safe in 4 s on-chain |
 | Crash replay with the real rule | ✅ numbers above |
-| Opening a loan on Arc Testnet (M1) | ⏳ waiting for faucet funds |
-| Savings round trip with no human input (M2) | ⏳ |
-| Live save on screen, Borrow Kit webhook, QuickNode Stream deliveries | ⏳ |
+| Borrow Kit webhook (needs the server on a public URL) | ⏳ code ready (`npm run webhook:register`), not yet registered |
+| QuickNode Stream deliveries (needs a QuickNode account + public URL) | ⏳ filter written and tested offline, Stream not yet created |
+| Deployed server that stays on | ⏳ |

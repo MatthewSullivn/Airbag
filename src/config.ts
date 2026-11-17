@@ -32,6 +32,8 @@ export const config = {
   rpcUrl: str("ARC_RPC_URL", "https://rpc.testnet.arc.io"),
   explorer: "https://explorer.testnet.arc.io",
   marketId: str("MARKET_ID"),
+  /** Morpho Blue on Arc Testnet (found in our first borrow's receipt). The bot reads the loan from it directly. Empty = Borrow Kit only. */
+  morphoAddress: str("MORPHO_ADDRESS", "0x65f435eb4ff05f1481618694bc1ff7ee4680c0a4"),
   vaultAddress: str("VAULT_ADDRESS"),
   loanId: str("LOAN_ID"),
   circleApiKey: str("CIRCLE_API_KEY"),

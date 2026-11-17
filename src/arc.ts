@@ -4,13 +4,25 @@
 //   SimArc  - the same behaviour in memory, for building the dashboard and as a demo backup
 import { randomBytes } from "node:crypto";
 import { AppKit } from "@circle-fin/app-kit";
-import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
-import { createPublicClient, erc20Abi, formatUnits, http, type Address } from "viem";
+import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2/next";   // the /next build batches through Arc's sender-preserving batcher (needed by Borrow Kit for a plain wallet)
+import { createPublicClient, erc20Abi, formatUnits, http, parseAbi, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arcTestnet } from "viem/chains";
 import { CIRBTC, USDC, type Config } from "./config.js";
+import { syncClockToArc } from "./clock.js";
 
 export interface TxRef { label: string; hash: string; url: string }
+
+const MORPHO_ABI = parseAbi([
+  "function position(bytes32 id, address user) view returns (uint256 supplyShares, uint128 borrowShares, uint128 collateral)",
+  "function market(bytes32 id) view returns (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee)",
+  "function idToMarketParams(bytes32 id) view returns (address loanToken, address collateralToken, address oracle, address irm, uint256 lltv)",
+]);
+const ORACLE_ABI = parseAbi(["function price() view returns (uint256)"]);
+const VAULT_ABI = parseAbi([
+  "function balanceOf(address owner) view returns (uint256)",
+  "function convertToAssets(uint256 shares) view returns (uint256)",
+]);
 
 export interface LoanView {
   loanId: string;
@@ -98,6 +110,7 @@ export class LiveArc implements ArcBackend {
   }
 
   async init() {
+    await syncClockToArc(this.cfg.rpcUrl);   // Borrow Kit deadlines are checked against Date.now()
     const { markets } = await this.kit.borrow.exploreMarkets({ chain: this.cfg.chain });
     const market = this.marketId
       ? markets.find((m) => m.marketId.toLowerCase() === this.marketId!.toLowerCase())
@@ -122,10 +135,71 @@ export class LiveArc implements ArcBackend {
     this.loanId = open?.loanId ?? null;
   }
 
+  /**
+   * The loan as the bot sees it. Read straight from the Morpho contract when its address is known:
+   * on Nov 17 2026 Borrow Kit's getPosition still returned the old debt as READY right after a
+   * repay, which could make the bot repay twice. The chain is immediate. Borrow Kit is the fallback.
+   */
   async readLoan(): Promise<LoanView | null> {
     if (!this.loanId) await this.findLoan();
     if (!this.loanId) return null;
-    const p = await this.kit.borrow.getPosition({ loanId: this.loanId });
+    if (this.cfg.morphoAddress) {
+      try {
+        return await this.readLoanOnChain();
+      } catch (e) {
+        console.warn(`[arc] on-chain loan read failed, using Borrow Kit: ${(e as Error).message}`);
+      }
+    }
+    return this.readLoanFromKit();
+  }
+
+  private oracle: Address | null = null;
+  private apy: { value: number | null; at: number } = { value: null, at: 0 };
+
+  private async readLoanOnChain(): Promise<LoanView> {
+    const morpho = this.cfg.morphoAddress as Address;
+    const id = this.marketId as `0x${string}`;
+    if (!this.oracle) {
+      const mp = await this.client.readContract({ address: morpho, abi: MORPHO_ABI, functionName: "idToMarketParams", args: [id] });
+      this.oracle = mp[2];
+      this.lltv = Number(formatUnits(mp[4], 18));
+    }
+    const [p, m, price] = await Promise.all([
+      this.client.readContract({ address: morpho, abi: MORPHO_ABI, functionName: "position", args: [id, this.address as Address] }),
+      this.client.readContract({ address: morpho, abi: MORPHO_ABI, functionName: "market", args: [id] }),
+      this.client.readContract({ address: this.oracle, abi: ORACLE_ABI, functionName: "price" }),
+    ]);
+    // Morpho Blue share math (virtual shares 1e6, virtual assets 1), rounded up like Morpho does for debt.
+    // Interest accrued since the market's last update is not included (0.025% a year on testnet).
+    const shares = p[1], totalAssets = m[2] + 1n, totalShares = m[3] + 1_000_000n;
+    const debtRaw = shares === 0n ? 0n : (shares * totalAssets + totalShares - 1n) / totalShares;
+    const debt = Number(formatUnits(debtRaw, 6));
+    const collateral = Number(formatUnits(p[2], 8));
+    const oraclePrice = Number(price) / 1e34;          // Morpho oracle scale: 1e36 * 10^(6 - 8)
+    const hf = debt > 0 && collateral > 0 ? (collateral * oraclePrice * this.lltv) / debt : null;
+    if (Date.now() - this.apy.at > 60_000) {
+      this.apy.at = Date.now();
+      this.kit.borrow.getPosition({ loanId: this.loanId! }).then((x) => (this.apy.value = x.borrowApy ?? this.apy.value)).catch(() => {});
+    }
+    return {
+      loanId: this.loanId!,
+      marketId: this.marketId!,
+      status: debt > 0 || collateral > 0 ? "active" : "closed",
+      dataStatus: "READY",
+      debt,
+      collateral,
+      accruedInterest: null,
+      borrowApy: this.apy.value,
+      healthFactor: hf,
+      band: hf == null ? null : hf >= 1.2 ? "SAFE" : hf >= 1.1 ? "WARN" : hf >= 1.05 ? "URGENT" : hf >= 1 ? "IMMINENT" : "LIQUIDATABLE",
+      ltv: debt > 0 && collateral > 0 ? debt / (collateral * oraclePrice) : null,
+      liquidationPrice: debt > 0 && collateral > 0 ? debt / (collateral * this.lltv) : null,
+      oraclePrice,
+    };
+  }
+
+  private async readLoanFromKit(): Promise<LoanView | null> {
+    const p = await this.kit.borrow.getPosition({ loanId: this.loanId! });
     const hf = p.healthFactor ?? null;
     const liq = n(p.liquidationPrice);
     return {
@@ -147,6 +221,15 @@ export class LiveArc implements ArcBackend {
 
   async readSavings(): Promise<SavingsView | null> {
     if (!this.vault) return null;
+    // The vault itself (ERC-4626) is immediate; Earn Kit's position lagged a few seconds after a deposit.
+    try {
+      const v = this.vault.address as Address;
+      const shares = await this.client.readContract({ address: v, abi: VAULT_ABI, functionName: "balanceOf", args: [this.address as Address] });
+      const assets = shares === 0n ? 0n : await this.client.readContract({ address: v, abi: VAULT_ABI, functionName: "convertToAssets", args: [shares] });
+      return { vaultAddress: this.vault.address, vaultName: this.vault.name, balance: Number(formatUnits(assets, 6)), apy: this.vault.apy };
+    } catch (e) {
+      console.warn(`[arc] on-chain savings read failed, using Earn Kit: ${(e as Error).message}`);
+    }
     try {
       const pos = await this.kit.earn.getPosition({ from: this.from, vaultAddress: this.vault.address });
       return { vaultAddress: this.vault.address, vaultName: this.vault.name, balance: Number(pos.currentBalance), apy: pos.currentApy ?? this.vault.apy };

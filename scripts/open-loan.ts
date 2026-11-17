@@ -3,7 +3,7 @@
 //   npm run loan:open -- 1.6          -> pick another starting health
 // Uses all the cirBTC in the bot wallet as collateral. Prints the loan and the contracts it touched.
 import { AppKit } from "@circle-fin/app-kit";
-import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
+import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2/next";   // the /next build batches through Arc's sender-preserving batcher (needed by Borrow Kit for a plain wallet)
 import { createPublicClient, http, keccak256, toHex } from "viem";
 import { arcTestnet } from "viem/chains";
 import { config } from "../src/config.js";
@@ -16,13 +16,20 @@ const arc = new LiveArc(config);
 await arc.init();
 const from = { adapter: createViemAdapterFromPrivateKey({ privateKey: config.privateKey }), chain: config.chain };
 
-if (arc.loanId) {
-  console.log(`This wallet already has an open loan: ${arc.loanId} (one loan per wallet per market).`);
-  console.log(await arc.readLoan());
-  process.exit(0);
-}
-
 const wallet = await arc.readWallet();
+// A loan id can exist with nothing on-chain: Borrow Kit registers the loan before the signed opening
+// lands, and if that opening expires the docs say to call borrow({ loanId }) again.
+let reopen = false;
+if (arc.loanId) {
+  const existing = await arc.readLoan();
+  if ((existing?.debt ?? 0) > 0 || !(wallet.cirbtc > 0)) {
+    console.log(`This wallet already has an open loan: ${arc.loanId} (one loan per wallet per market).`);
+    console.log(existing);
+    process.exit(0);
+  }
+  reopen = true;
+  console.log(`Loan ${arc.loanId} is registered but has nothing on-chain (an earlier opening expired). Opening it with borrow({ loanId }).`);
+}
 console.log(`wallet ${wallet.address}: ${wallet.usdc} USDC, ${wallet.cirbtc} cirBTC`);
 if (!(wallet.cirbtc > 0)) throw new Error("no cirBTC in the wallet yet: request it at https://faucet.circle.com (Arc Testnet)");
 if (!(wallet.usdc > 0.05)) throw new Error("no USDC for gas yet: request USDC at https://faucet.circle.com (Arc Testnet)");
@@ -34,7 +41,9 @@ const wanted = (wallet.cirbtc * spot * arc.lltv) / startHealth;
 const borrowAmount = Math.min(wanted, Number(max.maxBorrowAmount.amount) * 0.99);
 console.log(`BTC $${spot}. Borrowing ${usdc6(borrowAmount)} USDC against ${wallet.cirbtc} cirBTC (health ${startHealth} at the live price; Borrow Kit max is ${max.maxBorrowAmount.amount}).`);
 
-const res: any = await kit.borrow.borrow({ from, marketId: arc.marketId!, borrowAmount: usdc6(borrowAmount) });
+const res: any = reopen
+  ? await kit.borrow.borrow({ from, loanId: arc.loanId!, borrowAmount: usdc6(borrowAmount) })
+  : await kit.borrow.borrow({ from, marketId: arc.marketId!, borrowAmount: usdc6(borrowAmount) });
 console.dir(res, { depth: 4 });
 const loanId: string = res.loanId;
 console.log(`\nloanId ${loanId}   tx ${config.explorer}/tx/${res.txHash}`);
