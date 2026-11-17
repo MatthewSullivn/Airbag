@@ -1,0 +1,906 @@
+{
+ "generatedAt": "2026-11-17T21:29:18.020Z",
+ "params": {
+  "start": "2025-12-16",
+  "lltv": 0.86,
+  "limit": 0.05,
+  "horizonDays": 14,
+  "volWindowDays": 30,
+  "savingsPct": 0.2,
+  "stepsPerLeg": 48,
+  "ltvs": [
+   0.5,
+   0.55,
+   0.6,
+   0.65,
+   0.7
+  ],
+  "headlineLtv": 0.6,
+  "chart": {
+   "from": "2026-01-15",
+   "to": "2026-03-15"
+  },
+  "liquidationIncentive": 1.04384,
+  "rule": {
+   "actBelowHealth": 1.1,
+   "repayToHealth": 1.25,
+   "giveBackAbove": 1.4,
+   "giveBackFloor": 1.3
+  },
+  "data": "Gemini v2 candles btcusd 1day (replay/btc-daily.csv)"
+ },
+ "headline": {
+  "untouched": {
+   "ltv": 0.6,
+   "mode": "untouched",
+   "openPrice": 87841.59,
+   "debt0": 52705,
+   "line0": 61285,
+   "savings": 10541,
+   "liquidated": true,
+   "liquidation": {
+    "date": "2026-02-06",
+    "price": 61285,
+    "btcKept": 0.1023
+   },
+   "btcKept": 0.1023,
+   "maxInLoan": 0,
+   "avgInPot": 1,
+   "actions": 0
+  },
+  "daily": {
+   "ltv": 0.6,
+   "mode": "daily",
+   "openPrice": 87841.59,
+   "debt0": 52705,
+   "line0": 61285,
+   "savings": 10541,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 10541,
+   "avgInPot": 0.577,
+   "actions": 20
+  },
+  "intraday": {
+   "ltv": 0.6,
+   "mode": "intraday",
+   "openPrice": 87841.59,
+   "debt0": 52705,
+   "line0": 61285,
+   "savings": 10541,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 10541,
+   "avgInPot": 0.582,
+   "actions": 313
+  }
+ },
+ "table": [
+  {
+   "ltv": 0.5,
+   "mode": "untouched",
+   "openPrice": 87841.59,
+   "debt0": 43921,
+   "line0": 51071,
+   "savings": 8784,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 0,
+   "avgInPot": 1,
+   "actions": 0
+  },
+  {
+   "ltv": 0.5,
+   "mode": "daily",
+   "openPrice": 87841.59,
+   "debt0": 43921,
+   "line0": 51071,
+   "savings": 8784,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 3562,
+   "avgInPot": 0.927,
+   "actions": 17
+  },
+  {
+   "ltv": 0.5,
+   "mode": "intraday",
+   "openPrice": 87841.59,
+   "debt0": 43921,
+   "line0": 51071,
+   "savings": 8784,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 4587,
+   "avgInPot": 0.93,
+   "actions": 747
+  },
+  {
+   "ltv": 0.55,
+   "mode": "untouched",
+   "openPrice": 87841.59,
+   "debt0": 48313,
+   "line0": 56178,
+   "savings": 9663,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 0,
+   "avgInPot": 1,
+   "actions": 0
+  },
+  {
+   "ltv": 0.55,
+   "mode": "daily",
+   "openPrice": 87841.59,
+   "debt0": 48313,
+   "line0": 56178,
+   "savings": 9663,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 7955,
+   "avgInPot": 0.759,
+   "actions": 26
+  },
+  {
+   "ltv": 0.55,
+   "mode": "intraday",
+   "openPrice": 87841.59,
+   "debt0": 48313,
+   "line0": 56178,
+   "savings": 9663,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 8980,
+   "avgInPot": 0.769,
+   "actions": 781
+  },
+  {
+   "ltv": 0.6,
+   "mode": "untouched",
+   "openPrice": 87841.59,
+   "debt0": 52705,
+   "line0": 61285,
+   "savings": 10541,
+   "liquidated": true,
+   "liquidation": {
+    "date": "2026-02-06",
+    "price": 61285,
+    "btcKept": 0.1023
+   },
+   "btcKept": 0.1023,
+   "maxInLoan": 0,
+   "avgInPot": 1,
+   "actions": 0
+  },
+  {
+   "ltv": 0.6,
+   "mode": "daily",
+   "openPrice": 87841.59,
+   "debt0": 52705,
+   "line0": 61285,
+   "savings": 10541,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 10541,
+   "avgInPot": 0.577,
+   "actions": 20
+  },
+  {
+   "ltv": 0.6,
+   "mode": "intraday",
+   "openPrice": 87841.59,
+   "debt0": 52705,
+   "line0": 61285,
+   "savings": 10541,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 10541,
+   "avgInPot": 0.582,
+   "actions": 313
+  },
+  {
+   "ltv": 0.65,
+   "mode": "untouched",
+   "openPrice": 87841.59,
+   "debt0": 57097,
+   "line0": 66392,
+   "savings": 11419,
+   "liquidated": true,
+   "liquidation": {
+    "date": "2026-02-05",
+    "price": 66392,
+    "btcKept": 0.1023
+   },
+   "btcKept": 0.1023,
+   "maxInLoan": 0,
+   "avgInPot": 1,
+   "actions": 0
+  },
+  {
+   "ltv": 0.65,
+   "mode": "daily",
+   "openPrice": 87841.59,
+   "debt0": 57097,
+   "line0": 66392,
+   "savings": 11419,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 11419,
+   "avgInPot": 0.429,
+   "actions": 15
+  },
+  {
+   "ltv": 0.65,
+   "mode": "intraday",
+   "openPrice": 87841.59,
+   "debt0": 57097,
+   "line0": 66392,
+   "savings": 11419,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 11419,
+   "avgInPot": 0.428,
+   "actions": 19
+  },
+  {
+   "ltv": 0.7,
+   "mode": "untouched",
+   "openPrice": 87841.59,
+   "debt0": 61489,
+   "line0": 71499,
+   "savings": 12298,
+   "liquidated": true,
+   "liquidation": {
+    "date": "2026-02-05",
+    "price": 71499,
+    "btcKept": 0.1023
+   },
+   "btcKept": 0.1023,
+   "maxInLoan": 0,
+   "avgInPot": 1,
+   "actions": 0
+  },
+  {
+   "ltv": 0.7,
+   "mode": "daily",
+   "openPrice": 87841.59,
+   "debt0": 61489,
+   "line0": 71499,
+   "savings": 12298,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 12298,
+   "avgInPot": 0.288,
+   "actions": 9
+  },
+  {
+   "ltv": 0.7,
+   "mode": "intraday",
+   "openPrice": 87841.59,
+   "debt0": 61489,
+   "line0": 71499,
+   "savings": 12298,
+   "liquidated": false,
+   "liquidation": null,
+   "btcKept": 1,
+   "maxInLoan": 12298,
+   "avgInPot": 0.261,
+   "actions": 12
+  }
+ ],
+ "chart": [
+  {
+   "date": "2026-01-15",
+   "low": 95082.2,
+   "close": 95573.42,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-16",
+   "low": 94250.01,
+   "close": 95529.2,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-17",
+   "low": 95008,
+   "close": 95106.68,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-18",
+   "low": 93573.14,
+   "close": 93660.36,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-19",
+   "low": 91878,
+   "close": 92545.91,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-20",
+   "low": 87793.34,
+   "close": 88308.22,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-21",
+   "low": 87168.14,
+   "close": 89372.01,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-22",
+   "low": 88444.37,
+   "close": 89463.67,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-23",
+   "low": 88466.76,
+   "close": 89485.91,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-24",
+   "low": 89024.2,
+   "close": 89071.44,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-25",
+   "low": 85977.08,
+   "close": 86543.22,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-26",
+   "low": 86389.35,
+   "close": 88247.99,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-27",
+   "low": 87187.56,
+   "close": 89111.42,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-28",
+   "low": 88694.72,
+   "close": 89147.33,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-29",
+   "low": 83225,
+   "close": 84526.14,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-30",
+   "low": 81019.86,
+   "close": 84094,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0
+  },
+  {
+   "date": "2026-01-31",
+   "low": 75666.66,
+   "close": 78630.81,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0.0007
+  },
+  {
+   "date": "2026-02-01",
+   "low": 75643.54,
+   "close": 76881.04,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0.0081
+  },
+  {
+   "date": "2026-02-02",
+   "low": 74525,
+   "close": 78662.67,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0.0035
+  },
+  {
+   "date": "2026-02-03",
+   "low": 72870,
+   "close": 75655.59,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 61285,
+   "inLoan": 0,
+   "odds": 0.0159
+  },
+  {
+   "date": "2026-02-04",
+   "low": 71724.78,
+   "close": 73007.77,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 58408,
+   "inLoan": 2474,
+   "odds": 0.0129
+  },
+  {
+   "date": "2026-02-05",
+   "low": 62200,
+   "close": 62776,
+   "untouchedLine": 61285,
+   "untouchedLine0": 61285,
+   "airbagLine": 50309,
+   "inLoan": 9439,
+   "odds": 0.0129
+  },
+  {
+   "date": "2026-02-06",
+   "low": 60000,
+   "close": 70525.86,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 51180,
+   "inLoan": 8690,
+   "odds": 0.015
+  },
+  {
+   "date": "2026-02-07",
+   "low": 67327.76,
+   "close": 69237.21,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49359,
+   "inLoan": 10256,
+   "odds": 0.0326
+  },
+  {
+   "date": "2026-02-08",
+   "low": 68893.15,
+   "close": 70295.82,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 50494,
+   "inLoan": 9280,
+   "odds": 0.0368
+  },
+  {
+   "date": "2026-02-09",
+   "low": 68267.16,
+   "close": 70101.79,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49957,
+   "inLoan": 9742,
+   "odds": 0.0335
+  },
+  {
+   "date": "2026-02-10",
+   "low": 67856.78,
+   "close": 68773.36,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49657,
+   "inLoan": 10000,
+   "odds": 0.0409
+  },
+  {
+   "date": "2026-02-11",
+   "low": 65573.52,
+   "close": 67008.94,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0496
+  },
+  {
+   "date": "2026-02-12",
+   "low": 65067.62,
+   "close": 66198.39,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0594
+  },
+  {
+   "date": "2026-02-13",
+   "low": 65806.25,
+   "close": 68826.8,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.028
+  },
+  {
+   "date": "2026-02-14",
+   "low": 68702.08,
+   "close": 69768.75,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49555,
+   "inLoan": 10087,
+   "odds": 0.0295
+  },
+  {
+   "date": "2026-02-15",
+   "low": 68047.23,
+   "close": 68786.33,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49760,
+   "inLoan": 9911,
+   "odds": 0.0406
+  },
+  {
+   "date": "2026-02-16",
+   "low": 67265.85,
+   "close": 68858.7,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49352,
+   "inLoan": 10262,
+   "odds": 0.035
+  },
+  {
+   "date": "2026-02-17",
+   "low": 66600,
+   "close": 67468.22,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0435
+  },
+  {
+   "date": "2026-02-18",
+   "low": 65850,
+   "close": 66422.6,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.055
+  },
+  {
+   "date": "2026-02-19",
+   "low": 65618.87,
+   "close": 66939.9,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0491
+  },
+  {
+   "date": "2026-02-20",
+   "low": 66470,
+   "close": 68000.01,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0368
+  },
+  {
+   "date": "2026-02-21",
+   "low": 67538,
+   "close": 67982.23,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0373
+  },
+  {
+   "date": "2026-02-22",
+   "low": 67188,
+   "close": 67607.53,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0406
+  },
+  {
+   "date": "2026-02-23",
+   "low": 63873.38,
+   "close": 64627.49,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0781
+  },
+  {
+   "date": "2026-02-24",
+   "low": 62512,
+   "close": 64045,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0921
+  },
+  {
+   "date": "2026-02-25",
+   "low": 63922.07,
+   "close": 67999.91,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0385
+  },
+  {
+   "date": "2026-02-26",
+   "low": 66570,
+   "close": 67486.48,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0514
+  },
+  {
+   "date": "2026-02-27",
+   "low": 64980,
+   "close": 65857.49,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0711
+  },
+  {
+   "date": "2026-02-28",
+   "low": 63039.57,
+   "close": 66998.39,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0564
+  },
+  {
+   "date": "2026-03-01",
+   "low": 65043.06,
+   "close": 65754.6,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0696
+  },
+  {
+   "date": "2026-03-02",
+   "low": 65073.6,
+   "close": 68811.5,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0364
+  },
+  {
+   "date": "2026-03-03",
+   "low": 66185.4,
+   "close": 68298.18,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0388
+  },
+  {
+   "date": "2026-03-04",
+   "low": 67404,
+   "close": 72679.33,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 50782,
+   "inLoan": 9033,
+   "odds": 0.025
+  },
+  {
+   "date": "2026-03-05",
+   "low": 70656.1,
+   "close": 70880.59,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 50786,
+   "inLoan": 9029,
+   "odds": 0.0437
+  },
+  {
+   "date": "2026-03-06",
+   "low": 67750,
+   "close": 68118.76,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49115,
+   "inLoan": 10466,
+   "odds": 0.0462
+  },
+  {
+   "date": "2026-03-07",
+   "low": 66958.26,
+   "close": 67253.7,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0547
+  },
+  {
+   "date": "2026-03-08",
+   "low": 65640.08,
+   "close": 65990.1,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 49028,
+   "inLoan": 10541,
+   "odds": 0.0193
+  },
+  {
+   "date": "2026-03-09",
+   "low": 65821.34,
+   "close": 68431.09,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 52852,
+   "inLoan": 7252,
+   "odds": 0.009
+  },
+  {
+   "date": "2026-03-10",
+   "low": 68395.93,
+   "close": 69963.33,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 52852,
+   "inLoan": 7252,
+   "odds": 0.0058
+  },
+  {
+   "date": "2026-03-11",
+   "low": 68985.36,
+   "close": 70191.34,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 52852,
+   "inLoan": 7252,
+   "odds": 0.0055
+  },
+  {
+   "date": "2026-03-12",
+   "low": 69222.31,
+   "close": 70489.35,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 52852,
+   "inLoan": 7252,
+   "odds": 0.0048
+  },
+  {
+   "date": "2026-03-13",
+   "low": 70411.45,
+   "close": 70943.59,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 52852,
+   "inLoan": 7252,
+   "odds": 0.0037
+  },
+  {
+   "date": "2026-03-14",
+   "low": 69850,
+   "close": 71250,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 52852,
+   "inLoan": 7252,
+   "odds": 0.0027
+  },
+  {
+   "date": "2026-03-15",
+   "low": 70886.74,
+   "close": 72821.16,
+   "untouchedLine": null,
+   "untouchedLine0": 61285,
+   "airbagLine": 52852,
+   "inLoan": 7252,
+   "odds": 0.0012
+  }
+ ]
+}
