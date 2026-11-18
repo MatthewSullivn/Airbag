@@ -239,6 +239,15 @@ button.ghost { background: transparent; border: 0; padding: 4px 8px; color: var(
 .foot .try { font-size: 13px; }
 .demo-out {margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); min-height: 1em; overflow-wrap: anywhere; }
 
+/* ---- connect wallet */
+.connect { font-size: 12.5px; padding: 4px 12px; border-radius: 999px; }
+.wallet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 22px; }
+.wallet-note { margin: 12px 0 0; color: var(--ink-2); font-size: 13px; min-height: 1em; }
+.wallet-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.wallet-actions .row { display: flex; gap: 8px; flex: 1 1 320px; min-width: 0; }
+.wallet-actions input { flex: 1 1 200px; min-width: 0; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--axis); background: var(--page); color: var(--ink); font: inherit; }
+.wallet-actions button { font-size: 13px; }
+
 .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 4px; padding-bottom: 28px; color: var(--muted); font-size: 12.5px; }
 kbd { border: 1px solid var(--axis); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 11.5px; background: var(--surface); }
 

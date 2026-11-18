@@ -290,6 +290,7 @@ Server endpoints:
 | `GET /` | dashboard |
 | `GET /api/status` | JSON: loan, odds, savings, limit, log, odds samples |
 | `GET /api/replay` | crash replay results |
+| `GET /api/wallet/:address` | read-only: any wallet's USDC, cirBTC, savings, loan and odds (the dashboard's Connect wallet) |
 | `POST /api/borrow-webhook?key=` | Borrow Kit band change, wakes the bot |
 | `POST /api/stream?key=` | QuickNode Stream delivery, wakes the bot |
 | `POST /api/demo/push`, `/reset`, `/pause`, `/limit` | demo controls (header `x-airbag-key`) |
@@ -299,6 +300,11 @@ POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no se
 **Demo controls.** Press `d` on the dashboard and enter `WEBHOOK_SECRET`.
 - **Push it to the edge** borrows up to Borrow Kit's maximum. The USDC stays in the wallet, as if spent.
 - **Reset** repays from the wallet back to health 1.5. The bot then gives the savings back by itself.
+
+**Connect wallet.** The button at the top shows a visitor's own wallet on Arc Testnet: its USDC and cirBTC, its savings, its loan in the same market, and the odds for that loan's line.
+- It is read-only. Connecting shares the address; nothing is signed or sent.
+- Without a wallet extension, paste any address instead.
+- It does not switch protection on for that wallet. That takes an AirbagGuard for the wallet, which is not on the page yet.
 
 All settings are in [`.env.example`](.env.example).
 

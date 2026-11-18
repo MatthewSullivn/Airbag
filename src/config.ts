@@ -58,3 +58,6 @@ export type Config = typeof config;
 
 export const USDC = "0x3600000000000000000000000000000000000000" as const;   // ERC-20 view of native USDC, 6 decimals
 export const CIRBTC = "0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF" as const; // Circle Wrapped Bitcoin, 8 decimals
+// Arc Testnet defaults for the read-only wallet lookup (the live bot finds its own market and vault through Circle's kits).
+export const ARC_TESTNET_MARKET = "0xf8a71f6df9dc7725d1c2fd848e4635d1e9ddca11da4e2dc2f9801005bd2b5d58" as const; // Borrow Kit cirBTC/USDC market (Morpho id)
+export const ARC_TESTNET_VAULT = "0xaabbef1d3971c710276ed41ec791bbe14cdb8e88" as const;                             // EarnKit USDC Vault

@@ -14,6 +14,8 @@ import { Bot } from "./bot.js";
 import { RULE } from "./brain.mjs";
 import { describeReceipt, isTxHash } from "./stream-verify.mjs";
 import { makeRateLimiter, publicAllows, publicDemoOn } from "./public-demo.mjs";
+import { makeWalletReader } from "./wallet-view.js";
+import { isAddress } from "./wallet-math.mjs";
 import { createPublicClient, http } from "viem";
 import { arcTestnet } from "viem/chains";
 
@@ -120,6 +122,22 @@ app.get("/api/replay", (_req, res) => {
 });
 
 app.get("/healthz", (_req, res) => res.json({ ok: true, ticks: bot.ticks }));
+
+// ---- "Connect wallet": a read-only look at any wallet on Arc Testnet (balances, its loan, its odds).
+// Public by design: it only reads public chain data and never signs anything. One shared rate limit.
+const readWalletView = makeWalletReader(config, gemini, { marketId: arc.marketId, vault: arc.vault?.address ?? null });
+const walletHit = makeRateLimiter(120, 60_000);
+app.get("/api/wallet/:address", async (req, res) => {
+  const address = String(req.params.address);
+  if (!isAddress(address)) return res.status(400).json({ error: "that is not a wallet address (0x followed by 40 characters)" });
+  if (!walletHit()) return res.status(429).json({ error: "lots of lookups right now, try again in a minute" });
+  try {
+    const view = await readWalletView(address);
+    res.json({ ...view, protectedHere: config.mode === "live" && address.toLowerCase() === arc.address.toLowerCase(), explorer: config.explorer });
+  } catch (e) {
+    res.status(502).json({ error: `could not read Arc Testnet: ${String((e as Error).message).split("\n")[0].slice(0, 140)}` });
+  }
+});
 
 // ---- alarm (b): Borrow Kit calls this when the loan's health band changes. GET/HEAD answer reachability probes.
 app.get("/api/borrow-webhook", (_req, res) => res.json({ ok: true }));
