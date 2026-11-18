@@ -155,6 +155,9 @@ Read these before touching `src/arc.ts`.
     - It can't move money, and it re-checks every delivery against the transaction receipt on Arc (`src/stream-verify.mjs`), so fake or mislabelled deliveries are dropped.
     - Keep it that way: don't put `WEBHOOK_SECRET` in third-party URLs.
     - The savings vault (Morpho Vault V2) doesn't emit standard ERC-4626 events, so its moves show up as "bot wallet transaction".
+14. **MetaMask flags `onrender.com` links.** Connecting a wallet on `airbag-live.onrender.com` showed MetaMask's "malicious site" warning. Its site check returned BLOCK for every `onrender.com` name we tried (and for names on `vercel.app`, `netlify.app` and `github.io`), so it is the suffix, not our page.
+    - The hosted live bot has its own domain for that reason: https://airbagged.me (the same Render service, Matthew's account). The check returns nothing for it.
+    - Use that link for anything with Connect wallet. The simulator needs no wallet, so its `onrender.com` link is fine.
 
 ## Code conventions
 
@@ -183,7 +186,8 @@ Read these before touching `src/arc.ts`.
 - [x] **Run AirbagGuard live on Arc Testnet.** Done Nov 18, 2026 on a second test wallet: guard `0x895fa892dc4ff752ec9114760201f4751c106bf3`, links in README "Live proof".
 - [x] **`src/arc.ts` can call the guard.** `USE_GUARD=true` sends saves and give-backs through it with `GUARD_BOT_KEY`. Tested live Nov 18, 2026.
 - [x] **A hosted live bot in guard mode.** https://airbag-live.onrender.com runs `npm start` with `USE_GUARD=true` on a second test wallet (`0x3886…aC2e`) and holds no wallet key. Its Push and Reset come from the owner's machine (`npm run demo:push`, `npm run demo:reset`). Never start a second bot on that wallet.
-- [ ] **Click through protection for a connected wallet** on a server with `PROTECT=true`, using a second wallet: open a loan, add savings, turn on protection, push, watch the save, calm, turn it off. Then add the links to README "Live proof".
+- [x] **Click through protection for a connected wallet.** Done Nov 18, 2026 on https://airbagged.me (`PROTECT=true`) with a third test wallet (`0x5364…Fb53`): open a loan, add savings, turn on protection, push, the bot's save 3 s later, calm, the bot's give-back. Links in README "Live proof".
+- [ ] **Press "Turn protection off" live** with that wallet (two signatures), then turn it on again. The page should reuse the same guard instead of creating a new one. Neither has been pressed live yet.
 - [ ] **Switch the first bot wallet to guard mode too.** Deploy a guard for it (`npm run guard:deploy`), then where it runs set `USE_GUARD=true`, `GUARD_ADDRESS` and `GUARD_BOT_KEY`, and remove `PRIVATE_KEY`.
 - [ ] **Optional:**
   - a Swap Kit fallback when savings run out

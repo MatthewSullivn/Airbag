@@ -48,6 +48,7 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
   - We pushed a real loan to 42% odds.
   - The bot moved 0.78 USDC from savings into the loan, and it was safe again 4 seconds later on-chain, for 0.0154 USDC of gas.
   - After a reset, it gave 0.55 USDC back to savings by itself.
+  - Any wallet can connect on the page, open its own loan and turn on protection. The bot then protects that loan through the wallet's own `AirbagGuard` contract and never holds its key. A third wallet tried it: the bot saved its loan 3 seconds after the push (README "Live proof").
 
 ## What makes it unique?
 
@@ -58,7 +59,7 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 
 ## What would you build next?
 
-- **Non-custodial.** We wrote `AirbagGuard` (`contracts/`): the bot's own key can only move the owner's savings into the owner's own loan and back, with a daily cap and a health floor on-chain. It runs on Arc Testnet and the bot can sign through it (README "Live proof"). Next is one guard per user, with a connect-wallet page.
+- **Non-custodial.** We wrote `AirbagGuard` (`contracts/`): the bot's own key can only move the owner's savings into the owner's own loan and back, with a daily cap and a health floor on-chain. It runs on Arc Testnet and the bot can sign through it (README "Live proof"). One guard per user works from the page too (Connect wallet). Next is moving our first bot wallet to it.
 - **Mainnet**, with a real price feed (Arc Testnet's lending oracle is fixed at $75,000).
 - **When savings run out:** sell a small slice of collateral with Swap Kit.
 - **Alerts** on Telegram/X or by voice, and many loans per user.
