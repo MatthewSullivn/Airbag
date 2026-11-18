@@ -1,4 +1,4 @@
-// The market-over-time chart on the Market screen, checked on real hourly candles saved from Gemini on
+// The market-over-time chart in the landing page's Gemini part, checked on real hourly candles saved from Gemini on
 // Nov 18, 2026 ("$65,000 or above on Nov 30", GET /v2/candles/GEMI-BTC2611302200-HI65000/1hr).
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

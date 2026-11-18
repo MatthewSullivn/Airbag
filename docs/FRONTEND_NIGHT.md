@@ -2,6 +2,19 @@
 
 Branch `frontend-test`, worktree `C:\Users\matth\Desktop\ubc\.claude\worktrees\frontend-test`. The brief is `docs/OVERNIGHT_BRIEF.md`. Read both files first after any break. Delete both before merging.
 
+## Redesign (Nov 18, 2026, evening)
+
+Matthew found the first version too plain, the fonts too basic and the app too complex. What changed since the morning report below:
+
+- **The landing page is a walk-through.** The headline with the live app in a tilted frame, what it does (four cards), who it is for (three cards), then four numbered steps: 1 the problem, 2 a real save replayed, 3 Gemini in depth (with a card that looks like Gemini's own market tab and shows its live bets), 4 Arc in depth. Then the receipts.
+- **The app has two screens instead of four:** Live demo and My loan. The Market and On-chain screens are now parts of the landing page. Old links still work: `/app/#market` and `/app/#chain` go to those parts, `/app/#try` opens My loan.
+- **Fonts:** Bricolage Grotesque, Geist and Instrument Serif (was Barlow).
+- **The five 21st.dev components Matthew picked** (shiny button, metallic button, spotlight card, bounce cards, scroll frame) are written by hand to look and move like them. 21st.dev's registry allowed two downloads a day, and Aceternity's licence does not clearly allow its source in a public repo. See `web/THIRD-PARTY.md`.
+- **The alarm rings even when the bot is faster than the page:** the card then shows the odds from the bot's own log line for three seconds.
+- Checked: desktop, phone width, dark, the push on the simulator (red for 3 s, then "Saved by Airbag"), 59 tests, no console errors. Not checked: anything that needs a wallet signature.
+
+Wherever the notes below say "four screens", "Loan screen", "Market screen", "On-chain screen" or "Try it", read them as the old layout.
+
 ## Morning report (Nov 18, 2026, about 09:15)
 
 1. **Open it.** Nothing is on `main`. Branch `frontend-test`, 6 commits. `git fetch`, `git checkout frontend-test`, `npm install`, `npm run sim`, then http://localhost:3000 (the landing page) and `/app/`. My copy is the worktree `.claude/worktrees/frontend-test`.
@@ -28,10 +41,10 @@ Reviews in full: the first is summarised under "Done". The second reviewer hung 
 
 What I could check without a person signing: with a fake wallet in the browser, the new page and the old page (`/classic/`) made exactly the same requests for connect, add savings and borrow more: 11 calls, the same bytes (same SHA-256 of the full request log). So the plan, estimate, send and receipt loop is unchanged.
 
-What only you can check, on the live site with Test 2 (about 5 minutes), on the "Try it" screen:
+What only you can check, on the live site with Test 2 (about 5 minutes), on the "My loan" screen (it was called "Try it" before the redesign):
 1. Connect wallet. MetaMask should be offered, never Phantom without asking.
 2. Step 3 shows "Protection is on" for Test 2 (it already has a guard).
-3. Step 4: Push it to the edge, one confirmation. The Loan screen should turn red, then Airbag saves it.
+3. Step 4: Push it to the edge, one confirmation. The page should scroll down to *Your loan*, which turns red, then Airbag saves it.
 4. Calm it down. Airbag gives the savings back.
 5. Turn protection off (two confirmations), then on again (should say "Finish turning it on" and not create a new guard). These two have never been pressed live, on the old page either.
 

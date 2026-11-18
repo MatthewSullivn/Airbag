@@ -10,11 +10,11 @@ Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's
 
 | The first screen | A loan pushed to the edge | The same loan, saved seconds later |
 |---|---|---|
-| ![The landing page: the headline and the live chance of losing the bitcoin](docs/page-1-first-screen.jpg) | ![The app's Loan screen in red: 40% chance, at risk](docs/page-2-at-risk.jpg) | ![The app's Loan screen after the save: 0.4%, saved by Airbag in 0.4 s](docs/page-3-saved.jpg) |
+| ![The landing page: the headline, and the live app in a frame](docs/page-1-first-screen.jpg) | ![The app's Live demo screen in red: 44% chance, at risk](docs/page-2-at-risk.jpg) | ![The Live demo screen after the save: 0.3%, saved by Airbag in 0.4 s](docs/page-3-saved.jpg) |
 
-| Gemini's market with the loan's price on it | The market's own odds, hour by hour | How the money moves on Arc |
+| Gemini's bets, and how they become the number | The market's own odds, hour by hour | How the money moves on Arc |
 |---|---|---|
-| ![The Market screen: Gemini's curve, the price where the bitcoin is lost, and how the number is made](docs/page-4-market.jpg) | ![The Market screen: Gemini's hourly history for one bet, and a hedge quote](docs/page-5-odds-over-time.jpg) | ![The On-chain screen: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) |
+| ![The landing page's Gemini part: a card with Gemini's live bets on bitcoin's price, and the three steps from those prices to the loan's number](docs/page-4-market.jpg) | ![The landing page: Gemini's hourly history for one bet, and a hedge quote](docs/page-5-odds-over-time.jpg) | ![The landing page's Arc part: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) |
 
 These six are the simulator: a simulated loan with live Gemini odds. The real saves are under [Live proof](#live-proof), with the page as it looked then.
 
@@ -293,7 +293,7 @@ Server endpoints:
 
 | Route | What it does |
 |---|---|
-| `GET /` | landing page. `/app/` is the app (Loan, Market, On-chain, Try it). `/classic/` is the old page. |
+| `GET /` | landing page. `/app/` is the app (Live demo, My loan). `/classic/` is the old page. |
 | `GET /api/ladders` | read-only: Gemini's price ladders as they are, and each bet's price to buy "No", for the market picture and the hedge quote |
 | `GET /api/market-history?ticker=` | read-only: Gemini's hourly candles for each bet of one of our ladders (the last traded price), for the market-over-time chart |
 | `GET /api/gas` | read-only: Arc's gas price right now on testnet and on mainnet, for the mainnet cost estimate |
@@ -308,26 +308,26 @@ Server endpoints:
 
 POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no secret set, they only accept requests from localhost.
 
-**The page.** `/` is the landing page: what Airbag is, the February crash, a real save replayed from its recorded transactions, Gemini's odds hour by hour, and the three recorded saves as receipts. `/app/` is the app, with four screens: **Loan** (the chance of losing the bitcoin, and bitcoin's price against the price where it is lost), **Market** (Gemini's ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, a hedge quote), **On-chain** (a picture of who tells the bot and how the money moves between the contracts, what the QuickNode Stream saw, what a move costs) and **Try it** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
+**The page.** `/` is the landing page, a walk-through: what Airbag is (with the live app in a frame), what it does, who it is for, then four numbered steps. 1: the February crash. 2: a real save replayed from its recorded transactions. 3: **Gemini** (a card with the market's live bets, the ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, a hedge quote). 4: **Arc** (a picture of who tells the bot and how the money moves between the contracts, what the QuickNode Stream saw, what a move costs). It ends with the three recorded saves as receipts. `/app/` is the app, with two screens: **Live demo** (the loan the bot guards: the chance of losing the bitcoin, bitcoin's price against the price where it is lost, and what Airbag did) and **My loan** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
 
-**Demo controls.** In the app, press `d` and enter `WEBHOOK_SECRET`.
+**Demo controls.** On the live bot, press `d` in the app and enter `WEBHOOK_SECRET`. On the simulator they are open at the top of the *Live demo* screen.
 - **Push it to the edge** borrows up to Borrow Kit's maximum. The USDC stays in the wallet, as if spent.
 - **Reset** repays from the wallet back to health 1.5. The bot then gives the savings back by itself.
 
-**Connect wallet** (the app's *Try it* screen). Four steps, one on screen at a time: open a loan, add savings, turn on protection, push it. It shows a visitor's own wallet on Arc Testnet: its USDC and cirBTC, its savings and its loan in the same market.
+**Connect wallet** (the app's *My loan* screen). Four steps, one on screen at a time: open a loan, add savings, turn on protection, push it. It shows a visitor's own wallet on Arc Testnet: its USDC and cirBTC, its savings and its loan in the same market.
 - Connecting shares the address and nothing else. Without a wallet extension, paste any address instead (read-only).
 - With several wallet extensions installed (MetaMask, Phantom, ...), the page asks which one to use and only ever talks to that one.
 - **A connected wallet can act for itself:** *Open a loan* (lock cirBTC and borrow USDC, straight on the lending contract) and *Add savings* (deposit USDC into the Earn vault). The server prepares each transaction after checking it against the chain (`POST /api/plan/...`); the visitor's own wallet shows it, signs it and sends it. The server never sees a key.
 - A new loan must start at health 1.25 or better at the live price, the level the bot repays to.
 - **Turn on protection** (on a server run with `PROTECT=true`): three signatures. The wallet creates its own `AirbagGuard`, naming our bot key as the only caller, then lets the guard reach its savings and its loan. From then on the bot protects that loan with the same rule, through that guard. The wallet stays the guard's owner and can turn protection off again (two signatures).
-- **The app follows the connected wallet.** When that wallet has a loan, every screen shows that loan, with a switch back to the bot's own. Its history starts when the wallet connects (the server keeps no history for other wallets). After *Push it to the edge* the app jumps to the Loan screen, so the number turning red and the save are on screen without a click.
+- **My loan shows the connected wallet's own loan.** When that wallet has a loan, its cards (the chance, the two prices, the amounts, Airbag's moves for that wallet) appear under the four steps. Its history starts when the wallet connects (the server keeps no history for other wallets). After *Push it to the edge* the page scrolls to those cards, so the number turning red and the save are on screen without a click. *Live demo* always shows the bot's own loan.
 - **Push it to the edge** and **Calm it down** are the demo for a connected wallet: borrow more until the loan is risky, then watch the bot save it.
 - The server keeps no list of these wallets. It finds the guards made for its bot key, and how much of each owner's savings is inside their loan, from the guards' own events on Arc ([`src/protector.ts`](src/protector.ts)). A restart loses nothing.
 - **Try it with a wallet at https://airbagged.me.** That is the hosted live bot (the same server as airbag-live.onrender.com). MetaMask showed its "malicious site" warning when a wallet connected on the `onrender.com` address: it flags that whole suffix, not our page. So the live bot has its own domain.
 
 All settings are in [`.env.example`](.env.example).
 
-**Public demo (anyone can press the buttons).** `PUBLIC_DEMO=true npm run sim` shows a *Try the demo* button and lets visitors push the simulated loan to the edge without a key (Pause stays key-only, one shared rate limit). It is ignored in live mode. Hosting it: [`docs/HOSTING.md`](docs/HOSTING.md).
+**Public demo (anyone can press the buttons).** `PUBLIC_DEMO=true npm run sim` lets visitors push the simulated loan to the edge without a key, with the buttons at the top of the *Live demo* screen (Pause stays key-only, one shared rate limit). It is ignored in live mode. Hosting it: [`docs/HOSTING.md`](docs/HOSTING.md).
 
 **AirbagGuard** (`contracts/`): a contract that lets the bot's key move the owner's savings into the owner's own loan and back, and nothing else, with a daily cap and a health floor on-chain. See [`contracts/README.md`](contracts/README.md).
 - **Run the bot through it:** after `npm run guard:deploy`, set `USE_GUARD=true`. Each save and each give-back is then one transaction on the guard, signed by `GUARD_BOT_KEY`.

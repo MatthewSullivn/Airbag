@@ -74,10 +74,6 @@ const buttonClass = ({ variant = "panel", size = "md", className }: Pick<ButtonP
 export function Button({ variant, size, className, ...rest }: ButtonProps) {
   return <button type="button" {...rest} className={buttonClass({ variant, size, className })} />;
 }
-/** A link that looks like a button. */
-export function ButtonLink({ variant, size, className, ...rest }: React.AnchorHTMLAttributes<HTMLAnchorElement> & Pick<ButtonProps, "variant" | "size">) {
-  return <a {...rest} className={buttonClass({ variant, size, className })} />;
-}
 
 /** A link out to Arc's block explorer. `kind` picks /address or /tx. */
 export function ExplorerLink({ explorer, kind, id, children, className }: { explorer: string | null; kind: "address" | "tx"; id: string; children?: React.ReactNode; className?: string }) {
@@ -136,13 +132,14 @@ export function Wordmark({ className }: { className?: string }) {
 }
 
 /** A page section on the landing page: one big line, a sentence or two, and one thing to look at. */
-export function Section({ id, eyebrow, title, lead, children, className }: { id?: string; eyebrow?: string; title: string; lead?: React.ReactNode; children?: React.ReactNode; className?: string }) {
+export function Section({ id, eyebrow, step, title, lead, children, className }: { id?: string; eyebrow?: string; /** A step number, e.g. "1", shown big and quiet beside the heading. */ step?: string; title: React.ReactNode; lead?: React.ReactNode; children?: React.ReactNode; className?: string }) {
   return (
-    <section id={id} className={cn("scroll-mt-8 py-16 sm:py-24", className)}>
+    <section id={id} className={cn("scroll-mt-20 py-14 sm:py-20", className)}>
       {/* the words glide up as the section comes into view, then the picture a moment later */}
       <FadeIn distance={18} duration={0.7} amount={0.3}>
         {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
-        <h2 className="display max-w-[18ch] text-[clamp(2.2rem,5.4vw,4rem)] text-ink">{title}</h2>
+        {step && <p className="figure mb-3 text-[3.2rem] text-brand" aria-hidden="true">{step}</p>}
+        <h2 className="display max-w-[20ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">{title}</h2>
         {lead && <p className="mt-5 max-w-[46ch] text-[1.15rem] leading-relaxed text-ink-2">{lead}</p>}
       </FadeIn>
       {children && <FadeIn distance={24} duration={0.8} delay={0.1} amount={0.06} className="mt-10 sm:mt-12">{children}</FadeIn>}

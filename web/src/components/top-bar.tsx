@@ -1,8 +1,7 @@
-// The strip at the top of both pages: the name, whether this is the live bot or the simulator, and what the bot is doing.
+// Two small badges for the app: whether this is the live bot or the simulator, and what the bot is doing.
 import type { Status } from "@/lib/api";
 import { ago } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Wordmark } from "./bits";
 
 export function ModeBadge({ status }: { status: Status | null }) {
   if (!status) return <span className="label rounded-full border border-line px-3 py-1.5 text-faint">connecting…</span>;
@@ -31,18 +30,5 @@ export function BotBadge({ status, error }: { status: Status | null; error: stri
       <span aria-hidden="true" className={cn("size-2 shrink-0 rounded-full", tone === "ok" && "bg-good", tone === "busy" && "animate-pulse bg-brand", tone === "bad" && "bg-critical", tone === "idle" && "bg-faint")} />
       <span className="truncate">{text}</span>
     </span>
-  );
-}
-
-export function TopBar({ status, error, home, children }: { status: Status | null; error: string | null; home: string; children?: React.ReactNode }) {
-  return (
-    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-5">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <a href={home} className="no-underline" aria-label="Airbag, home"><Wordmark /></a>
-        <ModeBadge status={status} />
-        <BotBadge status={status} error={error} />
-      </div>
-      <div className="flex flex-wrap items-center gap-2">{children}</div>
-    </header>
   );
 }

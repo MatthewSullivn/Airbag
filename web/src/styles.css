@@ -3,8 +3,9 @@
 /* Airbag's look: an instrument cluster. Warm paper page, dark instrument panels in both themes,
    condensed numerals, one safety-orange accent. Colours are role tokens; light and dark are each chosen. */
 @theme {
-  --font-sans: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --color-page: var(--page);
@@ -155,6 +156,17 @@
   }
 }
 
+@property --shiny-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes shiny-spin {
+  to {
+    --shiny-angle: 360deg;
+  }
+}
+
 @layer components {
   /* micro label, like the lettering on a gauge */
   .label {
@@ -172,19 +184,125 @@
     text-transform: uppercase;
     color: var(--brand);
   }
-  /* headings: big, tight, plain */
+  /* headings: big and tight, in the display face */
   .display {
-    font-family: var(--font-sans);
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-stretch: 92%;
     letter-spacing: -0.035em;
     line-height: 0.98;
   }
-  /* big condensed numerals */
+  /* the one or two words in a heading that carry it */
+  .accent {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    font-size: 1.08em;
+    color: var(--brand);
+  }
+  /* big numbers: the display face at its narrowest */
   .figure {
     font-family: var(--font-display);
-    font-weight: 700;
+    font-weight: 800;
+    font-stretch: 75%;
     line-height: 0.88;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.025em;
+    font-variant-numeric: lining-nums;
+  }
+
+  /* ---- Two call-to-action buttons, after the Shiny Button and the Metallic Button on 21st.dev (Hyperiux).
+     Written here by hand in plain CSS: a light travels round the rim of the dark one; the grey one is brushed
+     metal with a sheen that crosses it on hover. */
+  .btn-shiny,
+  .btn-metal {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    border-radius: 999px;
+    padding: 0.95rem 1.75rem;
+    font-weight: 600;
+    font-size: 17px;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-decoration: none;
+    border: 1.5px solid transparent;
+    transition: box-shadow 0.25s, transform 0.15s;
+  }
+  .btn-shiny:active,
+  .btn-metal:active {
+    transform: scale(0.97);
+  }
+  .btn-shiny:disabled,
+  .btn-metal:disabled {
+    opacity: 0.5;
+    transform: none;
+    animation: none;
+  }
+  .btn-shiny {
+    --shiny-angle: 0deg;
+    color: #fff;
+    background:
+      linear-gradient(#15110e, #15110e) padding-box,
+      conic-gradient(from var(--shiny-angle), transparent 0 55%, #f0591f 68%, #ffe1cf 75%, #f0591f 82%, transparent 95%) border-box,
+      linear-gradient(#4a2a18, #4a2a18) border-box;
+    box-shadow: 0 10px 32px -10px rgb(240 89 31 / 0.7), inset 0 -14px 24px -14px rgb(240 89 31 / 0.75);
+    animation: shiny-spin 3.2s linear infinite;
+  }
+  .btn-shiny::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-image: radial-gradient(rgb(255 255 255 / 0.2) 1px, transparent 1.3px);
+    background-size: 6px 6px;
+    mask-image: radial-gradient(ellipse 80% 110% at 50% 130%, #000, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 110% at 50% 130%, #000, transparent 70%);
+  }
+  .btn-shiny::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(ellipse 70% 100% at 50% 135%, rgb(255 122 60 / 0.75), transparent 70%);
+    opacity: 0.7;
+    transition: opacity 0.25s;
+  }
+  .btn-shiny:hover {
+    box-shadow: 0 12px 44px -8px rgb(240 89 31 / 0.95), inset 0 -18px 28px -14px rgb(240 89 31 / 0.95);
+  }
+  .btn-shiny:hover::after {
+    opacity: 1;
+  }
+  .btn-metal {
+    color: #141414;
+    background:
+      linear-gradient(180deg, #fcfcfb 0%, #e1e1df 44%, #bdbdba 56%, #ececea 100%) padding-box,
+      conic-gradient(from 215deg, #fafafa, #8a8a87, #ffffff, #6d6d6a, #f0f0ee, #9a9a97, #fafafa) border-box;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 -1px 0 rgb(0 0 0 / 0.16), 0 10px 26px -12px rgb(0 0 0 / 0.5);
+  }
+  .btn-metal::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.8) 50%, transparent 62%);
+    background-size: 260% 100%;
+    background-position: 130% 0;
+    transition: background-position 0.75s ease;
+  }
+  .btn-metal:hover::after {
+    background-position: -30% 0;
+  }
+  .btn-sm {
+    padding: 0.6rem 1.15rem;
+    font-size: 15px;
   }
   .mono {
     font-family: var(--font-mono);

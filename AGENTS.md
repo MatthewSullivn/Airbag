@@ -64,7 +64,7 @@ demo buttons ───────┘        │        │         └─ Circl
 |---|---|
 | `src/brain.mjs` | Pure logic, no dependencies: ladder → odds, estimated tail, worse-of-ladders, `decide()`. Types in `brain.d.mts`: keep the two in sync. |
 | `src/gemini.ts` | Ladders (cached 20 s), discovering new BTC ladders when ours expire, live BTC price. |
-| `src/hedge.mjs` | Pure logic for the hedge QUOTE on the Market screen: Gemini's price to buy "No" on a bet, and Morpho's sell-off penalty. Read-only: nothing places an order. Types in `hedge.d.mts`. |
+| `src/hedge.mjs` | Pure logic for the hedge QUOTE in the landing page's Gemini part: Gemini's price to buy "No" on a bet, and Morpho's sell-off penalty. Read-only: nothing places an order. Types in `hedge.d.mts`. |
 | `src/market-history.mjs` | Pure logic for the market-over-time chart: Gemini's hourly candles for a bet → points, and which bets are worth drawing. Types in `market-history.d.mts`. |
 | `src/arc.ts` | `LiveArc` (Circle App Kit + viem reads) and `SimArc` (in-memory twin). Every money move goes through here. |
 | `src/bot.ts` | The loop: one run at a time, 8 s cooldown after acting, daily cap, dry run, health-only fallback. Also the demo push/reset. |
@@ -72,7 +72,7 @@ demo buttons ───────┘        │        │         └─ Circl
 | `src/state.ts` | `data/state.<mode>.json`: log, odds samples, `inLoan`, money moved (for the cap). |
 | `src/clock.ts` | Corrects a fast or slow local clock against Arc block time. |
 | `src/config.ts` | All `.env` settings (documented in `.env.example`). |
-| `web/` | The page's source: React + Vite + Tailwind, with its own `package.json`. `/` is the landing page, `/app/` is the app (four screens: Loan, Market, On-chain, Try it). Charts are built on tweenly's chart kit (MIT, see `web/THIRD-PARTY.md`). |
+| `web/` | The page's source: React + Vite + Tailwind, with its own `package.json`. `/` is the landing page (a walk-through that also explains the Gemini odds and the Arc contracts in depth), `/app/` is the app (two screens: Live demo, My loan). Charts are built on tweenly's chart kit (MIT, see `web/THIRD-PARTY.md`). |
 | `public/` | What the server serves. `index.html`, `app/`, `assets/` and `build.json` are BUILT from `web/`: never edit them by hand. `classic/` is the old plain page, kept as a fallback at `/classic/`. |
 | `scripts/` | Wallet, open loan, round trip, deposit, odds, webhook, tunnel. |
 | `replay/` | The Feb 2026 crash replay, using the same `decide()`. |
@@ -150,7 +150,7 @@ Read these before touching `src/arc.ts`.
    - Contracts are unsorted; use `strike: { type, value }`.
    - The event listing is paged (`offset`).
    - The prediction-markets endpoints have no history of odds, so we save our own samples every 15 s.
-   - But every bet has hourly candles on the normal market-data API: `GET /v2/candles/<instrumentSymbol>/1hr` (for example `GEMI-BTC2611302200-HI65000`). They start at the bet's first trade and hold the last TRADED price, not the bid/ask middle the bot uses. The Market screen draws them (`/api/market-history`). Found Nov 18, 2026.
+   - But every bet has hourly candles on the normal market-data API: `GET /v2/candles/<instrumentSymbol>/1hr` (for example `GEMI-BTC2611302200-HI65000`). They start at the bet's first trade and hold the last TRADED price, not the bid/ask middle the bot uses. The landing page's Gemini part draws them (`/api/market-history`). Found Nov 18, 2026.
 10. **Tunnel quirks.**
     - A new `trycloudflare.com` link can take about a minute to resolve.
     - It changes on every restart: re-run `npm run tunnel` and update the QuickNode destination.

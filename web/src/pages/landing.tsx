@@ -1,27 +1,54 @@
-// The first page a visitor sees. Five screens, each one idea: what it is, the problem, the fix (a real save,
-// replayed), how it knows (Gemini's market), and the proof. Few words, one picture each.
-import { useEffect, useRef } from "react";
-import { ArrowDown, ArrowRight } from "lucide-react";
-import { useCrashReplay, useLadders, useMarketHistory, useStatus } from "@/lib/api";
-import { ADDRESSES, EXPLORER, LIVE_URL, SAVES, SIM_URL } from "@/recorded/proof";
-import { ButtonLink, ExplorerLink, Section, Wordmark } from "@/components/bits";
+// The first page a visitor sees: a walk-through. What Airbag is (with the live app in a frame), what it does,
+// who it is for, how it works step by step (the problem, then a real save replayed), and then in depth how it
+// uses Gemini's prediction market and Arc with Circle's kits. Few words per screen, one real picture each.
+import { useEffect, useMemo, useRef } from "react";
+import { ArrowDown, ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
+import { useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
+import { ADDRESSES, EXPLORER, LIVE_URL, SAVES, SIM_URL, VISITOR_RUN } from "@/recorded/proof";
+import { pct } from "@/lib/format";
+import { ExplorerLink, Section, Wordmark } from "@/components/bits";
+import { Costs, MoneyMap, StreamList } from "@/components/chain-parts";
 import { CrashCard } from "@/components/crash-card";
-import { MarketHistoryCard } from "@/components/market-parts";
-import { NumberCard, recentMove } from "@/components/number-card";
+import { GeminiMarketCard } from "@/components/gemini-market-card";
+import { HedgeCard } from "@/components/hedge-card";
+import { LadderCard } from "@/components/ladder-card";
+import { OverTime } from "@/components/market-parts";
+import { freshSave, NumberCard, recentMove } from "@/components/number-card";
+import { PriceCard } from "@/components/price-card";
 import { SaveReplay } from "@/components/save-replay";
+import { BounceCard } from "@/components/ui/bounce-card";
+import { TiltFrame } from "@/components/ui/tilt-frame";
+import { MetalLink, ShinyLink } from "@/components/ui/cta";
 import { DotPattern } from "@/components/ui/dot-pattern";
+import { FadeIn } from "@/components/ui/fade-in";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const LINK = "underline decoration-current/30 underline-offset-[3px] hover:decoration-current";
+const NAV = [["How it works", "#how"], ["Gemini", "#gemini"], ["Arc", "#arc"], ["My loan", "/app/#mine"]] as const;
 
 export function Landing() {
   const { data: status } = useStatus();
   const { data: ladders } = useLadders();
   const { data: replay } = useCrashReplay();
+  const { data: gas } = useGasPrices();
   const live = status?.mode === "live";
-  // Gemini's own history for the ladder the number comes from
-  const ticker = status?.reading?.odds?.ticker ?? ladders?.events[0]?.ticker ?? null;
+  const reading = status?.reading ?? null;
+  // what the bot did for its own loan (a connected wallet's moves are marked with that wallet, and belong to My loan)
+  const botLog = useMemo(() => (status?.log ?? []).filter((e) => !e.who), [status]);
+  const botActions = useMemo(() => botLog.filter((e) => e.level === "action"), [botLog]);
+  // Gemini's market for the ladder the number comes from, and its own hourly history
+  const ticker = reading?.odds?.ticker ?? ladders?.events[0]?.ticker ?? null;
+  const event = ladders?.events.find((e) => e.ticker === ticker) ?? ladders?.events[0];
   const { data: historyData } = useMarketHistory(ticker);
   const history = historyData && historyData.ticker === ticker ? historyData : null;
+  const spot = reading?.priceUsed ?? ladders?.spot ?? null;
+  const own = reading ? { line: reading.line, odds: reading.decision.odds } : null;
+  // the bet nearest bitcoin's price: its Yes price in cents is the example in the steps (54 until it has loaded)
+  const nearest = event && spot != null ? [...event.ladder].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot))[0] : null;
+  const cents = nearest ? Math.round(nearest.pAbove * 100) : 54;
+  // the recorded save of Nov 18: what moved and how fast, straight from its four transactions
+  const [pushed, saved, calmed, returned] = VISITOR_RUN.steps;
+  const savedUsd = (pushed.debt - saved.debt).toFixed(2), backUsd = (returned.debt - calmed.debt).toFixed(2);
 
   // A link like /#save from the app: the target only exists once this has drawn, and the cards above it grow as
   // their data arrives. So go there now, and again each time one of the three loads, until the visitor moves.
@@ -41,146 +68,212 @@ export function Landing() {
   }, [loaded]);
 
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-5 sm:px-8">
-      <header className="flex items-center justify-between gap-4 py-6">
-        <a href="/" className="no-underline" aria-label="Airbag, home"><Wordmark /></a>
-        <ButtonLink href="/app/" variant="ink" size="sm">Open the app <ArrowRight aria-hidden="true" className="size-4" /></ButtonLink>
+    <>
+      {/* one bar for the whole walk: it stays in view, so any part is one click away */}
+      <header className="sticky top-0 z-50 border-b border-line bg-page/85 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
+          <a href="/" className="no-underline" aria-label="Airbag, home"><Wordmark /></a>
+          <nav aria-label="On this page" className="hidden items-center gap-7 text-[15px] font-medium text-ink-2 md:flex">
+            {NAV.map(([label, href]) => <a key={href} href={href} className="no-underline hover:text-ink">{label}</a>)}
+          </nav>
+          <ShinyLink href="/app/" small>Live demo <ArrowRight aria-hidden="true" className="size-4" /></ShinyLink>
+        </div>
       </header>
 
-      <main>
-        {/* 1. What it is */}
-        <section className="grid items-center gap-x-14 gap-y-12 pb-12 pt-10 sm:pb-16 sm:pt-16 lg:grid-cols-[1.05fr_1fr]">
-          <div>
-            <p className="eyebrow">Runs on Arc · Odds from Gemini</p>
-            <h1 className="display mt-5 text-[clamp(3rem,8vw,5.6rem)] text-ink">An airbag for your bitcoin loan.</h1>
-            <p className="mt-6 max-w-[34ch] text-[1.3rem] leading-snug text-ink-2">
-              When a crash looks likely, it moves your own savings into the loan. So you keep your bitcoin.
-            </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <ButtonLink href="#save" variant="brand" size="lg">Watch a real save <ArrowDown aria-hidden="true" className="size-5" /></ButtonLink>
-              {/* the simulator's loan is there to be pushed, so its second button goes straight to the controls */}
-              {status?.mode === "sim"
-                ? <ButtonLink href="/app/?demo" variant="outline" size="lg">Push a loan yourself</ButtonLink>
-                : <ButtonLink href="/app/" variant="outline" size="lg">Open the app</ButtonLink>}
+      <div className="mx-auto w-full max-w-[1180px] px-5 sm:px-8">
+        <main>
+          {/* 1. What it is: the words, then the live app itself in a frame that lies flat as you scroll */}
+          <section className="relative pb-10 pt-10 sm:pt-16">
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] [mask-image:radial-gradient(ellipse_at_top,black_25%,transparent_70%)]">
+              <DotPattern width={18} height={18} cr={1.15} className="text-ink/30" />
             </div>
-          </div>
-          {status ? (
-            <div className="relative">
-              {/* a still field of dots behind the one live thing (wide screens: on a phone it reads as a stray strip) */}
-              <div aria-hidden="true" className="pointer-events-none absolute -inset-x-16 -inset-y-20 hidden [mask-image:radial-gradient(ellipse_at_center,black_55%,transparent_78%)] sm:block">
-                <DotPattern width={16} height={16} cr={1.2} className="text-ink/45" />
+            <div className="relative text-center">
+              <p className="eyebrow">Runs on Arc · Odds from Gemini</p>
+              <h1 className="display mx-auto mt-5 max-w-[14ch] text-[clamp(3rem,8.4vw,6.2rem)] text-ink">
+                An airbag for your <span className="accent">bitcoin loan.</span>
+              </h1>
+              <p className="mx-auto mt-6 max-w-[38ch] text-[1.3rem] leading-snug text-ink-2">
+                When a crash looks likely, it moves your own savings into the loan. So you keep your bitcoin.
+              </p>
+              <div className="mt-9 flex flex-wrap justify-center gap-3">
+                <ShinyLink href="#save">Watch a real save <ArrowDown aria-hidden="true" className="size-5" /></ShinyLink>
+                <MetalLink href="/app/">{status?.mode === "sim" ? "Push a loan yourself" : "Open the live demo"}</MetalLink>
               </div>
-              <NumberCard
-                beam
-                spark={false}
-                className="relative"
-                status={status}
-                reading={status.reading}
-                samples={status.samples}
-                justNow={recentMove(status.log.filter((e) => !e.who), status.now)}
-                footer={live
-                  ? <>A real loan on Arc Testnet, right now.</>
-                  : <>A simulated loan, real odds. <a href={LIVE_URL} className={LINK}>See the real one</a>.</>}
-              />
             </div>
-          ) : (
-            <div className="min-h-[26rem] rounded-[32px] bg-panel" aria-hidden="true" />
-          )}
-        </section>
+            <TiltFrame className="relative mt-10 sm:mt-12">
+              {status ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <NumberCard
+                    status={status}
+                    reading={reading}
+                    samples={status.samples}
+                    justNow={recentMove(botLog, status.now)}
+                    lastSave={freshSave(botLog, status.now)}
+                    footer={live
+                      ? <>A real loan on Arc Testnet, right now.</>
+                      : <>A simulated loan, real odds. <a href={LIVE_URL} className={LINK}>See the real one</a>.</>}
+                  />
+                  <PriceCard status={status} reading={reading} samples={status.samples} className="hidden md:flex" />
+                </div>
+              ) : (
+                <div className="min-h-[24rem] rounded-[28px] bg-panel" aria-hidden="true" />
+              )}
+            </TiltFrame>
+          </section>
 
-        {/* what it runs on: each name is a working part with its own screen in the app */}
-        <ul className="grid grid-cols-2 gap-x-8 gap-y-5 border-y border-line py-6 lg:grid-cols-4" aria-label="What it runs on">
-          {[
-            ["Arc", "where the loan lives", "/app/#chain"],
-            ["Circle", "the loan and the savings", "/app/#chain"],
-            ["Gemini", "the odds", "/app/#market"],
-            ["QuickNode", "the wake-up call", "/app/#chain"],
-          ].map(([name, what, href]) => (
-            <li key={name}>
-              <a href={href} className="group block no-underline">
-                <p className="flex items-center gap-1.5 text-[1.2rem] font-semibold tracking-tight text-ink">{name} <ArrowRight aria-hidden="true" className="size-4 opacity-40 transition-transform group-hover:translate-x-0.5 group-hover:opacity-100" /></p>
-                <p className="mt-0.5 text-[15.5px] leading-snug text-ink-2">{what}</p>
-              </a>
-            </li>
-          ))}
-        </ul>
+          {/* 2. What it does: four cards, one thing each */}
+          <section id="what" className="scroll-mt-20 py-14 sm:py-20">
+            <FadeIn distance={18} duration={0.7} amount={0.3}>
+              <div className="flex flex-wrap items-end justify-between gap-6">
+                <h2 className="display max-w-[16ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">Borrow against your bitcoin. <span className="accent">Keep it.</span></h2>
+                <MetalLink href="/app/" small>See it live</MetalLink>
+              </div>
+            </FadeIn>
+            <div className="mt-10 grid grid-cols-12 gap-4">
+              <BounceCard title="It watches the odds." color="violet" className="col-span-12 md:col-span-5">
+                <p className="figure text-[4.2rem]">{reading?.decision.odds != null ? pct(reading.decision.odds) : "–"}</p>
+                <p className="mt-2 text-[1.15rem] font-semibold leading-snug">chance of losing the bitcoin right now, read from Gemini's prediction market</p>
+              </BounceCard>
+              <BounceCard title="It tops up your loan." color="orange" className="col-span-12 md:col-span-7">
+                <p className="figure text-[4.2rem]">+${savedUsd}</p>
+                <p className="mt-2 max-w-[44ch] text-[1.15rem] font-semibold leading-snug">of the owner's own savings went into the loan, {saved.at - pushed.at} seconds after the danger. A real save on Nov 18.</p>
+              </BounceCard>
+              <BounceCard title="It gives the money back." color="green" className="col-span-12 md:col-span-7">
+                <p className="figure text-[4.2rem]">${backUsd}</p>
+                <p className="mt-2 max-w-[44ch] text-[1.15rem] font-semibold leading-snug">went back to savings, {returned.at - calmed.at} seconds after things were calm. Savings earn interest while they wait.</p>
+              </BounceCard>
+              <BounceCard title="It never holds your keys." color="pink" className="col-span-12 md:col-span-5">
+                <p className="figure text-[4.2rem]">0</p>
+                <p className="mt-2 text-[1.15rem] font-semibold leading-snug">of your keys. Its guard contract can do one thing: move your savings into your own loan, and back.</p>
+              </BounceCard>
+            </div>
+          </section>
 
-        {/* 2. The problem */}
-        <Section title="One bad day can take your bitcoin." lead="You borrowed dollars against your bitcoin. If bitcoin falls below a set price, even for a minute, the bitcoin is sold. In February 2026 that is what happened.">
-          <CrashCard replay={replay} />
-        </Section>
+          {/* 3. Who it is for */}
+          <section id="who" className="scroll-mt-20 py-14 sm:py-20">
+            <FadeIn distance={18} duration={0.7} amount={0.3}>
+              <h2 className="display max-w-[16ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">Who it is <span className="accent">for.</span></h2>
+            </FadeIn>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {([
+                [Bitcoin, "240 89 31", "You borrowed against your bitcoin.", "Keep it through a bad day, without watching charts all night."],
+                [TrendingUp, "57 135 229", "You trade prediction markets.", "The odds you already read now guard a loan."],
+                [PiggyBank, "25 158 112", "You have dollars sitting idle.", "They earn interest in savings until the loan needs them."],
+              ] as const).map(([Icon, glow, who, why]) => (
+                <SpotlightCard key={who} glow={glow}>
+                  <span className="grid size-12 place-items-center rounded-2xl" style={{ background: `rgb(${glow} / 0.18)`, color: `rgb(${glow})` }} aria-hidden="true"><Icon className="size-6" /></span>
+                  <p className="display mt-6 text-[1.7rem] text-on-panel">{who}</p>
+                  <p className="mt-3 text-[1.05rem] leading-snug text-on-panel-2">{why}</p>
+                </SpotlightCard>
+              ))}
+            </div>
+          </section>
 
-        {/* 3. The fix: "Watch a real save" lands on the replay itself, so the whole card is on screen */}
-        <Section title="Airbag tops up the loan before that happens." lead="Your spare dollars wait in a savings account, earning interest. When the danger gets too high, Airbag moves some into the loan. Later it moves them back.">
-          <SaveReplay id="save" />
-        </Section>
+          {/* 4. How it works, step by step */}
+          <div id="how" className="scroll-mt-20">
+            <Section step="1" title={<>One bad day can <span className="accent">take your bitcoin.</span></>} lead="You borrowed dollars against your bitcoin. If bitcoin falls below a set price, even for a minute, the bitcoin is sold. In February 2026 that is what happened.">
+              <CrashCard replay={replay} />
+            </Section>
+            {/* "Watch a real save" lands on the replay itself, so the whole card is on screen */}
+            <Section step="2" title={<>Airbag tops up the loan <span className="accent">before that happens.</span></>} lead="Your spare dollars wait in a savings account, earning interest. When the danger gets too high, Airbag moves some into the loan. Later it moves them back.">
+              <SaveReplay id="save" />
+            </Section>
+          </div>
 
-        {/* 4. How it knows: the market's own odds, moving. The whole market is one click away, in the app. */}
-        <Section title="It reads the odds from a real market." lead="On Gemini, people bet real money on where bitcoin will be. Airbag turns those bets into one number: the chance you lose your bitcoin.">
-          <MarketHistoryCard
-            history={history}
-            spot={status?.reading?.priceUsed ?? ladders?.spot ?? null}
-            own={status?.reading ? { line: status.reading.line, odds: status.reading.decision.odds } : null}
-          />
-        </Section>
+          {/* 5. In depth: Gemini's prediction market */}
+          <Section id="gemini" step="3" title={<>The danger is read from <span className="accent">Gemini's market.</span></>} lead="On Gemini, people bet real money on where bitcoin will be on a date. Those prices are odds. Airbag checks the loan against them every 5 seconds.">
+            <div className="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[0.85fr_1.15fr]">
+              <GeminiMarketCard event={event} spot={spot} />
+              <ol className="space-y-8 border-l border-line pl-7">
+                {([
+                  ["Gemini lists the bets.", "Will bitcoin be at this price or above on the date? People buy Yes or No with real money."],
+                  ["Each price is a chance.", `A Yes at ${cents} cents means the market gives it ${cents}%. Together the bets draw a curve.`],
+                  ["Airbag finds your loan on that curve.", `It doubles the chance, because a dip at any moment counts. Over ${status ? pct(status.limit) : "5%"} and it steps in.`],
+                ] as const).map(([head, text]) => (
+                  <li key={head} className="relative">
+                    <span aria-hidden="true" className="absolute -left-[2.16rem] top-2 size-3 rounded-full bg-brand ring-4 ring-page" />
+                    <p className="display text-[1.5rem] text-ink">{head}</p>
+                    <p className="mt-1.5 max-w-[44ch] text-[1.05rem] leading-snug text-ink-2">{text}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div className="mt-10 grid gap-4">
+              <LadderCard ladders={ladders} reading={reading} limit={status?.limit} />
+              {status && <OverTime history={history} spot={spot} samples={status.samples} actions={botActions} limit={status.limit} ofWallet={false} own={own} />}
+              {status && <HedgeCard ladders={ladders} reading={reading} lltv={status.lltv} />}
+            </div>
+          </Section>
 
-        {/* 5. The proof: receipts, not slogans. Each row is a save that happened, with its transactions. */}
-        <Section title="It already works, on Arc.">
-          <ol className="border-t border-line">
-            {SAVES.map((s) => (
-              <li key={s.save} className="grid grid-cols-2 items-baseline gap-x-6 gap-y-1 border-b border-line py-5 sm:grid-cols-[1.3fr_1fr_1fr_auto]">
-                <p className="col-span-2 text-[1.05rem] text-ink-2 sm:col-span-1">
-                  <span className="font-semibold text-ink">{s.when}</span>
-                  <span className="block text-[15px]">{s.who}</span>
-                </p>
-                <p className="text-[15px] text-ink-2"><span className="figure mr-1.5 text-[2.2rem] text-ink">{s.secs} s</span>from danger to safe</p>
-                <p className="text-[15px] text-ink-2"><span className="figure mr-1.5 text-[2.2rem] text-ink">${s.fee}</span>in fees, paid in USDC</p>
-                <p className="col-span-2 flex gap-4 text-[15px] text-ink-2 sm:col-span-1">
-                  <ExplorerLink explorer={EXPLORER} kind="tx" id={s.push}>the push</ExplorerLink>
-                  <ExplorerLink explorer={EXPLORER} kind="tx" id={s.save}>the save</ExplorerLink>
-                </p>
-              </li>
-            ))}
-          </ol>
-          <details className="mt-8 text-[16px] text-ink-2">
-            <summary className="cursor-pointer select-none font-semibold text-ink">See the contracts</summary>
-            <ul className="mt-5 grid gap-x-10 gap-y-3 sm:grid-cols-2">
-              {[
-                ["The loan (Morpho Blue, through Circle's Borrow Kit)", ADDRESSES.morpho],
-                ["The savings (Circle's Earn Kit vault)", ADDRESSES.vault],
-                ["AirbagGuard, our contract", ADDRESSES.guard],
-                ["The bot's own key", ADDRESSES.botKey],
-              ].map(([label, address]) => (
-                <li key={address} className="flex flex-wrap items-baseline justify-between gap-x-4 border-b border-line pb-3">
-                  <span>{label}</span>
-                  <ExplorerLink explorer={EXPLORER} kind="address" id={address} />
+          {/* 6. In depth: Arc, Circle and QuickNode */}
+          <Section id="arc" step="4" title={<>The money moves on <span className="accent">Arc.</span></>} lead="The loan and the savings are Circle's own kits on Arc, where fees are paid in dollars. Our guard contract sits between them, and a QuickNode Stream wakes the bot the moment the loan moves.">
+            <div className="grid gap-4">
+              <MoneyMap status={status} marketUrl={event?.url ?? null} />
+              <div className="grid gap-4 lg:grid-cols-2">
+                {status && <StreamList status={status} />}
+                <Costs gas={gas} />
+              </div>
+            </div>
+          </Section>
+
+          {/* 7. The proof: receipts. Each row is a save that happened, with its transactions. */}
+          <Section id="proof" title={<>It already works, <span className="accent">on Arc.</span></>}>
+            <ol className="border-t border-line">
+              {SAVES.map((s) => (
+                <li key={s.save} className="grid grid-cols-2 items-baseline gap-x-6 gap-y-1 border-b border-line py-5 sm:grid-cols-[1.3fr_1fr_1fr_auto]">
+                  <p className="col-span-2 text-[1.05rem] text-ink-2 sm:col-span-1">
+                    <span className="font-semibold text-ink">{s.when}</span>
+                    <span className="block text-[15px]">{s.who}</span>
+                  </p>
+                  <p className="text-[15px] text-ink-2"><span className="figure mr-1.5 text-[2.2rem] text-ink">{s.secs} s</span>from danger to safe</p>
+                  <p className="text-[15px] text-ink-2"><span className="figure mr-1.5 text-[2.2rem] text-ink">${s.fee}</span>in fees, paid in USDC</p>
+                  <p className="col-span-2 flex gap-4 text-[15px] text-ink-2 sm:col-span-1">
+                    <ExplorerLink explorer={EXPLORER} kind="tx" id={s.push}>the push</ExplorerLink>
+                    <ExplorerLink explorer={EXPLORER} kind="tx" id={s.save}>the save</ExplorerLink>
+                  </p>
                 </li>
               ))}
-            </ul>
-          </details>
-        </Section>
+            </ol>
+            <details className="mt-8 text-[16px] text-ink-2">
+              <summary className="cursor-pointer select-none font-semibold text-ink">See the contracts</summary>
+              <ul className="mt-5 grid gap-x-10 gap-y-3 sm:grid-cols-2">
+                {[
+                  ["The loan (Morpho Blue, through Circle's Borrow Kit)", ADDRESSES.morpho],
+                  ["The savings (Circle's Earn Kit vault)", ADDRESSES.vault],
+                  ["AirbagGuard, our contract", ADDRESSES.guard],
+                  ["The bot's own key", ADDRESSES.botKey],
+                ].map(([label, address]) => (
+                  <li key={address} className="flex flex-wrap items-baseline justify-between gap-x-4 border-b border-line pb-3">
+                    <span>{label}</span>
+                    <ExplorerLink explorer={EXPLORER} kind="address" id={address} />
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </Section>
 
-        {/* The way in */}
-        <section className="relative mb-16 overflow-hidden rounded-[36px] bg-panel px-7 py-14 text-center text-on-panel sm:px-12 sm:py-20">
-          <DotPattern width={20} height={20} cr={1.2} className="text-on-panel/20 [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]" />
-          <h2 className="display relative mx-auto max-w-[16ch] text-[clamp(2.4rem,6vw,4.4rem)]">See it {live ? "live" : "work"}.</h2>
-          <div className="relative mt-9 flex flex-wrap justify-center gap-3">
-            <ButtonLink href="/app/" variant="brand" size="lg">Open the app <ArrowRight aria-hidden="true" className="size-5" /></ButtonLink>
-            <ButtonLink href="/app/#try" variant="panel" size="lg">Try it with my wallet</ButtonLink>
-          </div>
-          <p className="relative mt-6 text-[15px] text-on-panel-faint">
-            Arc Testnet only. No real money.{" "}
-            {status && (live
-              ? <>No wallet? <a href={SIM_URL} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">Push a simulated loan yourself</a>.</>
-              : <>This is the simulator. <a href={LIVE_URL} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">See the real loan</a>.</>)}
-          </p>
-        </section>
-      </main>
+          {/* The way in */}
+          <section className="relative mb-16 overflow-hidden rounded-[36px] bg-panel px-7 py-14 text-center text-on-panel sm:px-12 sm:py-20">
+            <DotPattern width={20} height={20} cr={1.2} className="text-on-panel/20 [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]" />
+            <h2 className="display relative mx-auto max-w-[16ch] text-[clamp(2.4rem,6vw,4.4rem)]">See it <span className="accent">{live ? "live." : "work."}</span></h2>
+            <div className="relative mt-9 flex flex-wrap justify-center gap-3">
+              <ShinyLink href="/app/">{status?.mode === "sim" ? "Push a loan yourself" : "Open the live demo"} <ArrowRight aria-hidden="true" className="size-5" /></ShinyLink>
+              <MetalLink href="/app/#mine">Protect my own loan</MetalLink>
+            </div>
+            <p className="relative mt-6 text-[15px] text-on-panel-faint">
+              Arc Testnet only. No real money.{" "}
+              {status && (live
+                ? <>No wallet? <a href={SIM_URL} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">Push a simulated loan yourself</a>.</>
+                : <>This is the simulator. <a href={LIVE_URL} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">See the real loan</a>.</>)}
+            </p>
+          </section>
+        </main>
 
-      <footer className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-t border-line py-7 text-[15px] text-faint">
-        <p>Built on Arc with Circle's Borrow Kit and Earn Kit, Gemini's prediction market and QuickNode Streams.</p>
-        <a href="https://github.com/MatthewSullivn/ubc" target="_blank" rel="noopener" className={LINK}>Code on GitHub</a>
-      </footer>
-    </div>
+        <footer className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-t border-line py-7 text-[15px] text-faint">
+          <p>Built on Arc with Circle's Borrow Kit and Earn Kit, Gemini's prediction market and QuickNode Streams.</p>
+          <a href="https://github.com/MatthewSullivn/ubc" target="_blank" rel="noopener" className={LINK}>Code on GitHub</a>
+        </footer>
+      </div>
+    </>
   );
 }

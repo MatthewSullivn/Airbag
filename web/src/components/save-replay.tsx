@@ -1,6 +1,6 @@
 // A real save, replayed. Every step is a transaction on Arc Testnet (README "Live proof"), so a visitor with no
 // wallet still sees the product work, and nothing on screen is simulated. The data is in recorded/proof.ts.
-// The card shows the same two prices as the Loan screen: bitcoin, and the price below which the bitcoin is lost.
+// The card shows the same two prices as the app's loan cards: bitcoin, and the price below which the bitcoin is lost.
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useInView } from "motion/react";
 import { useStill } from "@/lib/chart-kit";
@@ -92,7 +92,7 @@ export function SaveReplay({ id }: { id?: string }) {
   const shown = (v: number, i: number) => (chart.xs[i] <= p + 1e-9 ? v : null);
 
   return (
-    <Panel id={id} tone={pushed ? "critical" : null} className="scroll-mt-6" aria-label="Replay of a recorded save">
+    <Panel id={id} tone={pushed ? "critical" : null} className="scroll-mt-20" aria-label="Replay of a recorded save">
       <div ref={ref}>
         <div className="flex items-center justify-between gap-3">
           <p className="text-[14px] text-on-panel-faint sm:text-[15px]"><span className="hidden sm:inline">A real save, recorded</span><span className="sm:hidden">Recorded</span> on Arc Testnet · Nov 18, 2026</p>

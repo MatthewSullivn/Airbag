@@ -1,4 +1,4 @@
-// The quiet parts of the Loan screen: four plain facts and the list of what Airbag did.
+// The quiet parts under a loan's two big cards: four plain facts and the list of what Airbag did.
 import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import type { LogEntry, Reading } from "@/lib/api";

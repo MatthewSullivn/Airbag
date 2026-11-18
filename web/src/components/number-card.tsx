@@ -34,6 +34,42 @@ function useAlarm(on: boolean, odds: number | null) {
   return { ringing: on || held, peak: peak.current };
 }
 
+/** A save the bot made a moment ago: when, and the odds it acted on. */
+export interface SaveNote { t: number; odds: number }
+/**
+ * The bot's latest save, while it is fresh, read from its own log line
+ * ("Odds hit 45.6% (limit 5%). Moved 0.77 USDC from savings into the loan in 0.4 s. ...").
+ */
+export function freshSave(log: LogEntry[], now: number): SaveNote | null {
+  const last = log.find((e) => e.level === "action");
+  if (!last || now - last.t > 10_000 || /dry run/.test(last.text) || !/into the loan/.test(last.text)) return null;
+  const hit = last.text.match(/^Odds hit (\d+(?:\.\d+)?)%/);
+  return hit ? { t: last.t, odds: Number(hit[1]) / 100 } : null;
+}
+/**
+ * The bot can answer between two reads of the page, so the page never sees the danger at all. The alarm must
+ * still be seen: for a save it did not see coming, the card rings anyway, showing the odds the bot acted on.
+ */
+function useMissedSave(save: SaveNote | null, ringing: boolean) {
+  const seen = useRef<number | null | undefined>(undefined);
+  const [shown, setShown] = useState<SaveNote | null>(null);
+  const t = save?.t ?? null;
+  useEffect(() => {
+    if (seen.current === undefined) { seen.current = t; return; }   // a save from before the page opened stays quiet
+    if (t == null || t === seen.current) return;
+    seen.current = t;
+    if (!ringing) setShown(save);                                    // ringing: the page saw this one itself
+    // only when a new save arrives
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
+  useEffect(() => {
+    if (!shown) return;
+    const timer = setTimeout(() => setShown(null), MIN_ALARM_MS);
+    return () => clearTimeout(timer);
+  }, [shown]);
+  return shown;
+}
+
 /**
  * For half a minute after the bot moves money, the badge says what it just did instead of plain "Safe".
  * The bot writes "... from savings into the loan in 0.4 s ..." for a save; its other move is the give-back.
@@ -46,7 +82,7 @@ export function recentMove(log: LogEntry[], now: number): string | null {
   return took ? `Saved by Airbag in ${took[1]} s` : "Saved by Airbag";
 }
 
-export function NumberCard({ status, reading, samples, footer, pending, justNow, beam, spark = true, className }: {
+export function NumberCard({ status, reading, samples, footer, pending, justNow, lastSave, beam, spark = true, className }: {
   status: Status;
   reading: Reading | null;
   samples: Sample[];
@@ -56,6 +92,8 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
   pending?: string | null;
   /** What the bot did a moment ago, e.g. "Saved by Airbag in 0.4 s". Replaces "Safe" for a short while. */
   justNow?: string | null;
+  /** The bot's save of a moment ago (freshSave), so the alarm shows even when the bot was faster than the page. */
+  lastSave?: SaveNote | null;
   /** A slow beam of light round the card while it is calm (the first screen uses it). */
   beam?: boolean;
   /** The small chart of the last hour under the number. The first screen leaves it out: one number, nothing else. */
@@ -68,9 +106,10 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
   const ladder = r ? r.ladders.find((l) => l.ticker === r.odds?.ticker) ?? r.ladders[0] : undefined;
   const inDanger = (live != null && live > limit) || (!!r && r.health < status.rule.actBelowHealth);
   const alarm = useAlarm(inDanger, live);
-  const danger = alarm.ringing;
+  const missed = useMissedSave(lastSave ?? null, alarm.ringing);
+  const danger = alarm.ringing || !!missed;
   // while the alarm is held after the danger has passed, the card still shows what set it off
-  const odds = danger && !inDanger && alarm.peak != null ? alarm.peak : live;
+  const odds = missed && !inDanger ? missed.odds : danger && !inDanger && alarm.peak != null ? alarm.peak : live;
   const history = samples.map((s) => s.odds).filter((v): v is number => v != null);
   const waiting = !r ? (status.bot.noLoan ? "No loan yet" : status.bot.syncing ? "Updating…" : "Reading…") : null;
   const share = odds == null ? 0 : Math.min(1, odds / (limit * 4));
@@ -78,7 +117,8 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
 
   return (
     <Panel tone={danger ? "critical" : null} beam={beam} className={className} aria-label="Chance of losing the bitcoin">
-      <div className="flex items-start justify-between gap-4">
+      {/* on a narrow card the date drops under the label instead of squeezing it into three lines */}
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <p className="text-[16px] font-medium text-on-panel-2">Chance of losing the bitcoin</p>
         {ladder && (
           <p className="shrink-0 text-right text-[14px] text-on-panel-faint">

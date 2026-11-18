@@ -66,7 +66,7 @@ export function Wizard({ wallet, status }: { wallet: WalletApi; status: Status }
               {status.mode !== "live" && (
                 <p className="mt-6 text-[15px] text-on-panel-faint">
                   This is the simulator. Steps 3 and 4 only work on the live site:{" "}
-                  <a href={`${LIVE_URL}/app/#try`} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">airbagged.me</a>.
+                  <a href={`${LIVE_URL}/app/#mine`} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">airbagged.me</a>.
                 </p>
               )}
             </div>
@@ -200,7 +200,7 @@ function Steps({ wallet, v, status, explorer }: { wallet: WalletApi; v: WalletVi
         </div>
         <p className="text-[15px] text-on-panel-faint">
           {guard.inLoan > 0 ? `${usdc(guard.inLoan)} USDC of your savings is in the loan now. It comes back when things are calm. ` : ""}
-          {guard.lastMove ? <>Airbag's last move: <ExplorerLink explorer={explorer} kind="tx" id={guard.lastMove.tx}>{guard.lastMove.kind === "save" ? "saved" : "gave back"} {usdc(guard.lastMove.usdc)} USDC</ExplorerLink>.</> : "Open the Loan screen in another glance: the big number turns red, then Airbag answers."}
+          {guard.lastMove ? <>Airbag's last move: <ExplorerLink explorer={explorer} kind="tx" id={guard.lastMove.tx}>{guard.lastMove.kind === "save" ? "saved" : "gave back"} {usdc(guard.lastMove.usdc)} USDC</ExplorerLink>.</> : "Your loan is just below: the big number turns red, then Airbag answers."}
         </p>
       </div>
     ) : (
@@ -264,7 +264,7 @@ function Steps({ wallet, v, status, explorer }: { wallet: WalletApi; v: WalletVi
           Wallet does not know Arc yet?
           <button type="button" onClick={wallet.addArc} className="underline underline-offset-[3px] hover:text-on-panel-2">Add Arc Testnet</button>
           <button type="button" onClick={wallet.addCirbtc} className="underline underline-offset-[3px] hover:text-on-panel-2">Add cirBTC</button>
-          {status.mode !== "live" && <span>This page is the simulator. Steps 3 and 4 need the live site: <a href={`${LIVE_URL}/app/#try`} className="underline underline-offset-[3px] hover:text-on-panel-2">airbagged.me</a>.</span>}
+          {status.mode !== "live" && <span>This page is the simulator. Steps 3 and 4 need the live site: <a href={`${LIVE_URL}/app/#mine`} className="underline underline-offset-[3px] hover:text-on-panel-2">airbagged.me</a>.</span>}
         </p>
       )}
       {wallet.note && <p role="status" className="mt-4 text-[15px] text-on-panel-2">{wallet.note}</p>}

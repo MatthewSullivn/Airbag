@@ -1,4 +1,4 @@
-// The On-chain screen: how the money moves between the contracts (a picture, every box a link to Arc's explorer),
+// The Arc part of the landing page: how the money moves between the contracts (a picture, every box a link to Arc's explorer),
 // what a QuickNode Stream saw on Arc, and what a move costs.
 import { useRef } from "react";
 import { ArrowDown, ArrowUpDown, ArrowUpRight } from "lucide-react";

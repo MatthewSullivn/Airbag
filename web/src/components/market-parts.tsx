@@ -2,7 +2,6 @@
 //   the market   Gemini's own hourly history for one bet (its last traded price), so you see the market move
 //   this loan    the chance this loan loses its bitcoin, as the bot read it, with the bot's moves marked
 import { useMemo, useState } from "react";
-import { ArrowRight } from "lucide-react";
 import { worthDrawing } from "@history";
 import { XYChart, SERIES, STATUS, timeTicks } from "@/charts/xy-chart";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -142,7 +141,7 @@ function LoanOverTime({ samples, actions, limit, ofWallet }: { samples: Sample[]
   );
 }
 
-/** The Market screen's card: Gemini's history first (the market moves by itself), this loan's number one click away. */
+/** Gemini's history first (the market moves by itself), this loan's own number one click away. */
 export function OverTime({ history, spot, samples, actions, limit, ofWallet, own }: {
   /** Gemini's hourly history for the ladder on screen; null while it loads or if Gemini has none. */
   history: MarketHistory | null;
@@ -175,21 +174,6 @@ export function OverTime({ history, spot, samples, actions, limit, ofWallet, own
       ) : (
         <LoanOverTime samples={samples} actions={actions} limit={limit} ofWallet={ofWallet} />
       )}
-    </Panel>
-  );
-}
-
-/** The landing page's card: only the market's own history, and the way to the whole market. */
-export function MarketHistoryCard({ history, spot, own }: { history: MarketHistory | null; spot: number | null; own?: OwnLoan | null }) {
-  return (
-    <Panel aria-label="Gemini's odds, hour by hour">
-      <p className="mb-4 text-[1.25rem] font-semibold tracking-tight text-on-panel">Gemini's odds, hour by hour</p>
-      {history ? <MarketOverTime history={history} spot={spot} own={own} /> : <p className="py-16 text-center text-[15px] text-on-panel-faint">Reading Gemini's history…</p>}
-      <p className="mt-5 text-[15px] text-on-panel-2">
-        <a href="/app/#market" className="inline-flex items-center gap-1.5 font-semibold text-on-panel underline decoration-current/30 underline-offset-[3px] hover:decoration-current">
-          See today's whole market <ArrowRight aria-hidden="true" className="size-4" />
-        </a>
-      </p>
     </Panel>
   );
 }

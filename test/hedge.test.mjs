@@ -1,4 +1,4 @@
-// The hedge quote on the Market screen, checked on the real Gemini ladders saved on Nov 17, 2026.
+// The hedge quote in the landing page's Gemini part, checked on the real Gemini ladders saved on Nov 17, 2026.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";

@@ -43,7 +43,7 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 - **Actions.** Circle's App Kit on Arc Testnet: `earn.withdraw` → `borrow.repay` to save the loan; `borrow.borrow` → `earn.deposit` to give it back.
   - The bot reads the loan straight from the Morpho contract and the vault on-chain, because the kits' read APIs lag after a write.
 - **Alarms.** A 5-second timer, Borrow Kit's health-band webhook, and a QuickNode Stream filtered to our Morpho market and wallet.
-- **The page.** A landing page that tells it in five screens and replays a real save from its recorded transactions. An app with four screens: the loan (one number, and bitcoin's price against the price where the bitcoin is lost), the market (Gemini's ladder with the loan's line on it, the odds over time), on-chain (the contracts, what a move costs, the Stream's events) and your own wallet in four steps.
+- **The page.** A landing page that walks through it: what Airbag does, who it is for, the February crash, a real save replayed from its recorded transactions, then how it uses Gemini (the market's live bets, the ladder with the loan's line on it, the odds over time, a hedge quote) and Arc (the contracts, what a move costs, the Stream's events). An app with two screens: a live demo (one number, and bitcoin's price against the price where the bitcoin is lost) and your own loan (your wallet, four steps).
 - **A hedge quote.** The same Gemini market sells "No" on its bets, which pays if bitcoin ends below a price. The page quotes, from live prices, what covering the loan's sell-off penalty would cost. A quote only: Airbag places no order.
 - **Live on Arc Testnet.**
   - We pushed a real loan to 42% odds.

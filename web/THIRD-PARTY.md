@@ -6,7 +6,7 @@ The chart kit and several small components come from [tweenly](https://trytweenl
 
 - `src/lib/chart-kit.tsx`
 - `src/hooks/use-reduced-motion.ts`
-- everything in `src/components/ui/`
+- the files in `src/components/ui/` that name tweenly at the top (the segmented control, the fade-in and the other small pieces)
 
 Each file says so at the top. Our own changes inside those files are marked with `Airbag:`. Our charts (`src/charts/`) are written on top of the kit.
 
@@ -44,9 +44,20 @@ Three small components come from [Magic UI](https://magicui.design) ([source](ht
 
 Each file says so at the top and lists our changes. MIT License, Copyright (c) Magic UI, with the same permission and warranty text as above.
 
+## Written here, after components on 21st.dev
+
+Matthew picked five components on 21st.dev for the look. These are our own code, written from how the originals look and move. No code from them is used:
+
+- `src/components/ui/cta.tsx` and the `.btn-shiny` / `.btn-metal` rules in `src/styles.css`, after the Shiny Button and the Metallic Button (Hyperiux)
+- `src/components/ui/spotlight-card.tsx`, after the Spotlight Card
+- `src/components/ui/bounce-card.tsx`, after Bounce Card Features
+- `src/components/ui/tilt-frame.tsx`, after the Container Scroll Animation (Aceternity UI)
+
+`src/components/gemini-market-card.tsx` is also ours. It is drawn to look like a market card on gemini.com and shows Gemini's live figures; it says it is not Gemini's and links to the real market.
+
 ## Fonts
 
-Barlow, Barlow Condensed (Jeremy Tribby) and JetBrains Mono, through the `@fontsource` packages. All three are under the SIL Open Font License 1.1.
+Bricolage Grotesque (headings and big numbers), Geist (text), Instrument Serif (the italic accent words) and JetBrains Mono, through the `@fontsource` packages. All four are under the SIL Open Font License 1.1.
 
 ## Packages
 
