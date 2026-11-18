@@ -126,6 +126,18 @@ app.get("/api/replay", (_req, res) => {
 
 app.get("/healthz", (_req, res) => res.json({ ok: true, ticks: bot.ticks }));
 
+// ---- Gemini's ladders as they are (each strike and the chance BTC ends above it), so the page can draw the
+// market's own curve with the loan's line on it. Read-only, and the ladders are cached for about 20 s.
+app.get("/api/ladders", async (_req, res) => {
+  const [snap, spot] = await Promise.all([gemini.get(), gemini.spot()]);
+  res.json({
+    at: snap.fetchedAt,
+    spot: spot.price,
+    error: snap.error,
+    events: snap.events.map((e) => ({ ticker: e.ticker, title: e.title, expiryDate: e.expiryDate, volume: e.volume, ladder: e.ladder })),
+  });
+});
+
 // ---- "Connect wallet": a read-only look at any wallet on Arc Testnet (balances, its loan, its odds).
 // Public by design: it only reads public chain data and never signs anything. One shared rate limit.
 const walletIds = { marketId: arc.marketId, vault: arc.vault?.address ?? null };

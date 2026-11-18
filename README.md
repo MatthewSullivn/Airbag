@@ -25,7 +25,7 @@ Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's
    - timer (5 s)     +------------------+
    - Borrow Kit webhook        |
    - QuickNode Stream          v
-                         DASHBOARD  (public/index.html)
+                         THE PAGE  (web/, built into public/)
                          big odds number, the line, savings, log with explorer links
 ```
 
@@ -257,7 +257,7 @@ Needs Node 22+.
 ```bash
 npm install
 npm test                      # the brain, the odds model, the demo cycle, the QuickNode filter, the public-demo gate
-npm run sim                   # dashboard at http://localhost:3000 with a simulated Arc loan and live Gemini odds
+npm run sim                   # http://localhost:3000 (landing page) and /app/ (the app), with a simulated Arc loan and live Gemini odds
 ```
 
 Live on Arc Testnet:
@@ -287,7 +287,8 @@ Server endpoints:
 
 | Route | What it does |
 |---|---|
-| `GET /` | dashboard |
+| `GET /` | landing page. `/app/` is the app (Loan, Market, On-chain, Try it). `/classic/` is the old page. |
+| `GET /api/ladders` | read-only: Gemini's price ladders as they are, for the market picture |
 | `GET /api/status` | JSON: loan, odds, savings, limit, log, odds samples |
 | `GET /api/replay` | crash replay results |
 | `GET /api/wallet/:address` | read-only: any wallet's USDC, cirBTC, savings, loan and odds (the dashboard's Connect wallet) |

@@ -21,7 +21,7 @@ Airbag protects a bitcoin-backed USDC loan on Arc Testnet.
 ```bash
 npm install
 npm test && npm run typecheck   # run both before every commit
-npm run sim                     # http://localhost:3000, simulated loan + live Gemini odds, no wallet needed
+npm run sim                     # http://localhost:3000 (landing) and /app/ (the app): simulated loan + live Gemini odds, no wallet needed
 ```
 
 ## Ground rules
@@ -41,7 +41,7 @@ npm run sim                     # http://localhost:3000, simulated loan + live G
 
 ```
 timer (5 s) ────────┐
-Borrow Kit webhook ─┼─> bot.ts: read -> decide -> act -> log ──> dashboard (public/, polls /api/status)
+Borrow Kit webhook ─┼─> bot.ts: read -> decide -> act -> log ──> the page (web/ built into public/, polls /api/status)
 QuickNode Stream ───┤        │        │         │
 demo buttons ───────┘        │        │         └─ Circle App Kit: earn.withdraw -> borrow.repay   (save)
                              │        │                            borrow.borrow  -> earn.deposit  (give back)
@@ -70,12 +70,13 @@ demo buttons ───────┘        │        │         └─ Circl
 | `src/state.ts` | `data/state.<mode>.json`: log, odds samples, `inLoan`, money moved (for the cap). |
 | `src/clock.ts` | Corrects a fast or slow local clock against Arc block time. |
 | `src/config.ts` | All `.env` settings (documented in `.env.example`). |
-| `public/` | The dashboard: plain HTML/CSS/JS with hand-drawn SVG charts, no framework. |
+| `web/` | The page's source: React + Vite + Tailwind, with its own `package.json`. `/` is the landing page, `/app/` is the app (four screens: Loan, Market, On-chain, Try it). Charts are built on tweenly's chart kit (MIT, see `web/THIRD-PARTY.md`). |
+| `public/` | What the server serves. `index.html`, `app/`, `assets/` and `build.json` are BUILT from `web/`: never edit them by hand. `classic/` is the old plain page, kept as a fallback at `/classic/`. |
 | `scripts/` | Wallet, open loan, round trip, deposit, odds, webhook, tunnel. |
 | `replay/` | The Feb 2026 crash replay, using the same `decide()`. |
 | `stream/filter.js` | The QuickNode Streams filter (paste into QuickNode as is). |
 | `src/public-demo.mjs` | When the demo buttons are open to everyone: hosted simulator with `PUBLIC_DEMO=true` only, never live. |
-| `src/wallet-view.ts`, `src/wallet-math.mjs`, `public/wallet.js` | Connect wallet: a view of any wallet (USDC, cirBTC, savings, loan, odds) through `GET /api/wallet/:address`. |
+| `src/wallet-view.ts`, `src/wallet-math.mjs`, `web/src/wallet/core.js` | Connect wallet: a view of any wallet (USDC, cirBTC, savings, loan, odds) through `GET /api/wallet/:address`. |
 | `src/wallet-plan.ts` | What a connected wallet can do for itself: open a loan, add savings. It builds the transactions (`POST /api/plan/...`) after checking them against the chain. The visitor's wallet signs; the server never does. |
 | `src/protector.ts`, `src/guard-code.mjs` | Protects every wallet that turned protection on from the page (`PROTECT=true`, live only). Finds guards made for our bot key and their history from Arc's explorer, runs `decide()` for each, and acts only through that wallet's guard. One server per bot key. |
 | `contracts/AirbagGuard.artifact.json` | The guard's ABI and bytecode, committed so hosts without Foundry can deploy and recognise it. Regenerate with `npm run guard:artifact` whenever the contract changes. |
@@ -102,6 +103,9 @@ npm run guard:deploy        # deploy AirbagGuard (run guard:build first); see co
 npm run guard:limits        # show the guard's cap and health floor; -- 200 sets the cap (owner only)
 npm run demo:push           # owner's machine: push the loan to the edge when the server holds no wallet key
 npm run demo:reset          # owner's machine: repay from the wallet back to a calm loan
+npm run web:install         # once: the page's own packages (web/node_modules)
+npm run web:build           # rebuild the page into public/ after changing web/ (commit public/ too)
+npm run web:dev             # the page with live reload on http://localhost:5173 (needs npm run sim running)
 ```
 
 **Demo controls.** Press **d** on the dashboard and enter `WEBHOOK_SECRET`.
@@ -161,16 +165,20 @@ Read these before touching `src/arc.ts`.
 
 ## Code conventions
 
-- **Language and runtime.** TypeScript ESM run by `tsx` (no build), Node 22+.
+- **Language and runtime.** The server is TypeScript ESM run by `tsx` (no build), Node 22+. Only the page is built (see "The page" below).
   - TS imports use `.js` extensions (NodeNext).
   - `brain.mjs` stays dependency-free plain JS.
 - **Amounts to Circle's kits** are decimal strings with at most 6 decimals: use `usdc6()`.
   - Kit results are `confirmed` / `confirmed-details-unavailable` / `submitted`; `txOf()` treats `submitted` as an error.
 - **Never decide on stale data.** Read the chain first. Keep the one-run-at-a-time rule, the cooldown and the daily cap.
-- **Dashboard rules.**
-  - Insert server text with `textContent` only, never `innerHTML` with data.
-  - Colors come from the CSS tokens in `public/style.css` (light and dark are both defined).
+- **The page** (`web/`).
+  - After changing anything in `web/`: `npm run web:build`, then commit `public/` too. `npm test` fails if the build is older than the source. The first time: `npm run web:install`.
+  - The built files are committed on purpose. Render runs `npm ci` and serves `public/` as it is, so the server needs nothing from `web/`. Keep it that way: no frontend package in the root `package.json`.
+  - `web/src/wallet/core.js` is the signing logic. It was proven on-chain and cannot be re-tested without a person signing. Do not rewrite it.
+  - Never put server text into the page as HTML (no `dangerouslySetInnerHTML`).
+  - Colors come from the tokens in `web/src/styles.css` (light and dark are both defined). Chart series colors are in `web/src/charts/xy-chart.tsx`.
   - Charts keep a table view. Check phone width.
+  - Few words. One idea per screen. `?still` in the address turns animations off for screenshots.
 - **New behaviour gets a test** in `test/`, using the saved fixtures rather than live calls.
 - **Commits.** Small commits with clear messages, pushed to `main`. Pull before you push. Scan for secrets before committing.
 

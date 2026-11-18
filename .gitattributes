@@ -1,0 +1,6 @@
+# The built page (from web/, see AGENTS.md "The page"): generated files. Git must not change their line
+# endings, and they should stay out of diffs and language statistics.
+public/assets/** -text linguist-generated=true
+public/build.json -text linguist-generated=true
+public/index.html -text linguist-generated=true
+public/app/index.html -text linguist-generated=true
