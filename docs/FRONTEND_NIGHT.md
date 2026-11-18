@@ -2,9 +2,19 @@
 
 Branch `frontend-test`, worktree `C:\Users\matth\Desktop\ubc\.claude\worktrees\frontend-test`. The brief is `docs/OVERNIGHT_BRIEF.md`. Read both files first after any break. Delete both before merging.
 
-## Morning report
+## Morning report (Nov 18, 2026, about 09:15)
 
-(written at the end)
+1. **Open it.** Nothing is on `main`. Branch `frontend-test`, 5 commits. `git fetch`, `git checkout frontend-test`, `npm install`, `npm run sim`, then http://localhost:3000 (the landing page) and `/app/`. My copy is the worktree `.claude/worktrees/frontend-test`.
+2. **What changed.** `/` is a landing page: the headline with the live number, the February crash, a real save replayed from its transactions, Gemini's odds hour by hour, three real saves as receipts. `/app/` has four screens: Loan, Market, On-chain, Try it. The old page is at `/classic/`.
+3. **New facts.** Gemini does keep hourly history per bet (our notes said it had none): it is on the Market screen and the landing page. Arc mainnet's gas price equals testnet's, so the mainnet costs would be the same today (read live). A hedge quote from Gemini's own prices, also scaled to a $50,000 loan.
+4. **21st.dev pieces.** tweenly: chart kit, segmented control, fade-in. Magic UI: animated beam (light on the wires of the On-chain picture), border beam (red round the card while a loan is at risk), dot pattern (first screen).
+5. **Scores** (a cold reviewer as the organiser, the page alone, 6 = a decent hackathon project). First review: Technical 8, Product and UX 7, Innovation 7, Impact 6, Demo 7. Final review, before its fixes: 8, 6, 8, 5, 6. Its top points are fixed since (the alarm, the February cards, Gemini's history up front, QuickNode and Gemini in the picture, the phone replay). Not scored again.
+6. **Where we still lose points.** QuickNode shows recorded rows until the Stream points at the live site. Impact: the amounts are testnet cents, and Airbag needs savings worth about 20% of the loan. The number is "estimated" while the loan is calm (Gemini has no bet that low). There is no video yet.
+7. **Only the team can fix.** Point the QuickNode Stream at `https://airbagged.me/api/stream`. Put an uptime ping on `/healthz` (both sites sleep after 15 quiet minutes). Verify AirbagGuard's source on Arc's explorer (it shows unverified bytecode). One real push on the live site on Friday morning, and the video. `docs/SUBMISSION.md` still names the simulator as the main link. The simulator's loan is tiny: 0.0001 cirBTC and 10 USDC are hard-coded in `src/arc.ts`, which I did not touch.
+8. **Could not test.** Anything that needs a signature: Connect wallet on the live site, the four steps, protection off and on. What I did check: with a fake wallet the new page makes exactly the same requests as the old one, and the new page reads correctly with the live site's real status (read-only). Gemini's Nov 20 ladder expires Friday 22:00 UTC, in the middle of judging: the page follows a changing list, but nobody has watched an expiry.
+9. **Waiting on you.** Look at it. If you like it, test with Test 2 on the live site after merging (about 5 minutes, the list is under "You must test with MetaMask"). Then decide whether `frontend-test` goes into `main`. Delete this file and `OVERNIGHT_BRIEF.md` before merging.
+
+Reviews in full: the first is summarised under "Done". The second reviewer hung and was stopped. The final one (16 tool calls, only localhost allowed) said: clean, mostly honest, no longer a wall of text. The live push was the weakest moment. The February cards cheated by omission. QuickNode had only recorded rows. The replay card was taller than a phone screen. Served, out of 10: organiser 7, Arc 7, Gemini 7, QuickNode 4, mentor 6, beginner 6.
 
 ## Decisions for Matthew
 
@@ -66,12 +76,19 @@ He saw my first build of the dashboard and said it looked terrible: AI slop, far
   - Phones: the app header is 80 px shorter, tiles and the two prices line up, chart labels sit under the chart.
 - Checked after these: every screen at 1912 wide in Chrome, at 375 in the built-in browser, the hero in dark, the push in the simulator (pushing, at risk, saved), no console errors, 58 tests, both typechecks.
 
-## Next
+## Where it stands (Nov 18, about 09:20)
 
-1. Deploy proof for commit 2 (fresh clone, `npm ci`, `npm run sim` on another port).
-2. New screenshots for the README (the ones there show the old page) and for Matthew.
-3. Second cold review, fix what it finds, last commit.
-4. Morning report at the top of this file.
+- Five commits on `frontend-test`, all pushed. Never `main`.
+- The last commit holds: the three Magic UI pieces and tweenly's FadeIn, the fixes from the final review (the alarm holds 3 s and the number and badge change together, honest February cards, Gemini's history first and on the landing page, receipts instead of the three-number row, Gemini and QuickNode in the On-chain picture, the replay fits a phone, the demo controls sit in the page), the six README pictures, and `?still` now stops every transition.
+- The same content passed the whole proof from a fresh local clone (as ec49697): `npm ci` like Render, 59 tests, every page, file and API answered, then `npm run web:install` and `npm run web:build` left no changed file. After the push the proof runs again from GitHub (scratchpad `full-proof.sh <dir> <port>`).
+- Checked by eye on the last build: all screens at 1912 wide, the phone replay (773 px tall on an 812 px screen), the push (pushing, 40% at risk held, saved in 0.4 s), no console errors, the new page with the live site's real status (read-only).
+- Tools left running: the simulator preview `frontend-sim` on port 3000. One Chrome tab on localhost. Close both when done.
+
+## If there is more time
+
+1. A second look at dark theme on every app screen (only the first screen and the Loan screen were looked at in dark after the last changes).
+2. The four wizard steps cannot be clicked here. They need Matthew and Test 2.
+3. Ideas not done: February three ways (left alone, a plain price rule, Airbag); a live "delivered 12 s ago" row once the Stream points at the live site; full addresses with a copy button.
 
 ## For the team (the page cannot fix these)
 

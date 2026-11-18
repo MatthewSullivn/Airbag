@@ -1,7 +1,7 @@
 // A real save, replayed. Every step is a transaction on Arc Testnet (README "Live proof"), so a visitor with no
 // wallet still sees the product work, and nothing on screen is simulated. The data is in recorded/proof.ts.
 // The card shows the same two prices as the Loan screen: bitcoin, and the price below which the bitcoin is lost.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useInView } from "motion/react";
 import { useStill } from "@/lib/chart-kit";
 import { Play, RotateCcw } from "lucide-react";
@@ -31,12 +31,20 @@ const playAt = (real: number) => {
   }
   return LENGTH;
 };
+// a phone: the chart is a little lower so the whole card fits on one screen
+const PHONE = "(max-width: 639px)";
+const usePhone = () => useSyncExternalStore(
+  (on) => { const mq = matchMedia(PHONE); mq.addEventListener("change", on); return () => mq.removeEventListener("change", on); },
+  () => matchMedia(PHONE).matches,
+  () => false,
+);
 const CHIPS = ["Owner borrows more", "Airbag saves it", "Owner pays some back", "Airbag returns savings"];
 const STORY = ["A calm loan.", "At risk.", "Saved in 3 seconds.", "The owner pays some back.", "Airbag returns the savings."];
 
 export function SaveReplay({ id }: { id?: string }) {
   const run = VISITOR_RUN;
   const reduced = useStill();
+  const phone = usePhone();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.4 });
   const [p, setP] = useState(0);
@@ -86,11 +94,11 @@ export function SaveReplay({ id }: { id?: string }) {
   return (
     <Panel id={id} tone={pushed ? "critical" : null} className="scroll-mt-6" aria-label="Replay of a recorded save">
       <div ref={ref}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[15px] text-on-panel-faint">A real save, recorded on Arc Testnet · Nov 18, 2026</p>
-          <Button variant="panel" size="sm" onClick={play} disabled={playing}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[14px] text-on-panel-faint sm:text-[15px]"><span className="hidden sm:inline">A real save, recorded</span><span className="sm:hidden">Recorded</span> on Arc Testnet · Nov 18, 2026</p>
+          <Button variant="panel" size="sm" className="px-3 sm:px-4" onClick={play} disabled={playing} aria-label={playing ? "Playing" : p >= LENGTH ? "Play again" : "Play"}>
             {p >= LENGTH ? <RotateCcw aria-hidden="true" className="size-4" /> : <Play aria-hidden="true" className="size-4" />}
-            {playing ? "Playing" : p >= LENGTH ? "Play again" : "Play"}
+            <span className="hidden sm:inline">{playing ? "Playing" : p >= LENGTH ? "Play again" : "Play"}</span>
           </Button>
         </div>
 
@@ -99,7 +107,7 @@ export function SaveReplay({ id }: { id?: string }) {
           {STORY[stepIndex + 1]}
         </p>
         <div className="mt-3 grid gap-x-10 gap-y-5 sm:grid-cols-[1.25fr_1fr] sm:items-start">
-          <p className="min-h-[4.2em] max-w-[42ch] text-[1.1rem] leading-snug text-on-panel-2 sm:min-h-[2.8em]">{state.say}</p>
+          <p className="min-h-[4em] max-w-[48ch] text-[1.05rem] leading-snug text-on-panel-2 sm:min-h-[2.8em] sm:text-[1.1rem]">{state.say}</p>
           <div className="sm:justify-self-end">
             <div className="flex min-h-7 items-center gap-3">
               <StatusPill tone={pushed ? "critical" : "good"} small>{pushed ? "At risk" : "Safe"}</StatusPill>
@@ -133,7 +141,7 @@ export function SaveReplay({ id }: { id?: string }) {
             xFormat={() => ""}
             bands={pushed ? [{ x0: chart.ticks[0], x1: Math.max(p, chart.ticks[0]), y0: state.line, y1: run.btc, color: STATUS.critical }] : []}
             markers={run.steps.filter((_, i) => i <= stepIndex).map((s, i) => ({ x: chart.ticks[i], y: s.line, color: s.who === "bot" ? SERIES.s1 : "#f5f4f0" }))}
-            height={180}
+            height={phone ? 140 : 180}
             padRight={62}
             hideLegend
             ariaLabel={`The price below which the bitcoin is lost jumps to ${usd(run.steps[0].line)}, close to bitcoin's price of ${usd(run.btc)}. Three seconds later Airbag moves it back down to ${usd(run.steps[1].line)}.`}
@@ -144,13 +152,13 @@ export function SaveReplay({ id }: { id?: string }) {
           {run.steps.map((s, i) => {
             const done = i <= stepIndex;
             return (
-              <li key={s.tx} className={cn("rounded-2xl border border-panel-line p-3.5 transition-opacity duration-300 sm:p-4", done ? "bg-panel-2" : "opacity-40")}>
-                <p className="flex items-center gap-2 text-[15px] font-semibold leading-tight text-on-panel sm:text-[16px]">
+              <li key={s.tx} className={cn("rounded-2xl border border-panel-line px-3 py-2.5 transition-opacity duration-300 sm:p-4", done ? "bg-panel-2" : "opacity-40")}>
+                <p className="flex items-center gap-2 text-[14px] font-semibold leading-tight text-on-panel sm:text-[16px]">
                   <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: s.who === "bot" ? SERIES.s1 : "#f5f4f0" }} />
                   {CHIPS[i]}
                 </p>
-                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 text-[14px] text-on-panel-faint">
-                  <span className="mono">{s.utc} UTC</span>
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[13.5px] text-on-panel-faint sm:mt-1.5 sm:text-[14px]">
+                  <span className="mono hidden sm:inline">{s.utc} UTC</span>
                   <ExplorerLink explorer={EXPLORER} kind="tx" id={s.tx}>see it on Arc</ExplorerLink>
                 </p>
               </li>

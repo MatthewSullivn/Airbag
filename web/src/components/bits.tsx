@@ -1,12 +1,15 @@
 // Small pieces every screen uses: the dark instrument panel, the light card, pills, buttons, explorer links, counting numbers.
 import { useEffect, useRef } from "react";
-import { animate, useReducedMotion } from "motion/react";
+import { animate } from "motion/react";
+import { useStill } from "@/lib/chart-kit";
 import { ArrowUpRight, Check, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { short, type Tone } from "@/lib/format";
+import { BorderBeam } from "./ui/border-beam";
+import { FadeIn } from "./ui/fade-in";
 
 /** A dark instrument panel: where a live number or a chart sits. The same surface in the light and the dark theme. */
-export function Panel({ className, children, tone, ...rest }: React.HTMLAttributes<HTMLElement> & { tone?: "critical" | null }) {
+export function Panel({ className, children, tone, beam, ...rest }: React.HTMLAttributes<HTMLElement> & { tone?: "critical" | null; /** A slow, quiet beam round the border: "this is live". */ beam?: boolean }) {
   return (
     <section
       {...rest}
@@ -17,6 +20,11 @@ export function Panel({ className, children, tone, ...rest }: React.HTMLAttribut
       )}
     >
       {children}
+      {tone === "critical" ? (
+        <BorderBeam size={140} duration={3.5} borderWidth={2} colorFrom="#ff8a7d" colorTo="#d03b3b" />
+      ) : beam ? (
+        <BorderBeam size={110} duration={9} borderWidth={1.5} colorFrom="#ffb48a" colorTo="#f0591f" />
+      ) : null}
     </section>
   );
 }
@@ -87,7 +95,7 @@ export function ExplorerLink({ explorer, kind, id, children, className }: { expl
 export function Count({ value, format, className }: { value: number | null | undefined; format: (v: number) => string; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const shownValue = useRef<number | null>(null);
-  const reduced = useReducedMotion();
+  const reduced = useStill();   // reduced motion, or ?still in the address
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -131,10 +139,13 @@ export function Wordmark({ className }: { className?: string }) {
 export function Section({ id, eyebrow, title, lead, children, className }: { id?: string; eyebrow?: string; title: string; lead?: React.ReactNode; children?: React.ReactNode; className?: string }) {
   return (
     <section id={id} className={cn("scroll-mt-8 py-16 sm:py-24", className)}>
-      {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
-      <h2 className="display max-w-[18ch] text-[clamp(2.2rem,5.4vw,4rem)] text-ink">{title}</h2>
-      {lead && <p className="mt-5 max-w-[46ch] text-[1.15rem] leading-relaxed text-ink-2">{lead}</p>}
-      {children && <div className="mt-10 sm:mt-12">{children}</div>}
+      {/* the words glide up as the section comes into view, then the picture a moment later */}
+      <FadeIn distance={18} duration={0.7} amount={0.3}>
+        {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
+        <h2 className="display max-w-[18ch] text-[clamp(2.2rem,5.4vw,4rem)] text-ink">{title}</h2>
+        {lead && <p className="mt-5 max-w-[46ch] text-[1.15rem] leading-relaxed text-ink-2">{lead}</p>}
+      </FadeIn>
+      {children && <FadeIn distance={24} duration={0.8} delay={0.1} amount={0.06} className="mt-10 sm:mt-12">{children}</FadeIn>}
     </section>
   );
 }

@@ -75,9 +75,10 @@ export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; 
   };
 
   if (!open) return null;
-  // A slim bar along the bottom edge: it must not sit on the numbers it changes.
+  // A slim strip that takes its own room at the top of the screen (and stays there while scrolling): it must
+  // never sit on the numbers it changes.
   return (
-    <aside aria-labelledby="demo-title" className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-[54rem] rounded-[26px] border border-panel-line bg-panel px-4 py-3 text-on-panel shadow-2xl sm:px-5">
+    <aside aria-labelledby="demo-title" className="sticky top-3 z-40 rounded-[22px] border border-panel-line bg-panel px-4 py-3 text-on-panel shadow-xl sm:px-5">
       <button type="button" onClick={onClose} aria-label="Close demo controls" className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-on-panel-faint hover:text-on-panel"><X className="size-4" /></button>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pr-8">
         <h2 id="demo-title" className="label text-on-panel-faint">Demo{status.mode === "live" ? " · the bot's own loan" : ""}</h2>

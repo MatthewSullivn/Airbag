@@ -256,6 +256,9 @@ export const textureFill = (id: string, texture: ChartTexture, color: string) =>
 // Airbag: ?still in the address turns every entrance animation off (for screenshots, and for checking the page
 // in a background tab, where browsers pause animations).
 const FORCE_STILL = typeof location !== "undefined" && new URLSearchParams(location.search).has("still")
+// Airbag: with ?still the stylesheet also switches off every CSS transition and animation (see styles.css),
+// so a screenshot or a hidden tab shows the finished state, not a frame on the way there
+if (FORCE_STILL && typeof document !== "undefined") document.documentElement.classList.add("still")
 /** Airbag: true when nothing should animate: the visitor asked for reduced motion, or ?still is set. */
 export function useStill() {
   const reduced = useReducedMotion()

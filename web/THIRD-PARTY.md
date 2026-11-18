@@ -34,6 +34,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Magic UI
+
+Three small components come from [Magic UI](https://magicui.design) ([source](https://github.com/magicuidesign/magicui), also on 21st.dev), pulled from its public registry on Nov 18, 2026:
+
+- `src/components/ui/animated-beam.tsx` (the light that travels along the money map)
+- `src/components/ui/border-beam.tsx` (the beam round a card while the loan is at risk)
+- `src/components/ui/dot-pattern.tsx` (the field of dots on the first screen)
+
+Each file says so at the top and lists our changes. MIT License, Copyright (c) Magic UI, with the same permission and warranty text as above.
+
 ## Fonts
 
 Barlow, Barlow Condensed (Jeremy Tribby) and JetBrains Mono, through the `@fontsource` packages. All three are under the SIL Open Font License 1.1.

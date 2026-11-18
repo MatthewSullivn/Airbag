@@ -15,6 +15,8 @@ export function HedgeCard({ ladders, reading, lltv }: { ladders: Ladders | null;
   const q = event ? hedgeQuote({ bets: event.bets, line: reading.line, debt: reading.loan.debt, lltv }) : null;
   if (!event || !q) return null;
   const penalty = `${(q.penaltyShare * 100).toFixed(1)}%`;
+  // the same quote for a loan of a size people recognise (testnet loans are a few dollars)
+  const big = hedgeQuote({ bets: event.bets, line: reading.line, debt: 50_000, lltv });
 
   return (
     <Card>
@@ -27,6 +29,7 @@ export function HedgeCard({ ladders, reading, lltv }: { ladders: Ladders | null;
       <p className="mt-4 max-w-[62ch] text-[1.05rem] leading-relaxed text-ink-2">
         For this loan: being sold off would cost about <strong className="font-semibold text-ink">{money(q.loss)}</strong>. Covering that costs about{" "}
         <strong className="font-semibold text-ink">{money(q.cost)}</strong> today.
+        {big && <> On a $50,000 loan: about <strong className="font-semibold text-ink">{usd(big.loss)}</strong>, covered for about <strong className="font-semibold text-ink">{usd(big.cost)}</strong>.</>}
       </p>
       <details className="mt-5 border-t border-line pt-4 text-[15px] text-ink-2">
         <summary className="cursor-pointer select-none font-semibold text-ink">How this is worked out, and what it leaves out</summary>

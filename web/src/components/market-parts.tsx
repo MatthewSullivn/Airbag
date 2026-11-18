@@ -1,7 +1,8 @@
-// The Market screen's second picture: the odds over time. Two views of it:
+// The odds over time. Two pictures:
 //   the market   Gemini's own hourly history for one bet (its last traded price), so you see the market move
 //   this loan    the chance this loan loses its bitcoin, as the bot read it, with the bot's moves marked
 import { useMemo, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { worthDrawing } from "@history";
 import { XYChart, SERIES, STATUS, timeTicks } from "@/charts/xy-chart";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -16,8 +17,11 @@ const dayHour = (t: number) => new Date(t).toLocaleString("en-US", { month: "sho
 const dayOnly = (t: number) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const SWITCH = "border-panel-line bg-panel-2 [&_button]:text-on-panel-faint [&_button[aria-checked=true]]:text-on-panel";
 
+/** This loan's own price and number, to tie the market's big percentages to the small one the loan shows. */
+export interface OwnLoan { line: number; odds: number | null }
+
 /** Gemini's own history for one bet: the chance bitcoin ends below that price, as last traded, hour by hour. */
-function MarketOverTime({ history, spot }: { history: MarketHistory; spot: number | null }) {
+function MarketOverTime({ history, spot, own }: { history: MarketHistory; spot: number | null; own?: OwnLoan | null }) {
   // the four bets nearest bitcoin's price that have really traded, shown low to high; the nearest one first
   const near = useMemo(() => worthDrawing(history.series, spot, { max: 4 }), [history, spot]);
   const picks = useMemo(() => [...near].sort((a, b) => a.strike - b.strike), [near]);
@@ -25,30 +29,32 @@ function MarketOverTime({ history, spot }: { history: MarketHistory; spot: numbe
   const [picked, setPicked] = useState<number | null>(null);
   const bet = picks.find((p) => p.strike === (picked ?? first)) ?? picks[0];
   const date = dayET(history.expiryDate);
+  // each bet's own stretch of days, from its first trade (a shared stretch left most of the chart empty for the
+  // bets that started trading late)
+  const span = useMemo<[number, number] | null>(() => (bet ? [bet.points[0][0], bet.points[bet.points.length - 1][0]] : null), [bet]);
 
   const chart = useMemo(() => {
-    if (!bet) return null;
+    if (!bet || !span) return null;
     const xs = bet.points.map((p) => p[0]);
     const below = bet.points.map((p) => 1 - p[1]);
-    const from = xs[0], to = xs[xs.length - 1];
-    const every = to - from > 9 * DAY ? 2 * DAY : DAY;
+    const every = span[1] - span[0] > 9 * DAY ? 2 * DAY : DAY;
     const xTicks: number[] = [];
     // a label at each local midnight
-    const start = new Date(from);
+    const start = new Date(span[0]);
     start.setHours(24, 0, 0, 0);
-    for (let t = start.getTime(); t <= to; t += every) xTicks.push(t);
+    for (let t = start.getTime(); t <= span[1]; t += every) xTicks.push(t);
     const traded = bet.points.map((p, i) => ({ i, v: p[2] })).filter((p) => p.v > 0);
     return { xs, below, xTicks, traded, last: below[below.length - 1], low: Math.min(...below), high: Math.max(...below) };
-  }, [bet]);
+  }, [bet, span]);
 
-  if (!bet || !chart) {
+  if (!bet || !chart || !span) {
     return <p className="py-16 text-center text-[15px] text-on-panel-faint">No bet on this date has traded twice yet, so there is no history to draw.</p>;
   }
   return (
     <>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <p className="max-w-[40ch] text-[15px] leading-snug text-on-panel-2">
-          Chance bitcoin ends below <strong className="font-semibold text-on-panel">{usd(bet.strike)}</strong> by {date}, as traded on Gemini. Each dot is an hour with trades.
+          Chance bitcoin ends below <strong className="font-semibold text-on-panel">{usd(bet.strike)}</strong> on {date}, as traded on Gemini. Each dot is an hour with trades.
         </p>
         {picks.length > 1 && (
           <SegmentedControl aria-label="Which bet" size="sm" value={String(bet.strike)} onValueChange={(v) => setPicked(Number(v))} options={picks.map((p) => ({ value: String(p.strike), label: strikeK(p.strike) }))} className={SWITCH} pillColor="#33332f" />
@@ -57,6 +63,7 @@ function MarketOverTime({ history, spot }: { history: MarketHistory; spot: numbe
       <XYChart
         xs={chart.xs}
         series={[{ key: "below", label: `Chance bitcoin ends below ${usd(bet.strike)}`, color: SERIES.s2, values: chart.below, fill: "dots", curve: "step", endLabel: pct(chart.last) }]}
+        xDomain={span}
         yDomain={[0, 1]}
         yTicks={[0, 0.5, 1]}
         xTicks={chart.xTicks}
@@ -70,9 +77,14 @@ function MarketOverTime({ history, spot }: { history: MarketHistory; spot: numbe
         })}
         height={230}
         padRight={48}
-        ariaLabel={`Gemini's market, hour by hour since ${dayOnly(chart.xs[0])}: the chance bitcoin ends below ${usd(bet.strike)} by ${date} moved between ${pct(chart.low)} and ${pct(chart.high)}. Now ${pct(chart.last)}.`}
+        ariaLabel={`Gemini's market, hour by hour since ${dayOnly(chart.xs[0])}: the chance bitcoin ends below ${usd(bet.strike)} on ${date} moved between ${pct(chart.low)} and ${pct(chart.high)}. Now ${pct(chart.last)}.`}
         table={{ head: ["Hour", `Ends below ${usd(bet.strike)}`, "Contracts traded"], rows: bet.points.slice().reverse().map((p) => [dayHour(p[0]), pct(1 - p[1]), p[2] > 0 ? String(+p[2].toFixed(2)) : "–"]) }}
       />
+      {own && own.odds != null && own.line < bet.strike && (
+        <p className="mt-4 border-t border-panel-line pt-4 text-[15px] leading-snug text-on-panel-2">
+          The loan on this page is only lost far lower, below <strong className="font-semibold text-on-panel">{usd(own.line)}</strong>. That is why its chance is <strong className="font-semibold text-on-panel">{pct(own.odds)}</strong>, not {pct(chart.last)}.
+        </p>
+      )}
     </>
   );
 }
@@ -130,7 +142,8 @@ function LoanOverTime({ samples, actions, limit, ofWallet }: { samples: Sample[]
   );
 }
 
-export function OverTime({ history, spot, samples, actions, limit, ofWallet }: {
+/** The Market screen's card: Gemini's history first (the market moves by itself), this loan's number one click away. */
+export function OverTime({ history, spot, samples, actions, limit, ofWallet, own }: {
   /** Gemini's hourly history for the ladder on screen; null while it loads or if Gemini has none. */
   history: MarketHistory | null;
   spot: number | null;
@@ -138,15 +151,15 @@ export function OverTime({ history, spot, samples, actions, limit, ofWallet }: {
   actions: LogEntry[];
   limit: number;
   ofWallet: boolean;
+  own?: OwnLoan | null;
 }) {
   const hasMarket = !!history && history.series.length > 0;
-  // if Airbag has just moved, that is what people came to see; otherwise the market, which moves by itself
-  const [view, setView] = useState<"market" | "loan">(() => (actions.length ? "loan" : "market"));
+  const [view, setView] = useState<"market" | "loan">("market");
   const shown = view === "market" && !hasMarket && history ? "loan" : view;
   return (
     <Panel aria-label="The odds over time">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <p className="text-[1.25rem] font-semibold tracking-tight text-on-panel">The odds, over time</p>
+        <p className="text-[1.25rem] font-semibold tracking-tight text-on-panel">{shown === "market" ? "Gemini's odds, hour by hour" : "This loan's odds, over time"}</p>
         <SegmentedControl
           aria-label="Whose odds"
           size="sm"
@@ -158,10 +171,25 @@ export function OverTime({ history, spot, samples, actions, limit, ofWallet }: {
         />
       </div>
       {shown === "market" ? (
-        history ? <MarketOverTime history={history} spot={spot} /> : <p className="py-16 text-center text-[15px] text-on-panel-faint">Reading Gemini's history…</p>
+        history ? <MarketOverTime history={history} spot={spot} own={own} /> : <p className="py-16 text-center text-[15px] text-on-panel-faint">Reading Gemini's history…</p>
       ) : (
         <LoanOverTime samples={samples} actions={actions} limit={limit} ofWallet={ofWallet} />
       )}
+    </Panel>
+  );
+}
+
+/** The landing page's card: only the market's own history, and the way to the whole market. */
+export function MarketHistoryCard({ history, spot, own }: { history: MarketHistory | null; spot: number | null; own?: OwnLoan | null }) {
+  return (
+    <Panel aria-label="Gemini's odds, hour by hour">
+      <p className="mb-4 text-[1.25rem] font-semibold tracking-tight text-on-panel">Gemini's odds, hour by hour</p>
+      {history ? <MarketOverTime history={history} spot={spot} own={own} /> : <p className="py-16 text-center text-[15px] text-on-panel-faint">Reading Gemini's history…</p>}
+      <p className="mt-5 text-[15px] text-on-panel-2">
+        <a href="/app/#market" className="inline-flex items-center gap-1.5 font-semibold text-on-panel underline decoration-current/30 underline-offset-[3px] hover:decoration-current">
+          See today's whole market <ArrowRight aria-hidden="true" className="size-4" />
+        </a>
+      </p>
     </Panel>
   );
 }

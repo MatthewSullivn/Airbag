@@ -8,9 +8,15 @@ Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's
 
 **Live on Arc Testnet (Nov 17, 2026):** we pushed a real loan into danger and Airbag saved it with no human input. The push landed at 21:53:55 UTC. The bot read the odds at 42% (limit 5%), withdrew 0.78 USDC from savings and repaid the loan. The repay landed at 21:53:59, and the odds were back to 0.8%. Two transactions, 0.0154 USDC of gas. See [Live proof](#live-proof).
 
-| 1. Pushed to the edge: 42%, over the limit | 2. Four seconds later, saved by Airbag: 0.8% |
-|---|---|
-| ![Dashboard after the push: 42% chance, red, health 1.06](docs/1-pushed-to-the-edge.jpg) | ![Dashboard after the save: 0.8% chance, green, health 1.25](docs/2-saved-by-airbag.jpg) |
+| The first screen | A loan pushed to the edge | The same loan, saved seconds later |
+|---|---|---|
+| ![The landing page: the headline and the live chance of losing the bitcoin](docs/page-1-first-screen.jpg) | ![The app's Loan screen in red: 40% chance, at risk](docs/page-2-at-risk.jpg) | ![The app's Loan screen after the save: 0.4%, saved by Airbag in 0.4 s](docs/page-3-saved.jpg) |
+
+| Gemini's market with the loan's price on it | The market's own odds, hour by hour | How the money moves on Arc |
+|---|---|---|
+| ![The Market screen: Gemini's curve, the price where the bitcoin is lost, and how the number is made](docs/page-4-market.jpg) | ![The Market screen: Gemini's hourly history for one bet, and a hedge quote](docs/page-5-odds-over-time.jpg) | ![The On-chain screen: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) |
+
+These six are the simulator: a simulated loan with live Gemini odds. The real saves are under [Live proof](#live-proof), with the page as it looked then.
 
 ---
 
@@ -302,7 +308,7 @@ Server endpoints:
 
 POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no secret set, they only accept requests from localhost.
 
-**The page.** `/` is the landing page: what Airbag is, the February crash, a real save replayed from its recorded transactions, Gemini's market as a picture, and the proof. `/app/` is the app, with four screens: **Loan** (the chance of losing the bitcoin, and bitcoin's price against the price where it is lost), **Market** (Gemini's ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, a hedge quote), **On-chain** (a picture of how the money moves between the contracts, what the QuickNode Stream saw, what a move costs) and **Try it** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
+**The page.** `/` is the landing page: what Airbag is, the February crash, a real save replayed from its recorded transactions, Gemini's odds hour by hour, and the three recorded saves as receipts. `/app/` is the app, with four screens: **Loan** (the chance of losing the bitcoin, and bitcoin's price against the price where it is lost), **Market** (Gemini's ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, a hedge quote), **On-chain** (a picture of who tells the bot and how the money moves between the contracts, what the QuickNode Stream saw, what a move costs) and **Try it** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
 
 **Demo controls.** In the app, press `d` and enter `WEBHOOK_SECRET`.
 - **Push it to the edge** borrows up to Borrow Kit's maximum. The USDC stays in the wallet, as if spent.
@@ -347,6 +353,12 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | **The bot through AirbagGuard** (Nov 18, `USE_GUARD=true`, same loan) | The bot's own code (`npm run roundtrip`) moved 0.25 USDC from savings into the loan and back. One transaction each, signed by the guard's bot key: debt 21.266 → 21.016 → 21.266. | [save](https://explorer.testnet.arc.io/tx/0xc9ac624de30319f26f1e13b60666779047b8817c3a671de61c2d07769f1f3ec5), [give back](https://explorer.testnet.arc.io/tx/0x24b290810e8f07f07032fe511f581c2364bdd170184754fbd494bdd35be43ee0) |
 | **The save, by a hosted bot that holds no wallet key** (Nov 18) | The owner pushed the loan from their own machine (`npm run demo:push`). The bot at https://airbag-live.onrender.com holds only the guard's bot key. It read the odds at 33.9% (limit 5%) and moved 3.67 USDC from savings into the loan through the guard: one transaction, 4 s after the push, 0.0058 USDC of gas. Odds after: 0.4%. | [push](https://explorer.testnet.arc.io/tx/0xfb0f0bd3985f4668dfb4ffdc7b425424a12405ade8f772a9de416f55a9f51b67) (07:54:50 UTC), [save](https://explorer.testnet.arc.io/tx/0xdf46b72ca61bea169fafb07a50f100c95cd98c4285c56d88e0f645f502165630) (07:54:54) |
 | **A connected wallet, protected through its own guard** (Nov 18, a third wallet `0x5364…Fb53`, every step clicked on the page at https://airbagged.me) | The wallet opened a loan (0.0003 cirBTC, 11.90 USDC), put 10 USDC in savings and turned on protection: it created its own `AirbagGuard` ([`0xc7ae…68f7`](https://explorer.testnet.arc.io/address/0xc7ae194fc194f54f999df6cb44c3199264d768f7)) and gave it the two permissions. Then it pushed its own loan: 3.83 USDC more, health 1.06. The hosted bot holds no key of this wallet. It read the odds at 41.9% (limit 5%) and moved 2.39 USDC of the wallet's savings into its loan through that guard, 3 s after the push (health back to about 1.25). The wallet repaid 2.22 USDC ("Calm it down"), and 4 s later the bot gave 1.70 USDC back, stopping at health 1.30. Each bot move was one transaction and cost under 0.01 USDC of gas. | [lock](https://explorer.testnet.arc.io/tx/0x3e26bac2afdc77df4bc219029b5f2767eba0ecb9b79438e3b436e1061339846c), [borrow](https://explorer.testnet.arc.io/tx/0xe677aa6be02a816856fc309848fae7cb7484bcd0930b7b114690f382fbbe2f06), [savings](https://explorer.testnet.arc.io/tx/0x22f42077abc315c3adc20748d901ffc54b693f6842ee4119151247fb24c23f61), [create the guard](https://explorer.testnet.arc.io/tx/0xad739863144719ab56c3ef56ee65e3b49533e6cce5d60add66292f244536d10d), [savings permission](https://explorer.testnet.arc.io/tx/0xb5cc14ea6cba9287c8667ccfbc0b6a7aa3896dc61856720aefc28794c695926f), [loan permission](https://explorer.testnet.arc.io/tx/0xff3bf81bc72b30162c3c2bd15d8e3e2725dc929d068af06b31ec6f3bb00a4567), [push](https://explorer.testnet.arc.io/tx/0x2b3d6fb178c8f838e9ed1d300900f38cdf644d4c40c18f1870e6ca5ff8aab877) (09:36:08 UTC), [save](https://explorer.testnet.arc.io/tx/0xbc9bd6ca82f6d36e04976c9d66067c9c1b8e5616af92d6a7458da90663db46f2) (09:36:11), [calm](https://explorer.testnet.arc.io/tx/0x17e8147929d440f40b875c953bc953e79848de29e7d4041a751082abed1fe1c5) (09:36:37), [give back](https://explorer.testnet.arc.io/tx/0xe2a3b40c9cb2f6c6e432838ddcf749b4e3e785df3a19fda2ba1102aa3ff6005a) (09:36:41) |
+
+The first save (Nov 17), on the page as it looked that day:
+
+| Pushed to the edge: 42%, over the limit | Four seconds later, saved by Airbag: 0.8% |
+|---|---|
+| ![Dashboard after the push: 42% chance, red, health 1.06](docs/1-pushed-to-the-edge.jpg) | ![Dashboard after the save: 0.8% chance, green, health 1.25](docs/2-saved-by-airbag.jpg) |
 
 ![The bot's log and the odds chart after the save and the give-back](docs/3-bot-log-and-odds.jpg)
 

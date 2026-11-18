@@ -65,12 +65,12 @@ export function CrashCard({ replay, className }: { replay: CrashReplay | null; c
         <div className="rounded-2xl border border-panel-line p-5">
           <p className="flex items-center gap-2 text-[16px] text-on-panel-2"><span aria-hidden="true" className="h-0.5 w-4 rounded" style={{ background: SERIES.s1 }} />Left alone</p>
           <p className="figure mt-3 text-[3.4rem] text-on-panel">{liq ? `${liq.btcKept.toFixed(2)} BTC` : "1 BTC"}</p>
-          <p className="mt-2 text-[15px] leading-snug text-on-panel-faint">{liq ? `left of 1. The rest was sold on ${dayUTC(liq.date)} to pay the loan back.` : "kept."}</p>
+          <p className="mt-2 text-[15px] leading-snug text-on-panel-faint">{liq ? `left of 1. The rest was sold on ${dayUTC(liq.date)} to repay the ${usd(U.debt0)} you borrowed, with a ${usd(U.debt0 * (replay.params.liquidationIncentive - 1))} penalty.` : "kept."}</p>
         </div>
         <div className="rounded-2xl border border-panel-line bg-panel-2 p-5">
           <p className="flex items-center gap-2 text-[16px] text-on-panel-2"><span aria-hidden="true" className="h-0.5 w-4 rounded" style={{ background: SERIES.s3 }} />With Airbag</p>
           <p className="figure mt-3 text-[3.4rem] text-on-panel">{A.liquidated ? "sold off" : "1 BTC"}</p>
-          <p className="mt-2 text-[15px] leading-snug text-on-panel-faint">{A.liquidated ? "" : `kept. At the worst point ${usd(A.maxInLoan)} of savings was in the loan${A.maxInLoan >= A.savings ? ": all of it" : ""}.`}</p>
+          <p className="mt-2 text-[15px] leading-snug text-on-panel-faint">{A.liquidated ? "" : `kept. At the worst point ${usd(A.maxInLoan)} of your savings sat in the loan${A.maxInLoan >= A.savings ? ": all of it" : ""}.`}</p>
         </div>
       </div>
       <p className="mt-4 text-[14px] leading-snug text-on-panel-faint">

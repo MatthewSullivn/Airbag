@@ -3,6 +3,7 @@
 import { motion } from "motion/react"
 import type { Transition } from "motion/react"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
+import { useStill } from "@/lib/chart-kit" // Airbag: ?still in the address shows everything at once
 
 export type FadeInDirection = "up" | "down" | "left" | "right" | "none"
 export type FadeInEase = "smooth" | "snappy" | "linear" | "spring"
@@ -65,6 +66,8 @@ export function FadeIn({
   className,
 }: FadeInProps) {
   const reduced = useReducedMotion()
+  const still = useStill() // Airbag: no entrance at all, so a screenshot or a hidden tab never shows an empty page
+  if (still) return <div className={className}>{children}</div>
 
   // Reduced motion: keep a short opacity fade, drop all movement.
   const offset = reduced ? { x: 0, y: 0 } : getOffset(direction, distance)

@@ -1,5 +1,5 @@
 // The one number: the chance this loan loses its bitcoin. One figure, one word (safe or at risk), one small line.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Spark } from "@/charts/spark";
 import { SERIES, STATUS } from "@/charts/xy-chart";
 import type { LogEntry, Reading, Sample, Status } from "@/lib/api";
@@ -7,28 +7,46 @@ import { dayET, pct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Count, Panel, StatusPill } from "./bits";
 
-/** True at once, false only after a short wait: the red state stays until the falling number has reached its new value. */
-function useLinger(on: boolean, ms: number) {
-  const [held, setHeld] = useState(on);
+/**
+ * An alarm must be seen. The bot can answer a danger within a second, faster than anyone can read "At risk".
+ * So once the card turns red it stays red, showing the highest chance it read, for at least this long.
+ * The log underneath keeps the true times.
+ */
+const MIN_ALARM_MS = 3000;
+function useAlarm(on: boolean, odds: number | null) {
+  const since = useRef<number | null>(null);
+  const peak = useRef<number | null>(null);
+  const [held, setHeld] = useState(false);
   useEffect(() => {
-    if (on) { setHeld(true); return; }
-    const t = setTimeout(() => setHeld(false), ms);
+    if (on) {
+      if (since.current == null) since.current = Date.now();
+      if (odds != null) peak.current = Math.max(peak.current ?? 0, odds);
+      setHeld(true);
+      return;
+    }
+    if (since.current == null) return;
+    const end = () => { since.current = null; peak.current = null; setHeld(false); };
+    const left = MIN_ALARM_MS - (Date.now() - since.current);
+    if (left <= 0) { end(); return; }
+    const t = setTimeout(end, left);
     return () => clearTimeout(t);
-  }, [on, ms]);
-  return on || held;
+  }, [on, odds]);
+  return { ringing: on || held, peak: peak.current };
 }
 
 /**
  * For half a minute after the bot moves money, the badge says what it just did instead of plain "Safe".
- * The bot writes "... from savings into the loan ..." for a save; its other move is the give-back.
+ * The bot writes "... from savings into the loan in 0.4 s ..." for a save; its other move is the give-back.
  */
 export function recentMove(log: LogEntry[], now: number): string | null {
   const last = log.find((e) => e.level === "action");
   if (!last || now - last.t > 30_000 || /dry run/.test(last.text)) return null;
-  return /into the loan/.test(last.text) ? "Saved by Airbag" : "Savings returned";
+  if (!/into the loan/.test(last.text)) return "Savings returned";
+  const took = last.text.match(/\bin (\d+(?:\.\d+)?) s\b/);
+  return took ? `Saved by Airbag in ${took[1]} s` : "Saved by Airbag";
 }
 
-export function NumberCard({ status, reading, samples, footer, pending, justNow, className }: {
+export function NumberCard({ status, reading, samples, footer, pending, justNow, beam, className }: {
   status: Status;
   reading: Reading | null;
   samples: Sample[];
@@ -36,25 +54,28 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
   footer?: React.ReactNode;
   /** Something was just pressed and the chain has not answered yet, e.g. "Pushing the loan…" */
   pending?: string | null;
-  /** What the bot did a moment ago, e.g. "Saved by Airbag". Replaces "Safe" for a short while. */
+  /** What the bot did a moment ago, e.g. "Saved by Airbag in 0.4 s". Replaces "Safe" for a short while. */
   justNow?: string | null;
+  /** A slow beam of light round the card while it is calm (the first screen uses it). */
+  beam?: boolean;
   className?: string;
 }) {
   const limit = status.limit;
   const r = reading;
-  const odds = r?.decision.odds ?? null;
+  const live = r?.decision.odds ?? null;
   const ladder = r ? r.ladders.find((l) => l.ticker === r.odds?.ticker) ?? r.ladders[0] : undefined;
-  const overOdds = odds != null && odds > limit;
-  const lowHealth = !!r && r.health < status.rule.actBelowHealth;
-  // the number glides down over 0.6 s (Count), so "Safe" waits for it instead of jumping ahead
-  const danger = useLinger(overOdds || lowHealth, 650);
+  const inDanger = (live != null && live > limit) || (!!r && r.health < status.rule.actBelowHealth);
+  const alarm = useAlarm(inDanger, live);
+  const danger = alarm.ringing;
+  // while the alarm is held after the danger has passed, the card still shows what set it off
+  const odds = danger && !inDanger && alarm.peak != null ? alarm.peak : live;
   const history = samples.map((s) => s.odds).filter((v): v is number => v != null);
   const waiting = !r ? (status.bot.noLoan ? "No loan yet" : status.bot.syncing ? "Updating…" : "Reading…") : null;
   const share = odds == null ? 0 : Math.min(1, odds / (limit * 4));
-  const estimated = r?.odds?.source === "estimated";
+  const estimated = !danger && r?.odds?.source === "estimated";
 
   return (
-    <Panel tone={danger ? "critical" : null} className={className} aria-label="Chance of losing the bitcoin">
+    <Panel tone={danger ? "critical" : null} beam={beam} className={className} aria-label="Chance of losing the bitcoin">
       <div className="flex items-start justify-between gap-4">
         <p className="text-[16px] font-medium text-on-panel-2">Chance of losing the bitcoin</p>
         {ladder && (
@@ -66,8 +87,9 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-x-5 gap-y-3">
-        <p className={cn("figure text-[6.5rem] transition-colors duration-500 sm:text-[8.5rem]", danger ? "text-[#ff6b5e]" : "text-on-panel")} aria-live="polite">
-          {odds == null ? "–" : <Count value={odds} format={pct} />}
+        <p className={cn("figure text-[6.5rem] sm:text-[8.5rem]", danger ? "text-[#ff6b5e]" : "text-on-panel")} aria-live="polite">
+          {/* into and out of the alarm the number jumps (a new Count), so the figure and the badge always agree */}
+          {odds == null ? "–" : <Count key={danger ? "alarm" : "calm"} value={odds} format={pct} />}
         </p>
         <div className="mb-3" role="status">
           {waiting ? <StatusPill tone="neutral">{waiting}</StatusPill>
@@ -82,7 +104,8 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
       {/* a flat line near zero says nothing, so the small chart only shows once the number has moved */}
       {history.length > 2 && Math.max(...history) - Math.min(...history) >= limit * 0.02 && (
         <div className="mb-5">
-          <Spark values={history} color={SERIES.s1} floor={0} ceiling={limit} height={64} label={`The chance over time. Now ${pct(odds)}. Airbag steps in at ${pct(limit)}.`} />
+          <Spark values={history} color={SERIES.s1} floor={0} ceiling={limit} height={64} label={`The chance over the last hour. Now ${pct(live)}. Airbag steps in at ${pct(limit)}.`} />
+          <p className="mt-1 text-right text-[12.5px] text-on-panel-faint">the last hour</p>
         </div>
       )}
 

@@ -125,7 +125,7 @@ export function LadderCard({ ladders, reading, limit, className }: { ladders: La
             return (
               <div className="mt-5 border-t border-panel-line pt-5">
                 {/* wide: each figure with its own words. Phone: the three figures in a row, the words as one sentence. */}
-                <div className="flex items-baseline gap-x-5 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-start sm:gap-x-10">
+                <div className="flex items-baseline gap-x-5 sm:grid sm:grid-cols-[auto_auto_auto] sm:items-start sm:justify-start sm:gap-x-12">
                   <div>
                     <p className="figure text-[2.6rem] text-on-panel sm:text-[3.2rem]">{pct(chart.below.p)}</p>
                     <p className="mt-1.5 hidden max-w-[22ch] text-[14.5px] leading-snug text-on-panel-2 sm:block">the market's chance bitcoin ends below your price on {date}</p>

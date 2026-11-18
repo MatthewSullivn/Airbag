@@ -65,7 +65,7 @@ export function Wizard({ wallet, status }: { wallet: WalletApi; status: Status }
               {wallet.note && <p role="status" className="mt-5 text-[15px] text-on-panel-2">{wallet.note}</p>}
               {status.mode !== "live" && (
                 <p className="mt-6 text-[15px] text-on-panel-faint">
-                  With your wallet, steps 1 and 2 are real transactions on Arc Testnet, even here on the simulator. Steps 3 and 4 need the live site:{" "}
+                  This is the simulator. Steps 3 and 4 only work on the live site:{" "}
                   <a href={`${LIVE_URL}/app/#try`} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">airbagged.me</a>.
                 </p>
               )}

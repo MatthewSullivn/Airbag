@@ -41,11 +41,12 @@ export function Dashboard() {
   const { data: historyData } = useMarketHistory(historyTicker);
   const marketHistory = historyData && historyData.ticker === historyTicker ? historyData : null;
   useEffect(() => {
-    const onHash = () => setTab(tabFromHash());
+    const onHash = () => { setTab(tabFromHash()); scrollTo({ top: 0, behavior: "instant" }); };
     addEventListener("hashchange", onHash);
     return () => removeEventListener("hashchange", onHash);
   }, []);
   const go = (next: string) => {
+    if (next !== tab) scrollTo({ top: 0, behavior: "instant" });   // a new screen starts at its top
     setTab(next);
     history.replaceState(null, "", `${location.pathname}${location.search}${next === "loan" ? "" : `#${next}`}`);
   };
@@ -124,7 +125,18 @@ export function Dashboard() {
       </header>
 
       {status ? (
-        <main className={`grid gap-3 ${demo.open ? "pb-36" : "pb-14"}`}>
+        <main className="grid gap-3 pb-14">
+          <DemoDrawer
+            status={status}
+            open={demo.open}
+            onClose={() => demo.setOpen(false)}
+            onActs={(kind) => {
+              setFollow(false);
+              go("loan");
+              setPressed({ kind, at: Date.now(), line: status.reading?.line ?? null });
+              scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pb-1 text-[15px] text-ink-2">
             <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <span className="sm:hidden"><ModeBadge status={status} /></span>
@@ -165,7 +177,7 @@ export function Dashboard() {
             <>
               <h1 className="display max-w-[20ch] pb-4 pt-6 text-[clamp(2rem,4.6vw,3.2rem)] text-ink">The number comes from a real market.</h1>
               <LadderCard ladders={ladders} reading={reading} limit={status.limit} />
-              <OverTime history={marketHistory} spot={reading?.priceUsed ?? ladders?.spot ?? null} samples={samples} actions={actions} limit={status.limit} ofWallet={!!focus} />
+              <OverTime history={marketHistory} spot={reading?.priceUsed ?? ladders?.spot ?? null} samples={samples} actions={actions} limit={status.limit} ofWallet={!!focus} own={reading ? { line: reading.line, odds: reading.decision.odds } : null} />
               <HedgeCard ladders={ladders} reading={reading} lltv={status.lltv} />
             </>
           )}
@@ -176,7 +188,7 @@ export function Dashboard() {
               <p className="max-w-[60ch] pb-4 text-[16px] text-ink-2">
                 {status.mode === "live" ? "Every box is a contract on Arc Testnet." : "These are the live bot's contracts on Arc Testnet, and what it really paid. Only the demo loan on this page is simulated."}
               </p>
-              <MoneyMap status={status} />
+              <MoneyMap status={status} marketUrl={ladders?.events.find((e) => e.ticker === reading?.odds?.ticker)?.url ?? ladders?.events[0]?.url ?? null} />
               <div className="grid gap-3 lg:grid-cols-2">
                 <StreamList status={status} />
                 <Costs gas={gas} />
@@ -196,19 +208,7 @@ export function Dashboard() {
       )}
 
       <SiteFooter status={status} />
-      {status && (
-        <DemoDrawer
-          status={status}
-          open={demo.open}
-          onClose={() => demo.setOpen(false)}
-          onActs={(kind) => {
-            setFollow(false);
-            go("loan");
-            setPressed({ kind, at: Date.now(), line: status.reading?.line ?? null });
-            scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        />
-      )}
+
     </div>
   );
 }

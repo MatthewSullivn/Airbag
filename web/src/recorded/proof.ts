@@ -73,7 +73,7 @@ export const VISITOR_RUN = {
   limit: 0.05,
   start: { utc: "09:36:00", debt: 11.9, health: 1.4, line: 46_124, say: "Bitcoin is at $64,650. This loan loses its bitcoin below $46,124." },
   steps: [
-    { at: 8, utc: "09:36:08", who: "you", title: "The loan is pushed to the edge", detail: "Borrowed 3.83 USDC more. Bitcoin only had to fall 5.7% to reach the line.", tx: "0x2b3d6fb178c8f838e9ed1d300900f38cdf644d4c40c18f1870e6ca5ff8aab877", debt: 15.73, health: 1.06, line: 60_969, odds: 0.419, say: "The owner borrows $3.83 more. Airbag reads a 41.9% chance of losing the bitcoin. Its limit is 5%." },
+    { at: 8, utc: "09:36:08", who: "you", title: "The loan is pushed to the edge", detail: "Borrowed 3.83 USDC more, on purpose, to test Airbag. Bitcoin only had to fall $3,681 to reach the line.", tx: "0x2b3d6fb178c8f838e9ed1d300900f38cdf644d4c40c18f1870e6ca5ff8aab877", debt: 15.73, health: 1.06, line: 60_969, odds: 0.419, say: "A test: the owner borrows $3.83 more. Airbag reads a 41.9% chance of losing the bitcoin." },
     { at: 11, utc: "09:36:11", who: "bot", title: "Airbag saves it", detail: "Moved 2.39 USDC of the wallet's own savings into its loan, through the wallet's guard.", tx: "0xbc9bd6ca82f6d36e04976c9d66067c9c1b8e5616af92d6a7458da90663db46f2", debt: 13.34, health: 1.25, line: 51_705, gas: 0.0097, say: "Airbag moves $2.39 of the owner's savings into the loan. The fee: one cent." },
     { at: 37, utc: "09:36:37", who: "you", title: "The owner calms the loan", detail: "Repaid 2.22 USDC from the wallet.", tx: "0x17e8147929d440f40b875c953bc953e79848de29e7d4041a751082abed1fe1c5", debt: 11.12, health: 1.5, line: 43_100, say: "The owner pays $2.22 back." },
     { at: 41, utc: "09:36:41", who: "bot", title: "Airbag gives the savings back", detail: "Borrowed 1.70 USDC back into savings and stopped at health 1.30.", tx: "0xe2a3b40c9cb2f6c6e432838ddcf749b4e3e785df3a19fda2ba1102aa3ff6005a", debt: 12.82, health: 1.3, line: 49_690, gas: 0.0091, say: "Calm again, so Airbag moves $1.70 back to savings." },
@@ -103,17 +103,32 @@ export const STREAM_RUN = {
   ],
 } as const;
 
-/** The other recorded saves, as one-line facts with their links (README "Live proof"). */
-export const OTHER_SAVES = [
+/**
+ * The three recorded saves, newest first, as receipts (README "Live proof"): when, who, how long from the push
+ * landing to the save landing, what the save cost in gas, and the two transactions.
+ */
+export const SAVES = [
   {
-    when: "Nov 18, 2026 · 07:54:54 UTC",
-    what: "The hosted bot holds no wallet key. It read the odds at 33.9% and moved 3.67 USDC through AirbagGuard, 4 s after the push. Odds after: 0.4%. Gas: 0.0058 USDC.",
+    when: "Nov 18, 2026 · 09:36 UTC",
+    who: "A visitor's wallet, through its own guard",
+    secs: 3,
+    fee: 0.0097,
+    push: "0x2b3d6fb178c8f838e9ed1d300900f38cdf644d4c40c18f1870e6ca5ff8aab877",
+    save: "0xbc9bd6ca82f6d36e04976c9d66067c9c1b8e5616af92d6a7458da90663db46f2",
+  },
+  {
+    when: "Nov 18, 2026 · 07:54 UTC",
+    who: "The hosted bot, holding no wallet key",
+    secs: 4,
+    fee: 0.0058,
     push: "0xfb0f0bd3985f4668dfb4ffdc7b425424a12405ade8f772a9de416f55a9f51b67",
     save: "0xdf46b72ca61bea169fafb07a50f100c95cd98c4285c56d88e0f645f502165630",
   },
   {
-    when: "Nov 17, 2026 · 21:53:59 UTC",
-    what: "The first save. Odds went from 42% to 0.8% in 4 s: 0.78 USDC from savings into the loan. Two transactions, 0.0154 USDC of gas.",
+    when: "Nov 17, 2026 · 21:53 UTC",
+    who: "The first save, by the bot's own wallet",
+    secs: 4,
+    fee: 0.0154,
     push: "0xb82f1377894d3fdab3882e34057ab8465c7fad8323360baae170823458eef69e",
     save: "0x1b566cce68a7247928a296dba45b6b32ef78e210ba5ebeff863ebabe885c37dc",
   },

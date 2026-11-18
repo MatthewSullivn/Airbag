@@ -144,6 +144,15 @@
       scroll-behavior: auto;
     }
   }
+  /* ?still in the address: nothing moves (lib/chart-kit.tsx puts this class on <html>) */
+  .still,
+  .still *,
+  .still *::before,
+  .still *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer components {

@@ -1,59 +1,97 @@
 // The On-chain screen: how the money moves between the contracts (a picture, every box a link to Arc's explorer),
 // what a QuickNode Stream saw on Arc, and what a move costs.
-import { ArrowDown, ArrowLeftRight, ArrowUpDown, ArrowUpRight } from "lucide-react";
+import { useRef } from "react";
+import { ArrowDown, ArrowUpDown, ArrowUpRight } from "lucide-react";
 import type { GasPrices, Status } from "@/lib/api";
 import { ADDRESSES, EXPLORER, GAS, STREAM_RUN, TESTNET_GAS_PRICE_WEI } from "@/recorded/proof";
 import { clock } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Card, ExplorerLink, Panel } from "./bits";
+import { AnimatedBeam } from "./ui/animated-beam";
 
-function Box({ title, what, address, className }: { title: string; what: string; address: string; className?: string }) {
+function Box({ title, what, address, link, className, ref }: { title: string; what: string; address?: string; link?: { href: string; label: string } | null; className?: string; ref?: React.Ref<HTMLDivElement> }) {
   return (
-    <div className={cn("rounded-2xl border border-panel-line bg-panel-2 p-4 sm:p-5", className)}>
+    <div ref={ref} className={cn("relative z-10 rounded-2xl border border-panel-line bg-panel-2 p-4 sm:p-5", className)}>
       <p className="text-[1.15rem] font-semibold tracking-tight text-on-panel">{title}</p>
       <p className="mt-1 text-[14.5px] leading-snug text-on-panel-2">{what}</p>
-      <p className="mt-3 text-[14.5px] text-on-panel"><ExplorerLink explorer={EXPLORER} kind="address" id={address} /></p>
+      {address && <p className="mt-3 text-[14.5px] text-on-panel"><ExplorerLink explorer={EXPLORER} kind="address" id={address} /></p>}
+      {link && (
+        <p className="mt-3 text-[14.5px] text-on-panel">
+          <a href={link.href} target="_blank" rel="noopener" className="inline-flex items-center gap-0.5 underline decoration-current/30 underline-offset-[3px] hover:decoration-current">
+            {link.label}<ArrowUpRight aria-hidden="true" className="size-3.5 opacity-60" />
+          </a>
+        </p>
+      )}
     </div>
   );
 }
+// The gap between two boxes. The line of light runs through its middle, so the word sits above it.
 function Flow({ label }: { label: string }) {
+  return <div className="w-20 pb-8 text-center text-[13px] text-on-panel-faint lg:w-28">{label}</div>;
+}
+function Down({ label }: { label: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-1 px-1 text-[13px] text-on-panel-faint">
-      <ArrowLeftRight aria-hidden="true" className="size-5 text-on-panel-2" />
-      {label}
+    <div className="flex items-center justify-center gap-2 py-1 text-[13px] text-on-panel-faint">
+      <ArrowDown aria-hidden="true" className="size-5 text-on-panel-2" /> {label}
     </div>
   );
 }
+// one round every 8 seconds
+const BEAM = { pathColor: "#6b6a64", pathOpacity: 0.6, pathWidth: 2, gradientStartColor: "#ffd2b8", gradientStopColor: "#f0591f", duration: 1.1, repeatDelay: 6.9 } as const;
 
-/** Where the money sits and who may move it. The bot's key reaches the savings and the loan only through the guard. */
-export function MoneyMap({ status }: { status: Status | null }) {
+/**
+ * Who tells the bot, and where the money sits. Gemini's odds and QuickNode's wake-up call reach the bot. The bot's
+ * key can only press the guard. The guard moves the owner's dollars between the savings and the loan.
+ */
+export function MoneyMap({ status, marketUrl }: { status: Status | null; marketUrl?: string | null }) {
   const live = status?.mode === "live";
   const guard = (live && status?.custody?.guard) || ADDRESSES.guard;
   const botKey = (live && (status?.custody?.botKeyAddress ?? status?.protector?.botAddress)) || ADDRESSES.botKey;
-  const bot = <Box title="The bot's key" what="It can press two buttons on the guard: save, and give back. Nothing else." address={botKey} className="border-dashed bg-transparent" />;
-  const presses = (
-    <div className="flex items-center justify-center gap-2 py-1 text-[13px] text-on-panel-faint">
-      <ArrowDown aria-hidden="true" className="size-5 text-on-panel-2" /> presses
-    </div>
-  );
-  const savings = (c?: string) => <Box title="The savings" what="Circle's Earn Kit vault. The owner's dollars wait here, earning interest." address={ADDRESSES.vault} className={c} />;
-  const theGuard = (c?: string) => <Box title="The guard" what="AirbagGuard, our contract. Each wallet gets its own, and can switch it off." address={guard} className={cn("border-brand/60", c)} />;
-  const loan = (c?: string) => <Box title="The loan" what="Morpho Blue, through Circle's Borrow Kit. The bitcoin is locked here." address={ADDRESSES.morpho} className={c} />;
+  const map = useRef<HTMLDivElement>(null);
+  const geminiRef = useRef<HTMLDivElement>(null), streamRef = useRef<HTMLDivElement>(null), botRef = useRef<HTMLDivElement>(null);
+  const savingsRef = useRef<HTMLDivElement>(null), guardRef = useRef<HTMLDivElement>(null), loanRef = useRef<HTMLDivElement>(null);
+  type R = React.Ref<HTMLDivElement>;
+  const gemini = (c?: string, ref?: R) => <Box ref={ref} title="Gemini" what="Its prediction market gives the odds. The bot reads them every few seconds." link={marketUrl ? { href: marketUrl, label: "the market" } : null} className={c} />;
+  const stream = (c?: string, ref?: R) => <Box ref={ref} title="QuickNode" what="A Stream watches Arc and wakes the bot the moment the loan moves." className={c} />;
+  const bot = (c?: string, ref?: R) => <Box ref={ref} title="The bot's key" what="It can press two buttons on the guard: save, and give back. Nothing else." address={botKey} className={cn("border-dashed bg-panel", c)} />;
+  const savings = (c?: string, ref?: R) => <Box ref={ref} title="The savings" what="Circle's Earn Kit vault. The owner's dollars wait here, earning interest." address={ADDRESSES.vault} className={c} />;
+  const theGuard = (c?: string, ref?: R) => <Box ref={ref} title="The guard" what="AirbagGuard, our contract. Each wallet gets its own, and can switch it off." address={guard} className={cn("border-brand/60", c)} />;
+  const loan = (c?: string, ref?: R) => <Box ref={ref} title="The loan" what="Morpho Blue, through Circle's Borrow Kit. The bitcoin is locked here." address={ADDRESSES.morpho} className={c} />;
   return (
     <Panel aria-label="How the money moves on Arc">
-      {/* wide: the key above the guard, the guard between the savings and the loan */}
-      <div className="hidden gap-x-3 gap-y-1 md:grid md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-stretch">
-        <div className="col-start-3 row-start-1">{bot}{presses}</div>
-        {savings("col-start-1 row-start-2")}
-        <div className="col-start-2 row-start-2 self-center"><Flow label="USDC" /></div>
-        {theGuard("col-start-3 row-start-2")}
-        <div className="col-start-4 row-start-2 self-center"><Flow label="USDC" /></div>
-        {loan("col-start-5 row-start-2")}
+      {/* wide: Gemini and QuickNode either side of the key, the key above the guard, the guard between the savings
+          and the loan. Light travels along the wires: the two signals in, the key pressing down, then dollars from
+          the savings through the guard into the loan (a save), and later the way back (a give-back). */}
+      <div ref={map} className="relative hidden gap-x-0 md:grid md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-stretch">
+        {gemini("col-start-1 row-start-1", geminiRef)}
+        <div className="col-start-2 row-start-1 self-center"><Flow label="odds" /></div>
+        {bot("col-start-3 row-start-1", botRef)}
+        <div className="col-start-4 row-start-1 self-center"><Flow label="wake-up" /></div>
+        {stream("col-start-5 row-start-1", streamRef)}
+        <div className="relative col-start-3 row-start-2 h-10"><span className="absolute left-1/2 top-1/2 -translate-y-1/2 pl-4 text-[13px] text-on-panel-faint">presses</span></div>
+        {savings("col-start-1 row-start-3", savingsRef)}
+        <div className="col-start-2 row-start-3 self-center"><Flow label="USDC" /></div>
+        {theGuard("col-start-3 row-start-3", guardRef)}
+        <div className="col-start-4 row-start-3 self-center"><Flow label="USDC" /></div>
+        {loan("col-start-5 row-start-3", loanRef)}
+        <AnimatedBeam containerRef={map} fromRef={geminiRef} toRef={botRef} delay={0} {...BEAM} />
+        <AnimatedBeam containerRef={map} fromRef={streamRef} toRef={botRef} delay={0} {...BEAM} />
+        <AnimatedBeam containerRef={map} fromRef={botRef} toRef={guardRef} vertical delay={0.9} {...BEAM} />
+        <AnimatedBeam containerRef={map} fromRef={savingsRef} toRef={guardRef} delay={1.8} {...BEAM} />
+        <AnimatedBeam containerRef={map} fromRef={guardRef} toRef={loanRef} delay={2.7} {...BEAM} />
+        <AnimatedBeam containerRef={map} fromRef={botRef} toRef={guardRef} vertical delay={4.5} {...BEAM} pathOpacity={0} />
+        <AnimatedBeam containerRef={map} fromRef={guardRef} toRef={loanRef} reverse delay={5.4} {...BEAM} pathOpacity={0} />
+        <AnimatedBeam containerRef={map} fromRef={savingsRef} toRef={guardRef} reverse delay={6.3} {...BEAM} pathOpacity={0} />
       </div>
-      {/* phone: the same picture top to bottom. The key presses the guard, the guard moves dollars between the two. */}
+      {/* phone: the same picture top to bottom */}
       <div className="md:hidden">
-        {bot}
-        {presses}
+        <div className="grid grid-cols-2 gap-2">
+          {gemini()}
+          {stream()}
+        </div>
+        <Down label="tell the bot" />
+        {bot()}
+        <Down label="presses" />
         {theGuard()}
         <div className="flex items-center justify-center gap-2 py-1 text-[13px] text-on-panel-faint">
           <ArrowUpDown aria-hidden="true" className="size-5 text-on-panel-2" /> moves USDC between
