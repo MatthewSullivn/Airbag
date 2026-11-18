@@ -44,6 +44,7 @@ Needs Foundry (`curl -L https://foundry.paradigm.xyz | bash && foundryup`, or `n
 - ✅ `guard:deploy` and `guard:try` ran end to end on a local chain with the same chain id as Arc Testnet.
 - ✅ **Live on Arc Testnet (Nov 18, 2026)** at `0x895fa892dc4ff752ec9114760201f4751c106bf3`. The real Earn Kit vault (a Morpho Vault V2) accepts a contract withdrawing on the owner's behalf. The bot key ran `save(0.25)` and `giveBack(0.25)`, received nothing, and a stranger was refused. The links are in the main README's "Live proof".
 - ✅ **The bot can run through the guard.** With `USE_GUARD=true`, `src/arc.ts` sends `save()` and `giveBack()` signed by `GUARD_BOT_KEY` (tested live Nov 18, links in the main README). `PRIVATE_KEY` is then optional on the server.
-- ⏳ The bots we run have not been switched to guard mode yet.
+- ✅ **A hosted bot runs in guard mode with no wallet key** (https://airbag-live.onrender.com, Nov 18). It saved a pushed loan through the guard 4 s after the push.
+- ⏳ The first bot wallet still signs with its own key.
 
 Compiled with solc 0.8.28 for EVM `paris` (no newer opcodes, the safe choice for a young chain).

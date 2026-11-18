@@ -29,19 +29,19 @@ const show = async (tag: string) => {
 console.log(`guard ${guard}`);
 const before = await show("now");
 const capArg = process.argv[2];
-if (capArg == null) process.exit(0);
+if (capArg != null) {   // no argument = just show the limits
+  const cap = Number(capArg);
+  const floor = process.argv[3] != null ? Number(process.argv[3]) : Number(formatUnits(before.floor, 18));
+  if (!(cap > 0) || !(floor >= 1)) throw new Error("usage: npm run guard:limits -- <cap in USDC> [health floor, 1 or more]");
+  if (!/^0x[0-9a-fA-F]{64}$/.test(config.privateKey)) throw new Error("PRIVATE_KEY (the guard's owner) is needed to change the limits");
+  const owner = privateKeyToAccount(config.privateKey as Hex);
+  const onChainOwner = await pub.readContract({ address: guard, abi, functionName: "owner" });
+  if (onChainOwner.toLowerCase() !== owner.address.toLowerCase()) throw new Error(`PRIVATE_KEY is not this guard's owner (its owner is ${onChainOwner})`);
 
-const cap = Number(capArg);
-const floor = process.argv[3] != null ? Number(process.argv[3]) : Number(formatUnits(before.floor, 18));
-if (!(cap > 0) || !(floor >= 1)) throw new Error("usage: npm run guard:limits -- <cap in USDC> [health floor, 1 or more]");
-if (!/^0x[0-9a-fA-F]{64}$/.test(config.privateKey)) throw new Error("PRIVATE_KEY (the guard's owner) is needed to change the limits");
-const owner = privateKeyToAccount(config.privateKey as Hex);
-const onChainOwner = await pub.readContract({ address: guard, abi, functionName: "owner" });
-if (onChainOwner.toLowerCase() !== owner.address.toLowerCase()) throw new Error(`PRIVATE_KEY is not this guard's owner (its owner is ${onChainOwner})`);
-
-const wallet = createWalletClient({ account: owner, chain: arcTestnet, transport: http(config.rpcUrl) });
-const hash = await wallet.writeContract({ address: guard, abi, functionName: "setLimits", args: [parseUnits(String(cap), 6), parseUnits(String(floor), 18)] });
-const receipt = await pub.waitForTransactionReceipt({ hash });
-if (receipt.status !== "success") throw new Error(`setLimits failed: ${config.explorer}/tx/${hash}`);
-console.log(`changed: ${config.explorer}/tx/${hash}`);
-await show("after");
+  const wallet = createWalletClient({ account: owner, chain: arcTestnet, transport: http(config.rpcUrl) });
+  const hash = await wallet.writeContract({ address: guard, abi, functionName: "setLimits", args: [parseUnits(String(cap), 6), parseUnits(String(floor), 18)] });
+  const receipt = await pub.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error(`setLimits failed: ${config.explorer}/tx/${hash}`);
+  console.log(`changed: ${config.explorer}/tx/${hash}`);
+  await show("after");
+}

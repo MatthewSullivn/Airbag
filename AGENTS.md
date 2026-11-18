@@ -178,7 +178,8 @@ Read these before touching `src/arc.ts`.
 - [x] **Deploy the public demo on Render** (`docs/HOSTING.md`). Live since Nov 17, 2026 at https://airbag-demo.onrender.com (Ahmad's Render account). The link is in `docs/SUBMISSION.md` and the README.
 - [x] **Run AirbagGuard live on Arc Testnet.** Done Nov 18, 2026 on a second test wallet: guard `0x895fa892dc4ff752ec9114760201f4751c106bf3`, links in README "Live proof".
 - [x] **`src/arc.ts` can call the guard.** `USE_GUARD=true` sends saves and give-backs through it with `GUARD_BOT_KEY`. Tested live Nov 18, 2026.
-- [ ] **Switch the running bots to guard mode.** Where a bot runs, set `USE_GUARD=true`, `GUARD_ADDRESS` and `GUARD_BOT_KEY`, and remove `PRIVATE_KEY`. Push and Reset then come from the owner's machine (`npm run demo:push`, `npm run demo:reset`).
+- [x] **A hosted live bot in guard mode.** https://airbag-live.onrender.com runs `npm start` with `USE_GUARD=true` on a second test wallet (`0x3886…aC2e`) and holds no wallet key. Its Push and Reset come from the owner's machine (`npm run demo:push`, `npm run demo:reset`). Never start a second bot on that wallet.
+- [ ] **Switch the first bot wallet to guard mode too.** Deploy a guard for it (`npm run guard:deploy`), then where it runs set `USE_GUARD=true`, `GUARD_ADDRESS` and `GUARD_BOT_KEY`, and remove `PRIVATE_KEY`.
 - [ ] **Optional:**
   - a Swap Kit fallback when savings run out
   - longer odds history on the chart
