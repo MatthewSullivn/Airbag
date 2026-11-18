@@ -13,6 +13,7 @@ import { Store, type StreamEvent } from "./state.js";
 import { Bot } from "./bot.js";
 import { RULE } from "./brain.mjs";
 import { describeReceipt, isTxHash } from "./stream-verify.mjs";
+import { makeRateLimiter, publicAllows, publicDemoOn } from "./public-demo.mjs";
 import { createPublicClient, http } from "viem";
 import { arcTestnet } from "viem/chains";
 
@@ -45,6 +46,20 @@ function auth(req: Request, res: Response, next: NextFunction) {
   res.status(401).json({ error: config.webhookSecret ? "missing or wrong key" : "set WEBHOOK_SECRET to accept requests from outside this machine" });
 }
 
+// ---- public demo (hosted simulator only): anyone may press the demo buttons, under one shared rate limit.
+// publicDemoOn() is false in live mode whatever PUBLIC_DEMO says, so the live bot always needs the key.
+const publicDemo = publicDemoOn(config.mode, config.publicDemoFlag);
+const publicHit = makeRateLimiter(30, 60_000);
+const demoAuth = (action: string) => (req: Request, res: Response, next: NextFunction) => {
+  if (!publicDemo) return auth(req, res, next);
+  const given = String(req.get("x-airbag-key") ?? req.query.key ?? "");
+  if (config.webhookSecret && given && safeEq(given, config.webhookSecret)) return next();   // the team keeps every control
+  if (!publicAllows(action)) return res.status(403).json({ error: "not available in the public demo" });
+  if (!publicHit()) return res.status(429).json({ error: "lots of people are trying it right now, give it a few seconds" });
+  next();
+};
+if (publicDemo) console.log("Public demo is ON: anyone can press Push / Reset / Limit on this simulator.");
+
 // ---- status for the dashboard (polled every 1-2 s). No secrets in here.
 app.get("/api/status", (_req, res) => {
   const r = bot.last;
@@ -52,6 +67,7 @@ app.get("/api/status", (_req, res) => {
   res.json({
     now: Date.now(),
     mode: config.mode,
+    publicDemo,
     dryRun: config.dryRun,
     paused: bot.paused,
     explorer: config.mode === "live" ? config.explorer : null,
@@ -170,14 +186,14 @@ const demo = (fn: () => Promise<string>) => async (_req: Request, res: Response)
     res.status(400).json({ ok: false, error: (e as Error).message });
   }
 };
-app.post("/api/demo/push", auth, demo(() => bot.demoPush()));
-app.post("/api/demo/reset", auth, demo(() => bot.demoReset()));
-app.post("/api/demo/pause", auth, (req, res) => {
+app.post("/api/demo/push", demoAuth("push"), demo(() => bot.demoPush()));
+app.post("/api/demo/reset", demoAuth("reset"), demo(() => bot.demoReset()));
+app.post("/api/demo/pause", demoAuth("pause"), (req, res) => {
   const p = req.body?.paused;
   bot.setPaused(typeof p === "boolean" ? p : !bot.paused);
   res.json({ ok: true, paused: bot.paused });
 });
-app.post("/api/demo/limit", auth, (req, res) => {
+app.post("/api/demo/limit", demoAuth("limit"), (req, res) => {
   try {
     bot.setLimit(Number(req.body?.limit));
     res.json({ ok: true, limit: bot.limit });
@@ -185,7 +201,7 @@ app.post("/api/demo/limit", auth, (req, res) => {
     res.status(400).json({ ok: false, error: (e as Error).message });
   }
 });
-app.post("/api/demo/check-key", auth, (_req, res) => res.json({ ok: true }));
+app.post("/api/demo/check-key", demoAuth("check-key"), (_req, res) => res.json({ ok: true }));
 
 const server = app.listen(config.port, () => {
   console.log(`Airbag dashboard: http://localhost:${config.port}  (mode: ${config.mode})`);

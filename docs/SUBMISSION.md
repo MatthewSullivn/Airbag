@@ -13,7 +13,7 @@ Submit at `ubc-hackathon-2026.devpost.com` before **Friday Nov 20, 12:00 PM CST*
 | Chain award | Best use of Arc |
 | Bounties (opt in to each) | Gemini Prediction Markets; QuickNode Streams |
 | GitHub | https://github.com/MatthewSullivn/ubc |
-| Demo | *(live link from `npm run tunnel` on demo day; it only works while the laptop runs, so the video is the backup)* |
+| Demo | *(the Render link from `docs/HOSTING.md`: always on, simulated loan with live Gemini odds, judges can press "Push it to the edge" themselves. The live bot's tunnel link only works while the laptop runs.)* |
 | Video (2–3 min) | *(YouTube or Google Drive link; open it in a private window to check judges can view it)* |
 
 ## What did you build?
@@ -58,7 +58,7 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 
 ## What would you build next?
 
-- **Non-custodial.** Circle Wallets, or a small contract that can only repay its owner's own loan. Today the server holds a testnet key.
+- **Non-custodial.** We wrote `AirbagGuard` (`contracts/`): the bot's own key can only move the owner's savings into the owner's own loan and back, with a daily cap and a health floor on-chain. *(Update this line once it has run live on Arc.)* Next is wiring the bot to it, or Circle Wallets.
 - **Mainnet**, with a real price feed (Arc Testnet's lending oracle is fixed at $75,000).
 - **When savings run out:** sell a small slice of collateral with Swap Kit.
 - **Alerts** on Telegram/X or by voice, and many loans per user.

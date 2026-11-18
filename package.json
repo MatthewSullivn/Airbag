@@ -37,6 +37,10 @@
     "odds": "node scripts/odds.mjs",
     "replay": "node replay/fetch-candles.mjs && node replay/replay.mjs",
     "replay:run": "node replay/replay.mjs",
-    "tunnel": "tsx --env-file-if-exists=.env scripts/tunnel.ts"
+    "tunnel": "tsx --env-file-if-exists=.env scripts/tunnel.ts",
+    "guard:build": "cd contracts && forge build",
+    "guard:test": "cd contracts && forge test",
+    "guard:deploy": "tsx --env-file=.env scripts/guard-deploy.ts",
+    "guard:try": "tsx --env-file=.env scripts/guard-try.ts"
   }
 }

@@ -41,6 +41,8 @@ export const config = {
   port: num("PORT", 3000),
   publicUrl: str("PUBLIC_URL").replace(/\/+$/, ""),
   webhookSecret: str("WEBHOOK_SECRET"),
+  /** Hosted simulator only: anyone can press Push / Reset / Limit without the key. Ignored in live mode (see src/public-demo.mjs). */
+  publicDemoFlag: str("PUBLIC_DEMO"),
 
   /** Demo buttons: "push it to the edge" borrows until this health (on the real BTC price), capped by Borrow Kit's max. */
   pushHealth: num("PUSH_HEALTH", 1.06),

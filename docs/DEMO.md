@@ -60,6 +60,6 @@ Use these numbers, not the early drafts. Two answers in our first plan did not s
   - It stops and says so.
   - At 60% borrowed in the replay, the savings were fully used at the worst point and the loan still survived.
   - Next step: sell a slice of collateral with Swap Kit.
-- **"Who holds the keys?"** In the demo, our server holds a testnet-only key. A real version would use Circle Wallets, or a contract that can only repay its owner's own loan.
+- **"Who holds the keys?"** In the demo, our server holds a testnet-only key. We also wrote `AirbagGuard`: a contract where the bot's own key can only move the owner's savings into the owner's own loan and back, with a daily cap and a health floor on-chain, and the owner can pause it or cut it off. *(Say "it runs on Arc Testnet" only once `guard:try` has run there.)*
 - **"What if the bot is offline?"** Then nothing is protected. The webhook and the Stream wake it faster, but production needs always-on hosting.
 - **"Does it make money?"** No. It keeps your bitcoin. If bitcoin keeps falling after a save, being liquidated would have left more cash.

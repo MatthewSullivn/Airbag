@@ -1,0 +1,25 @@
+# Render blueprint: the always-on public demo. It runs the SIMULATOR (no wallet, no keys, no real
+# transactions) with live Gemini odds, and lets visitors press the demo buttons (PUBLIC_DEMO).
+# The live bot never runs here. Setup steps: docs/HOSTING.md
+services:
+  - type: web
+    name: airbag-demo
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run sim
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PUBLIC_DEMO
+        value: "true"
+      - key: GEMINI_TICKERS
+        value: BTC2611302200,BTC2611202200
+      # Many visitors push and reset the same simulated loan, so the daily cap is raised (it is simulated money).
+      - key: DAILY_CAP_USDC
+        value: "1000"
+      # A random key so the team still has Pause from the hosted page. Read it in Render's Environment tab.
+      - key: WEBHOOK_SECRET
+        generateValue: true

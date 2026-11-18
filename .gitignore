@@ -22,3 +22,7 @@ Thumbs.db
 
 # downloaded tools (cloudflared)
 tools/
+
+# Foundry build output (contracts/)
+contracts/out/
+contracts/cache/

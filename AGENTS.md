@@ -34,7 +34,8 @@ npm run sim                     # http://localhost:3000, simulated loan + live G
 3. **One live bot per wallet.** Two `npm start` processes on the same wallet would both repay. Use `npm run sim` for UI work, and `DRY_RUN=true` to try rule changes against the live loan.
 4. **Don't document what wasn't tested.** When you verify something live, add it to README "Live proof" / "What is verified" with explorer links.
 5. **Leave `src/brain.test.mjs` unchanged** (it's the original spec). Add new checks in `test/`.
-6. **If you change the rule** (`RULE` thresholds or the odds math), run `npm run replay:run` and update the replay table in README §7.
+6. **`PUBLIC_DEMO` must never open the live bot.** `publicDemoOn()` checks the mode; `test/public-demo.test.mjs` covers it. Keep both.
+7. **If you change the rule** (`RULE` thresholds or the odds math), run `npm run replay:run` and update the replay table in README §7.
 
 ## How it works
 
@@ -73,6 +74,9 @@ demo buttons ───────┘        │        │         └─ Circl
 | `scripts/` | Wallet, open loan, round trip, deposit, odds, webhook, tunnel. |
 | `replay/` | The Feb 2026 crash replay, using the same `decide()`. |
 | `stream/filter.js` | The QuickNode Streams filter (paste into QuickNode as is). |
+| `src/public-demo.mjs` | When the demo buttons are open to everyone: hosted simulator with `PUBLIC_DEMO=true` only, never live. |
+| `render.yaml`, `docs/HOSTING.md` | The always-on public demo (the simulator on Render). |
+| `contracts/` | `AirbagGuard`: a contract so the bot key can only move the owner's savings into the owner's own loan and back. Foundry. See `contracts/README.md`. |
 | `test/` | Brain checks on saved real Gemini ladders (`test/fixtures/`) and filter tests. |
 
 ## Commands
@@ -88,6 +92,8 @@ npm run savings:deposit -- 5
 npm run replay              # re-fetch prices and re-run the crash replay
 npm run wallet:new          # a fresh wallet into .env (only for a new setup)
 npm run loan:open           # one loan per wallet per market
+npm run guard:test          # AirbagGuard's Foundry tests (needs Foundry)
+npm run guard:deploy        # deploy AirbagGuard (run guard:build first); see contracts/README.md
 ```
 
 **Demo controls.** Press **d** on the dashboard and enter `WEBHOOK_SECRET`.
@@ -165,10 +171,10 @@ Read these before touching `src/arc.ts`.
   - Resume the Stream if QuickNode paused it after failed deliveries.
   - Pause it when nobody is testing, since it bills per block.
 - [ ] **Keep the bot wallet funded:** USDC for gas, at least 2 USDC in savings, more cirBTC for a bigger loan.
+- [ ] **Deploy the public demo on Render** (`docs/HOSTING.md`, about 5 minutes) and put the link in `docs/SUBMISSION.md`.
+- [ ] **Run AirbagGuard live on Arc Testnet** (`npm run guard:deploy`, then `npm run guard:try -- 0.25`) with your own wallet and loan, and add the links to README "Live proof". Then switch `src/arc.ts` to call the guard.
 - [ ] **Optional:**
-  - always-on hosting instead of the laptop tunnel
   - a Swap Kit fallback when savings run out
-  - Circle Wallets instead of a server-held key
   - longer odds history on the chart
 
 ## Troubleshooting

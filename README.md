@@ -253,7 +253,7 @@ Needs Node 22+.
 
 ```bash
 npm install
-npm test                      # 19 checks: the brain, the odds model, the demo cycle, the QuickNode filter
+npm test                      # the brain, the odds model, the demo cycle, the QuickNode filter, the public-demo gate
 npm run sim                   # dashboard at http://localhost:3000 with a simulated Arc loan and live Gemini odds
 ```
 
@@ -299,6 +299,10 @@ POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no se
 
 All settings are in [`.env.example`](.env.example).
 
+**Public demo (anyone can press the buttons).** `PUBLIC_DEMO=true npm run sim` shows a *Try the demo* button and lets visitors push the simulated loan to the edge without a key (Pause stays key-only, one shared rate limit). It is ignored in live mode. Hosting it: [`docs/HOSTING.md`](docs/HOSTING.md).
+
+**AirbagGuard** (`contracts/`): a contract that lets the bot's key move the owner's savings into the owner's own loan and back, and nothing else, with a daily cap and a health floor on-chain. See [`contracts/README.md`](contracts/README.md).
+
 Working on the code (or pointing an AI agent at it)? Read [`AGENTS.md`](AGENTS.md) first. The submission draft and demo playbook are in [`docs/`](docs).
 
 ## Live proof
@@ -330,4 +334,5 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | Public link (Cloudflare quick tunnel) with key-protected POST routes | ✅ live; requests without the key, or faking localhost, get 401 |
 | Borrow Kit webhook | ✅ registered for our loan. Circle's Borrow Service called it through the tunnel and woke the bot (log: "Woke up: Borrow Kit webhook"). |
 | QuickNode Stream deliveries | ✅ The `airbag-arc-testnet` Stream delivered our live round trip (4 transactions, blocks 72754872–72754893); each delivery was verified on-chain and woke the bot. |
-| Server that stays on without a laptop | ⏳ not chosen; the demo runs on a laptop with a tunnel |
+| Server that stays on without a laptop | ⏳ The simulator is ready to host on Render (`render.yaml`, `docs/HOSTING.md`), with demo buttons anyone can press. Tested locally; not deployed yet. The live bot still runs on a laptop with a tunnel. |
+| AirbagGuard contract (the bot key can only move the owner's savings into the owner's own loan and back) | ⏳ 16 Foundry tests pass (incl. fuzz), and the deploy + try scripts ran on a local chain. Not yet run on Arc Testnet. See [`contracts/README.md`](contracts/README.md). |

@@ -56,6 +56,7 @@ async function poll() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     S = await res.json();
     render();
+    setupPublicDemo();
   } catch (e) {
     $("bot-badge").className = "badge bad";
     $("bot-text").textContent = `server unreachable (${e.message})`;
@@ -504,7 +505,7 @@ async function unlock() {
     try { sessionStorage.setItem("airbag-demo-key", demoKey); } catch { /* ignore */ }
     $("demo-actions").hidden = false;
     $("demo-key-form").hidden = true;
-    out("Unlocked.");
+    out(S?.publicDemo && !demoKey ? "" : "Unlocked.");
     syncDemoButtons();
   } catch (e) {
     $("demo-actions").hidden = true;
@@ -515,6 +516,21 @@ async function unlock() {
 function toggleDemo(force) {
   demo.hidden = force != null ? !force : !demo.hidden;
   if (!demo.hidden) { $("demo-key").value = demoKey; unlock(); }
+}
+// Hosted simulator with PUBLIC_DEMO=true: no key needed, so show a "Try the demo" button,
+// open the panel once on first visit, and hide the key box and Pause (the server refuses Pause anyway).
+let publicSetUp = false;
+function setupPublicDemo() {
+  if (publicSetUp || !S?.publicDemo) return;
+  publicSetUp = true;
+  $("demo-intro").hidden = false;
+  $("btn-pause").hidden = true;
+  $("demo-open").hidden = false;
+  $("foot-demo").hidden = true;
+  $("demo-open").addEventListener("click", () => toggleDemo(true));
+  let seen = false;
+  try { seen = sessionStorage.getItem("airbag-demo-seen") === "1"; sessionStorage.setItem("airbag-demo-seen", "1"); } catch { /* ignore */ }
+  if (!seen) toggleDemo(true);
 }
 function syncDemoButtons() {
   if (!S || demo.hidden) return;

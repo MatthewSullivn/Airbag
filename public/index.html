@@ -130,6 +130,7 @@
       <h2 id="demo-title">Demo controls</h2>
       <button type="button" class="ghost" id="demo-close" aria-label="Close demo controls">✕</button>
     </div>
+    <p class="demo-intro" id="demo-intro" hidden>This is a simulated loan with live odds from Gemini. Press <strong>Push it to the edge</strong>, then keep your hands off and watch the bot save it.</p>
     <form id="demo-key-form" class="row">
       <label class="visually-hidden" for="demo-key">Demo key</label>
       <input id="demo-key" type="password" autocomplete="off" placeholder="demo key (WEBHOOK_SECRET)">
@@ -151,7 +152,8 @@
 
   <footer class="foot">
     <span id="foot-wallet"></span>
-    <span>Press <kbd>d</kbd> for demo controls.</span>
+    <span id="foot-demo">Press <kbd>d</kbd> for demo controls.</span>
+    <button type="button" id="demo-open" class="try" hidden>Try the demo</button>
   </footer>
 
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
