@@ -13,7 +13,7 @@ Submit at `ubc-hackathon-2026.devpost.com` before **Friday Nov 20, 12:00 PM CST*
 | Chain award | Best use of Arc |
 | Bounties (opt in to each) | Gemini Prediction Markets; QuickNode Streams |
 | GitHub | https://github.com/MatthewSullivn/ubc |
-| Demo | *(the Render link from `docs/HOSTING.md`: always on, simulated loan with live Gemini odds, judges can press "Push it to the edge" themselves. The live bot's tunnel link only works while the laptop runs.)* |
+| Demo | https://airbag-demo-re8f.onrender.com (always on, simulated loan with live Gemini odds, judges can press "Push it to the edge" themselves. It sleeps when nobody visits, so the first load can take about a minute. The live bot's tunnel link only works while the laptop runs.) |
 | Video (2–3 min) | *(YouTube or Google Drive link; open it in a private window to check judges can view it)* |
 
 ## What did you build?
