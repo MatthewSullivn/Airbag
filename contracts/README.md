@@ -28,6 +28,10 @@ npm run guard:test             # 16 Foundry tests, incl. 512 fuzz runs
 npm run guard:build            # needed before deploy/try (writes contracts/out/)
 npm run guard:deploy           # deploy on Arc Testnet + the two owner signatures + 1 USDC gas to a new bot key
 npm run guard:try -- 0.25      # the BOT key runs save(0.25) and giveBack(0.25), and a stranger is refused
+npm run guard:limits           # show the cap and health floor; `-- 200` sets the cap to 200 USDC a day (owner only)
+USE_GUARD=true npm start       # run the bot through the guard (or set USE_GUARD=true in .env)
+npm run demo:push              # owner's machine: make the loan risky when the server holds no wallet key
+npm run demo:reset             # owner's machine: calm it down again
 ```
 
 Needs Foundry (`curl -L https://foundry.paradigm.xyz | bash && foundryup`, or `npm i -g @foundry-rs/forge`). On Windows the npm package's setup script fails under cmd, so point npm at Git Bash: `npm i --no-save --script-shell "C:\Program Files\Git\usr\bin\bash.exe" @foundry-rs/forge`.
@@ -39,6 +43,7 @@ Needs Foundry (`curl -L https://foundry.paradigm.xyz | bash && foundryup`, or `n
 - ✅ 16 Foundry tests pass against mocks of Morpho Blue, the vault and USDC (`test/`).
 - ✅ `guard:deploy` and `guard:try` ran end to end on a local chain with the same chain id as Arc Testnet.
 - ✅ **Live on Arc Testnet (Nov 18, 2026)** at `0x895fa892dc4ff752ec9114760201f4751c106bf3`. The real Earn Kit vault (a Morpho Vault V2) accepts a contract withdrawing on the owner's behalf. The bot key ran `save(0.25)` and `giveBack(0.25)`, received nothing, and a stranger was refused. The links are in the main README's "Live proof".
-- ⏳ The bot (`src/arc.ts`) still moves money through Circle's kits with the owner key. Switching it to call the guard is the next step once the live run works.
+- ✅ **The bot can run through the guard.** With `USE_GUARD=true`, `src/arc.ts` sends `save()` and `giveBack()` signed by `GUARD_BOT_KEY` (tested live Nov 18, links in the main README). `PRIVATE_KEY` is then optional on the server.
+- ⏳ The bots we run have not been switched to guard mode yet.
 
 Compiled with solc 0.8.28 for EVM `paris` (no newer opcodes, the safe choice for a young chain).

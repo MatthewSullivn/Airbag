@@ -115,6 +115,10 @@ function render() {
     fw.append("Bot wallet ", el("a", { href: `${s.explorer}/address/${s.wallet.address}`, target: "_blank", rel: "noopener", text: `${s.wallet.address.slice(0, 6)}…${s.wallet.address.slice(-4)}` }),
       s.wallet.usdc != null ? ` · ${usdc(s.wallet.usdc)} in the wallet for gas and demos` : "");
   else fw.textContent = s.mode === "sim" ? "Simulated wallet (no real transactions)." : "";
+  // who signs: with AirbagGuard the bot holds its own key, which can only move this wallet's savings into its own loan and back
+  if (s.explorer && s.custody?.mode === "guard" && s.custody.guard)
+    fw.append(" · The bot signs through ", el("a", { href: `${s.explorer}/address/${s.custody.guard}`, target: "_blank", rel: "noopener", text: "AirbagGuard" }),
+      s.custody.ownerKeyOnServer ? ", with its own key." : ", with its own key. This server does not hold the wallet's key.");
   syncDemoButtons();
 }
 

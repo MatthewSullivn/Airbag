@@ -26,6 +26,8 @@ const bot = new Bot(arc, gemini, store, config);
 
 await arc.init();
 store.log("info", `Airbag started (${config.mode}${config.dryRun ? ", dry run" : ""}). Wallet ${arc.address}. Market ${arc.marketId}. Savings vault ${arc.vault?.name ?? "none"}. Loan ${arc.loanId ?? "not opened yet"}.`);
+if (arc.custody?.mode === "guard")
+  store.log("info", `Signing through AirbagGuard ${arc.custody.guard} with bot key ${arc.custody.botKeyAddress} (on-chain cap ${arc.custody.guardDailyCapUsdc} USDC a day). ${arc.custody.ownerKeyOnServer ? "The wallet's own key is also here, for the demo buttons." : "The wallet's own key is not on this server."}`);
 
 const app = express();
 app.disable("x-powered-by");
@@ -72,6 +74,7 @@ app.get("/api/status", (_req, res) => {
     paused: bot.paused,
     explorer: config.mode === "live" ? config.explorer : null,
     wallet: { address: arc.address, ...(r?.wallet ?? {}) },
+    custody: arc.custody,
     marketId: arc.marketId,
     lltv: arc.lltv,
     limit: bot.limit,

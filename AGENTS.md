@@ -28,7 +28,7 @@ npm run sim                     # http://localhost:3000, simulated loan + live G
 
 1. **Testnet only.** The bot wallet is a testnet-only key. Never put a key that holds real funds in `.env`.
 2. **Never commit or print secrets.**
-   - `.env` (`PRIVATE_KEY`, `WEBHOOK_SECRET`), `data/` (runtime state) and `tools/` are git-ignored. Keep them that way.
+   - `.env` (`PRIVATE_KEY`, `GUARD_BOT_KEY`, `WEBHOOK_SECRET`), `data/` (runtime state) and `tools/` are git-ignored. Keep them that way.
    - Agents: don't echo `.env` values into chat, logs, commits or docs.
    - Share the team key privately, if at all.
 3. **One live bot per wallet.** Two `npm start` processes on the same wallet would both repay. Use `npm run sim` for UI work, and `DRY_RUN=true` to try rule changes against the live loan.
@@ -75,6 +75,7 @@ demo buttons ───────┘        │        │         └─ Circl
 | `replay/` | The Feb 2026 crash replay, using the same `decide()`. |
 | `stream/filter.js` | The QuickNode Streams filter (paste into QuickNode as is). |
 | `src/public-demo.mjs` | When the demo buttons are open to everyone: hosted simulator with `PUBLIC_DEMO=true` only, never live. |
+| `src/guard-plan.mjs` | Guard mode's pure checks: which key setups may run, and clamping a move to the guard's on-chain cap. `LiveArc` uses them when `USE_GUARD=true`. |
 | `render.yaml`, `docs/HOSTING.md` | The always-on public demo (the simulator on Render). |
 | `contracts/` | `AirbagGuard`: a contract so the bot key can only move the owner's savings into the owner's own loan and back. Foundry. See `contracts/README.md`. |
 | `test/` | Brain checks on saved real Gemini ladders (`test/fixtures/`) and filter tests. |
@@ -94,6 +95,9 @@ npm run wallet:new          # a fresh wallet into .env (only for a new setup)
 npm run loan:open           # one loan per wallet per market
 npm run guard:test          # AirbagGuard's Foundry tests (needs Foundry)
 npm run guard:deploy        # deploy AirbagGuard (run guard:build first); see contracts/README.md
+npm run guard:limits        # show the guard's cap and health floor; -- 200 sets the cap (owner only)
+npm run demo:push           # owner's machine: push the loan to the edge when the server holds no wallet key
+npm run demo:reset          # owner's machine: repay from the wallet back to a calm loan
 ```
 
 **Demo controls.** Press **d** on the dashboard and enter `WEBHOOK_SECRET`.
@@ -173,7 +177,8 @@ Read these before touching `src/arc.ts`.
 - [ ] **Keep the bot wallet funded:** USDC for gas, at least 2 USDC in savings, more cirBTC for a bigger loan.
 - [x] **Deploy the public demo on Render** (`docs/HOSTING.md`). Live since Nov 17, 2026 at https://airbag-demo.onrender.com (Ahmad's Render account). The link is in `docs/SUBMISSION.md` and the README.
 - [x] **Run AirbagGuard live on Arc Testnet.** Done Nov 18, 2026 on a second test wallet: guard `0x895fa892dc4ff752ec9114760201f4751c106bf3`, links in README "Live proof".
-- [ ] **Switch `src/arc.ts` to call the guard**, so the server holds the guard's bot key instead of the owner's key.
+- [x] **`src/arc.ts` can call the guard.** `USE_GUARD=true` sends saves and give-backs through it with `GUARD_BOT_KEY`. Tested live Nov 18, 2026.
+- [ ] **Switch the running bots to guard mode.** Where a bot runs, set `USE_GUARD=true`, `GUARD_ADDRESS` and `GUARD_BOT_KEY`, and remove `PRIVATE_KEY`. Push and Reset then come from the owner's machine (`npm run demo:push`, `npm run demo:reset`).
 - [ ] **Optional:**
   - a Swap Kit fallback when savings run out
   - longer odds history on the chart

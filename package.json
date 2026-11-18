@@ -41,6 +41,9 @@
     "guard:build": "cd contracts && forge build",
     "guard:test": "cd contracts && forge test",
     "guard:deploy": "tsx --env-file=.env scripts/guard-deploy.ts",
-    "guard:try": "tsx --env-file=.env scripts/guard-try.ts"
+    "guard:try": "tsx --env-file=.env scripts/guard-try.ts",
+    "guard:limits": "tsx --env-file=.env scripts/guard-limits.ts",
+    "demo:push": "tsx --env-file=.env scripts/demo-push.ts",
+    "demo:reset": "tsx --env-file=.env scripts/demo-push.ts --reset"
   }
 }

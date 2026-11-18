@@ -17,6 +17,10 @@ export const config = {
   mode: (simFlag ? "sim" : "live") as "live" | "sim",
   privateKey: str("PRIVATE_KEY"),
   botAddress: str("BOT_ADDRESS"),
+  /** AirbagGuard (contracts/). true = saves and give-backs go through the guard, signed by GUARD_BOT_KEY, and PRIVATE_KEY becomes optional. */
+  useGuard: str("USE_GUARD") === "true",
+  guardAddress: str("GUARD_ADDRESS"),
+  guardBotKey: str("GUARD_BOT_KEY"),
 
   limit: num("USER_LIMIT", 0.05),
   dailyCapUsdc: num("DAILY_CAP_USDC", 25),

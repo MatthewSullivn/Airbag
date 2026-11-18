@@ -132,7 +132,7 @@ Borrow Kit lends at most up to health ≈ 1.236 at the $75k price (about 70% LTV
   - Arc gas is paid in USDC. Measured on our live run: a save (withdraw + repay) cost 0.0154 USDC; a give-back (borrow + deposit) cost 0.0162 USDC.
   - Borrow Kit charges no fee on repay or borrow-more. Fees only apply when a loan is first opened; ours showed `fees: []`.
   - Moving money into the loan gives up the vault yield on that money while it is there.
-- **Who holds the keys.** In this demo, the server holds a testnet-only private key in `.env`. A real version would use Circle Wallets, or a small contract that can only repay its owner's own loan.
+- **Who holds the keys.** By default the server holds the wallet's testnet-only private key in `.env`. With `USE_GUARD=true` it holds only a separate bot key instead. Through the `AirbagGuard` contract that key can move the owner's savings into the owner's own loan and back, and nothing else, so the server no longer needs the wallet's key (see AirbagGuard under "Run it").
 
 ## 5. Risk assumptions (read this)
 
@@ -140,7 +140,7 @@ Borrow Kit lends at most up to health ≈ 1.236 at the $75k price (about 70% LTV
 - **Rough corrections.** The odds are doubled as a rough "dips under at any time" fix. Below Gemini's lowest bet they are a model estimate (labelled on screen), not a market price.
 - **The bot must be online.** If it is down, nothing is protected. The Borrow Kit webhook and the QuickNode Stream wake it faster, but neither replaces it.
 - **Testnet price.** The testnet lending market uses a fixed cirBTC price, so the testnet loan cannot actually be liquidated by bitcoin moving. Airbag acts on the live price (section 3).
-- **Demo custody.** The server holds the key.
+- **Demo custody.** By default the server holds the wallet's key. Guard mode removes that (section 4), but the bots we run have not been switched to it yet.
 - **It protects the bitcoin, not the dollar value.** If bitcoin keeps falling after a save, being liquidated would have left more cash. Airbag keeps your bitcoin; it does not make money.
 - **Savings can run out.** The bot then stops and says so. A next step is selling a small slice of collateral with Swap Kit.
 - **No real money.** Not tested with real money.
@@ -305,6 +305,9 @@ All settings are in [`.env.example`](.env.example).
 **Public demo (anyone can press the buttons).** `PUBLIC_DEMO=true npm run sim` shows a *Try the demo* button and lets visitors push the simulated loan to the edge without a key (Pause stays key-only, one shared rate limit). It is ignored in live mode. Hosting it: [`docs/HOSTING.md`](docs/HOSTING.md).
 
 **AirbagGuard** (`contracts/`): a contract that lets the bot's key move the owner's savings into the owner's own loan and back, and nothing else, with a daily cap and a health floor on-chain. See [`contracts/README.md`](contracts/README.md).
+- **Run the bot through it:** after `npm run guard:deploy`, set `USE_GUARD=true`. Each save and each give-back is then one transaction on the guard, signed by `GUARD_BOT_KEY`.
+- **No wallet key on the server:** in guard mode `PRIVATE_KEY` is optional. Leave it out and the bot reads which wallet it protects from the guard. The dashboard's Push and Reset buttons then cannot sign, so run `npm run demo:push` and `npm run demo:reset` on your own machine.
+- **The guard's cap** starts at 25 USDC a day. The owner changes it with `npm run guard:limits -- 200`.
 
 Working on the code (or pointing an AI agent at it)? Read [`AGENTS.md`](AGENTS.md) first. The submission draft and demo playbook are in [`docs/`](docs).
 
@@ -322,6 +325,7 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | "Reset" | Repaid 0.72 USDC from the wallet: health 1.50 | [repay](https://explorer.testnet.arc.io/tx/0xe50f280f378add056d40ff1b88f27bfce7b0386fb0f560c395bb63d4e01c9d60) |
 | **The give-back, by the bot alone** | Calm again, so it borrowed 0.55 USDC back into savings, stopping at health 1.30. Then it sat still. | [borrow](https://explorer.testnet.arc.io/tx/0x42dae1b0f36370e73b4021c959930f34f3a604006d4f01d1ebfa77a7b753e9d7), [deposit](https://explorer.testnet.arc.io/tx/0xab4900f8da65f7973a67c0d3359a91eb31ea92dbce035a3cbc2d6a97ea4782f6) |
 | **AirbagGuard, by its bot key alone** (Nov 18, a second loan on wallet `0x3886…aC2e`) | The guard's own bot key moved 0.25 USDC of the owner's savings into the owner's loan and back, 0.6 s each. The bot key received nothing, and a stranger's call was refused (`NotBot`). | [deploy](https://explorer.testnet.arc.io/tx/0xb0a106b2e4bfa2d27acb2c53a44e702e41eee71f6cc652cac7561a537eafbdf5), [save](https://explorer.testnet.arc.io/tx/0x7174a087244587bd540623741da4fadfdba59fc056f181a1ccd409ad53e97931), [give back](https://explorer.testnet.arc.io/tx/0x8a484048e67b0fab715c7a9a8863e46777e3cfba5b7678be521d14bf74174da3) |
+| **The bot through AirbagGuard** (Nov 18, `USE_GUARD=true`, same loan) | The bot's own code (`npm run roundtrip`) moved 0.25 USDC from savings into the loan and back. One transaction each, signed by the guard's bot key: debt 21.266 → 21.016 → 21.266. | [save](https://explorer.testnet.arc.io/tx/0xc9ac624de30319f26f1e13b60666779047b8817c3a671de61c2d07769f1f3ec5), [give back](https://explorer.testnet.arc.io/tx/0x24b290810e8f07f07032fe511f581c2364bdd170184754fbd494bdd35be43ee0) |
 
 ![The bot's log and the odds chart after the save and the give-back](docs/3-bot-log-and-odds.jpg)
 
@@ -339,4 +343,4 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | Borrow Kit webhook | ✅ registered for our loan. Circle's Borrow Service called it through the tunnel and woke the bot (log: "Woke up: Borrow Kit webhook"). |
 | QuickNode Stream deliveries | ✅ The `airbag-arc-testnet` Stream delivered our live round trip (4 transactions, blocks 72754872–72754893); each delivery was verified on-chain and woke the bot. |
 | Server that stays on without a laptop | ✅ The simulator is live on Render at https://airbag-demo.onrender.com (`render.yaml`, `docs/HOSTING.md`), with demo buttons anyone can press. Checked from outside on Nov 18, 2026: a loan pushed from the public page was saved by the bot. ⏳ The live bot still runs on a laptop with a tunnel. |
-| AirbagGuard contract (the bot key can only move the owner's savings into the owner's own loan and back) | ✅ Live on Arc Testnet at [`0x895f…6bf3`](https://explorer.testnet.arc.io/address/0x895fa892dc4ff752ec9114760201f4751c106bf3) (Nov 18, 2026): its bot key ran a save and a give-back, and a stranger was refused. 16 Foundry tests pass (incl. fuzz). ⏳ The bot (`src/arc.ts`) does not call the guard yet. See [`contracts/README.md`](contracts/README.md). |
+| AirbagGuard contract (the bot key can only move the owner's savings into the owner's own loan and back) | ✅ Live on Arc Testnet at [`0x895f…6bf3`](https://explorer.testnet.arc.io/address/0x895fa892dc4ff752ec9114760201f4751c106bf3) (Nov 18, 2026): its bot key ran a save and a give-back, and a stranger was refused. 16 Foundry tests pass (incl. fuzz). With `USE_GUARD=true` the bot's own save and give-back go through it, tested live with the round trip (links above). ⏳ The bots we run have not been switched to guard mode yet. See [`contracts/README.md`](contracts/README.md). |

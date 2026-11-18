@@ -5,11 +5,12 @@
 import { randomBytes } from "node:crypto";
 import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2/next";   // the /next build batches through Arc's sender-preserving batcher (needed by Borrow Kit for a plain wallet)
-import { createPublicClient, erc20Abi, formatUnits, http, parseAbi, type Address } from "viem";
+import { createPublicClient, createWalletClient, erc20Abi, formatUnits, http, parseAbi, parseUnits, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arcTestnet } from "viem/chains";
 import { CIRBTC, USDC, type Config } from "./config.js";
 import { syncClockToArc } from "./clock.js";
+import { clampToGuardCap, guardSetupProblem } from "./guard-plan.mjs";
 
 export interface TxRef { label: string; hash: string; url: string }
 
@@ -23,6 +24,39 @@ const VAULT_ABI = parseAbi([
   "function balanceOf(address owner) view returns (uint256)",
   "function convertToAssets(uint256 shares) view returns (uint256)",
 ]);
+// AirbagGuard (contracts/src/AirbagGuard.sol): what the bot key may call, plus the reads and errors we show.
+const GUARD_ABI = parseAbi([
+  "function save(uint256 assets) returns (uint256 healthAfter)",
+  "function giveBack(uint256 assets) returns (uint256 healthAfter)",
+  "function owner() view returns (address)",
+  "function bot() view returns (address)",
+  "function marketId() view returns (bytes32)",
+  "function vault() view returns (address)",
+  "function capLeft() view returns (uint256)",
+  "function dailyCap() view returns (uint256)",
+  "error NotOwner()",
+  "error NotBot()",
+  "error IsPaused()",
+  "error ZeroAmount()",
+  "error OverDailyCap(uint256 wouldMove, uint256 cap)",
+  "error HealthTooLow(uint256 healthAfter, uint256 floor)",
+]);
+/** The guard's bot key: a separate key that can only call save() and giveBack() on the guard. */
+function makeGuardSigner(botKey: `0x${string}`, rpcUrl: string) {
+  const account = privateKeyToAccount(botKey);
+  return { account, wallet: createWalletClient({ account, chain: arcTestnet, transport: http(rpcUrl) }) };
+}
+
+/** Who signs the bot's moves. Shown on the dashboard, so it never holds a key. */
+export interface Custody {
+  /** "owner-key": the server signs with the wallet's own key. "guard": it signs with a bot key that can only use AirbagGuard. */
+  mode: "owner-key" | "guard";
+  guard: string | null;
+  botKeyAddress: string | null;
+  /** true when the wallet's own key is also on this server (needed for the demo Push / Reset buttons). */
+  ownerKeyOnServer: boolean;
+  guardDailyCapUsdc: number | null;
+}
 
 export interface LoanView {
   loanId: string;
@@ -53,6 +87,8 @@ export interface ArcBackend {
   lltv: number;
   vault: { address: string; name: string; apy: number | null } | null;
   loanId: string | null;
+  /** Who signs (live only; null in the simulator). */
+  custody: Custody | null;
   init(): Promise<void>;
   readLoan(): Promise<LoanView | null>;
   readSavings(): Promise<SavingsView | null>;
@@ -79,25 +115,38 @@ const n = (v: { amount: string } | null | undefined): number | null => (v ? Numb
 // ------------------------------------------------------------------------------------------------
 export class LiveArc implements ArcBackend {
   readonly mode = "live" as const;
-  readonly address: string;
+  /** The wallet that owns the loan and the savings. In guard mode without PRIVATE_KEY it is read from the guard in init(). */
+  address: string;
   marketId: string | null;
   lltv = 0.86;
   vault: { address: string; name: string; apy: number | null } | null = null;
   loanId: string | null;
+  custody: Custody;
   private kit = new AppKit();
-  private adapter: ReturnType<typeof createViemAdapterFromPrivateKey>;
+  private adapter: ReturnType<typeof createViemAdapterFromPrivateKey> | null = null;
+  private guardSigner: ReturnType<typeof makeGuardSigner> | null = null;
   private client;
 
   constructor(private cfg: Config) {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(cfg.privateKey)) throw new Error("PRIVATE_KEY missing or malformed in .env (run: npm run wallet:new)");
-    this.address = privateKeyToAccount(cfg.privateKey as `0x${string}`).address;
-    this.adapter = createViemAdapterFromPrivateKey({ privateKey: cfg.privateKey });
+    const problem = guardSetupProblem(cfg);
+    if (problem) throw new Error(problem);
     this.client = createPublicClient({ chain: arcTestnet, transport: http(cfg.rpcUrl) });
+    if (cfg.privateKey) this.adapter = createViemAdapterFromPrivateKey({ privateKey: cfg.privateKey });
+    this.address = cfg.privateKey ? privateKeyToAccount(cfg.privateKey as `0x${string}`).address : "";
+    if (cfg.useGuard) this.guardSigner = makeGuardSigner(cfg.guardBotKey as `0x${string}`, cfg.rpcUrl);
+    this.custody = {
+      mode: this.guardSigner ? "guard" : "owner-key",
+      guard: this.guardSigner ? cfg.guardAddress : null,
+      botKeyAddress: this.guardSigner?.account.address ?? null,
+      ownerKeyOnServer: !!this.adapter,
+      guardDailyCapUsdc: null,
+    };
     this.marketId = cfg.marketId || null;
     this.loanId = cfg.loanId || null;
   }
 
   private get from() {
+    if (!this.adapter) throw new Error("this needs the wallet's own key (PRIVATE_KEY), and this server only holds the guard's bot key");
     return { adapter: this.adapter, chain: this.cfg.chain };
   }
   private tx(label: string, hash: string | undefined | null): TxRef[] {
@@ -126,7 +175,43 @@ export class LiveArc implements ArcBackend {
     if (v) this.vault = { address: v.vaultAddress, name: v.name, apy: v.currentApy ?? null };
     else if (this.cfg.vaultAddress) this.vault = { address: this.cfg.vaultAddress, name: "USDC vault", apy: null };
 
+    if (this.guardSigner) {
+      // The guard is the source of truth: whose loan, which market, which vault, and which bot key it accepts.
+      const g = this.cfg.guardAddress as Address;
+      const [owner, bot, gMarket, gVault, cap] = await Promise.all([
+        this.client.readContract({ address: g, abi: GUARD_ABI, functionName: "owner" }),
+        this.client.readContract({ address: g, abi: GUARD_ABI, functionName: "bot" }),
+        this.client.readContract({ address: g, abi: GUARD_ABI, functionName: "marketId" }),
+        this.client.readContract({ address: g, abi: GUARD_ABI, functionName: "vault" }),
+        this.client.readContract({ address: g, abi: GUARD_ABI, functionName: "dailyCap" }),
+      ]);
+      if (bot.toLowerCase() !== this.guardSigner.account.address.toLowerCase()) throw new Error(`GUARD_BOT_KEY is not the bot key of guard ${g} (the guard accepts ${bot})`);
+      if (this.address && this.address.toLowerCase() !== owner.toLowerCase()) throw new Error(`PRIVATE_KEY is not the owner of guard ${g} (its owner is ${owner})`);
+      if (gMarket.toLowerCase() !== this.marketId.toLowerCase()) throw new Error(`guard ${g} was deployed for another market`);
+      if (!this.vault || this.vault.address.toLowerCase() !== gVault.toLowerCase()) {
+        const gv = vaults.find((x: any) => x.vaultAddress.toLowerCase() === gVault.toLowerCase());
+        this.vault = { address: gVault, name: gv?.name ?? "USDC vault", apy: gv?.currentApy ?? null };
+      }
+      this.address = owner;
+      this.custody.guardDailyCapUsdc = Number(formatUnits(cap, 6));
+    }
+
     if (!this.loanId) await this.findLoan();
+  }
+
+  /** One transaction through AirbagGuard, signed by the bot key. Never more than the guard's on-chain cap still allows today. */
+  private async guardMove(fn: "save" | "giveBack", amount: number, label: string): Promise<Move> {
+    const signer = this.guardSigner!;
+    const g = this.cfg.guardAddress as Address;
+    const left = Number(formatUnits(await this.client.readContract({ address: g, abi: GUARD_ABI, functionName: "capLeft" }), 6));
+    const a = clampToGuardCap(amount, left);
+    if (a == null) throw new Error(`AirbagGuard's on-chain daily cap is used up (${left.toFixed(2)} USDC left today). The owner can raise it: npm run guard:limits`);
+    // simulate first: a refusal (cap, health floor, paused, wrong key) shows its reason and costs no gas
+    const { request } = await this.client.simulateContract({ account: signer.account, address: g, abi: GUARD_ABI, functionName: fn, args: [parseUnits(usdc6(a), 6)] });
+    const hash = await signer.wallet.writeContract(request);
+    const receipt = await this.client.waitForTransactionReceipt({ hash });
+    if (receipt.status !== "success") throw new Error(`${label}: the transaction reverted (${hash})`);
+    return { amount: a, txs: this.tx(label, hash) };
   }
 
   private async findLoan() {
@@ -260,6 +345,7 @@ export class LiveArc implements ArcBackend {
   async moveSavingsIntoLoan(amount: number): Promise<Move> {
     const loanId = this.needLoan();
     const vaultAddress = this.needVault();
+    if (this.guardSigner) return this.guardMove("save", amount, "save through AirbagGuard");
     const w = await this.kit.earn.withdraw({ from: this.from, vaultAddress, amount: usdc6(amount) });
     const got = Math.min(amount, Number(w.amount) || amount);
     const txs: TxRef[] = this.tx("withdraw from savings", w.txHash);
@@ -281,6 +367,7 @@ export class LiveArc implements ArcBackend {
   async giveBack(amount: number): Promise<Move> {
     const loanId = this.needLoan();
     const vaultAddress = this.needVault();
+    if (this.guardSigner) return this.guardMove("giveBack", amount, "give back through AirbagGuard");
     const b = await this.kit.borrow.borrow({ from: this.from, loanId, borrowAmount: usdc6(amount) });
     const txs = this.txOf("borrow back", b);
     const d = await this.kit.earn.deposit({ from: this.from, vaultAddress, amount: usdc6(amount) });
@@ -327,6 +414,7 @@ export class SimArc implements ArcBackend {
   lltv = 0.86;
   vault = { address: "0xsim-vault", name: "Simulated USDC vault", apy: 0.042 };
   loanId: string | null = "sim-loan";
+  custody = null;
   private oracle = 75_000;
   private collateral = 0.0001;
   private debt = 0;
