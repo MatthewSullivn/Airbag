@@ -171,7 +171,7 @@ Read these before touching `src/arc.ts`.
   - Resume the Stream if QuickNode paused it after failed deliveries.
   - Pause it when nobody is testing, since it bills per block.
 - [ ] **Keep the bot wallet funded:** USDC for gas, at least 2 USDC in savings, more cirBTC for a bigger loan.
-- [x] **Deploy the public demo on Render** (`docs/HOSTING.md`). Done Nov 18, 2026: https://airbag-demo-re8f.onrender.com. The link is in `docs/SUBMISSION.md` and the README.
+- [x] **Deploy the public demo on Render** (`docs/HOSTING.md`). Live since Nov 17, 2026 at https://airbag-demo.onrender.com (Ahmad's Render account). The link is in `docs/SUBMISSION.md` and the README. A backup copy runs at https://airbag-demo-re8f.onrender.com (Matthew's Render account).
 - [ ] **Run AirbagGuard live on Arc Testnet** (`npm run guard:deploy`, then `npm run guard:try -- 0.25`) with your own wallet and loan, and add the links to README "Live proof". Then switch `src/arc.ts` to call the guard.
 - [ ] **Optional:**
   - a Swap Kit fallback when savings run out

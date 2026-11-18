@@ -4,7 +4,7 @@
 
 Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's Borrow Kit). It reads the odds of bitcoin falling under the loan's liquidation line from Gemini's prediction market. When those odds pass your limit, it moves USDC from a savings vault (Circle's Earn Kit) into the loan. When the market calms down, it moves the money back. Nobody presses anything.
 
-**Try it:** [airbag-demo-re8f.onrender.com](https://airbag-demo-re8f.onrender.com) is an always-on simulator with a simulated loan and live Gemini odds. Press *Try the demo*, then *Push it to the edge*, and watch the bot save the loan. No wallet is needed. The first visit after a quiet spell takes about a minute to load.
+**Try it:** [airbag-demo.onrender.com](https://airbag-demo.onrender.com) is an always-on simulator with a simulated loan and live Gemini odds. Press *Try the demo*, then *Push it to the edge*, and watch the bot save the loan. No wallet is needed. The first visit after a quiet spell takes about a minute to load.
 
 **Live on Arc Testnet (Nov 17, 2026):** we pushed a real loan into danger and Airbag saved it with no human input. The push landed at 21:53:55 UTC. The bot read the odds at 42% (limit 5%), withdrew 0.78 USDC from savings and repaid the loan. The repay landed at 21:53:59, and the odds were back to 0.8%. Two transactions, 0.0154 USDC of gas. See [Live proof](#live-proof).
 
@@ -336,5 +336,5 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | Public link (Cloudflare quick tunnel) with key-protected POST routes | ✅ live; requests without the key, or faking localhost, get 401 |
 | Borrow Kit webhook | ✅ registered for our loan. Circle's Borrow Service called it through the tunnel and woke the bot (log: "Woke up: Borrow Kit webhook"). |
 | QuickNode Stream deliveries | ✅ The `airbag-arc-testnet` Stream delivered our live round trip (4 transactions, blocks 72754872–72754893); each delivery was verified on-chain and woke the bot. |
-| Server that stays on without a laptop | ✅ The simulator is live on Render at https://airbag-demo-re8f.onrender.com (`render.yaml`, `docs/HOSTING.md`), with demo buttons anyone can press. Checked from outside on Nov 18, 2026: a loan pushed from the public page was saved by the bot. ⏳ The live bot still runs on a laptop with a tunnel. |
+| Server that stays on without a laptop | ✅ The simulator is live on Render at https://airbag-demo.onrender.com (`render.yaml`, `docs/HOSTING.md`), with demo buttons anyone can press. Checked from outside on Nov 18, 2026: a loan pushed from the public page was saved by the bot. ⏳ The live bot still runs on a laptop with a tunnel. |
 | AirbagGuard contract (the bot key can only move the owner's savings into the owner's own loan and back) | ⏳ 16 Foundry tests pass (incl. fuzz), and the deploy + try scripts ran on a local chain. Not yet run on Arc Testnet. See [`contracts/README.md`](contracts/README.md). |
