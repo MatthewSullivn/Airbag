@@ -1,37 +1,50 @@
-// "What is my loan up to": bitcoin's price and the price below which the bitcoin is lost. Two numbers and one picture.
+// "How much room is there": bitcoin's price, and the price below which the bitcoin is lost. Two numbers and one
+// picture: the price line above a shaded floor. When the floor comes up under the price, the loan is at risk.
 import { useMemo } from "react";
-import { XYChart, SERIES, timeTicks } from "@/charts/xy-chart";
+import { XYChart, SERIES, STATUS, timeTicks } from "@/charts/xy-chart";
 import type { Reading, Sample, Status } from "@/lib/api";
 import { clock, hhmm, usd, usdK } from "@/lib/format";
+import type { LoanView } from "@/lib/loan-view";
+import { cn } from "@/lib/utils";
 import { Count, Panel, StatusPill } from "./bits";
 
-export function PriceCard({ status, reading, samples, className }: { status: Status; reading: Reading | null; samples: Sample[]; className?: string }) {
+export function PriceCard({ reading, samples, view, className }: {
+  status: Status;
+  reading: Reading | null;
+  samples: Sample[];
+  /** What to show right now: the live reading, or a danger held on screen long enough to be seen (lib/loan-view). */
+  view: LoanView;
+  className?: string;
+}) {
   const r = reading;
+  const line = view.line ?? r?.line ?? null;
   const chart = useMemo(() => {
-    if (!r) return null;
+    if (!r || line == null) return null;
     let pts = samples.filter((p) => p.btc != null && p.line != null);
+    // The picture ends at this very moment. The bot only keeps a sample every 15 s, and a danger can be over in 3.
+    const now: Sample = { t: r.at, btc: r.priceUsed, line: r.line, odds: null, source: null, health: r.health };
+    if (!pts.length || r.at > pts[pts.length - 1].t) pts = [...pts, now];
     // a loan we have only just started watching still gets its picture: a flat minute up to now
-    if (pts.length < 2) pts = [{ t: r.at - 60_000, btc: r.priceUsed, line: r.line, odds: null, source: null, health: r.health }, { t: r.at, btc: r.priceUsed, line: r.line, odds: null, source: null, health: r.health }];
+    if (pts.length < 2) pts = [{ ...now, t: r.at - 60_000 }, now];
     const xs = pts.map((p) => p.t);
     const price = pts.map((p) => p.btc as number);
-    const line = pts.map((p) => p.line as number);
-    // the scale hugs the price and the line, because the picture is the gap between them
-    const hiData = Math.max(...price, ...line), loData = Math.min(...price, ...line);
-    const gap = Math.max(hiData - loData, hiData * 0.04);
-    const lo = loData - gap * 0.45, hi = hiData + gap * 0.3;
-    const step = hi - lo > 30_000 ? 10_000 : hi - lo > 12_000 ? 5_000 : hi - lo > 5_000 ? 2_500 : 1_000;
+    const lines = pts.map((p) => p.line as number);
+    // The scale covers everywhere the floor has been in this hour, so it stays put when the floor jumps:
+    // the jump is then seen as the floor moving, not as the numbers on the side changing.
+    const floorLo = Math.min(...lines, line), top = Math.max(...price, line);
+    const span = Math.max(top - floorLo, top * 0.04);
+    const lo = floorLo - span * 0.34, hi = top + span * 0.16;
+    // few round numbers on the side: about four
+    const step = hi - lo > 17_000 ? 10_000 : hi - lo > 8_000 ? 5_000 : hi - lo > 4_000 ? 2_500 : 1_000;
     const y0 = Math.floor(lo / step) * step, y1 = Math.ceil(hi / step) * step;
     const yTicks: number[] = [];
     for (let v = y0; v <= y1; v += step) yTicks.push(v);
     const xTicks = timeTicks(xs[0], xs[xs.length - 1]);
     const short = xs[xs.length - 1] - xs[0] < 5 * 60_000;
-    // the lowest the line can go if every dollar of savings went into the loan
-    const savings = r.savings?.balance ?? 0;
-    const reach = Math.max(0, (r.loan.debt - savings) / (r.loan.collateral * status.lltv));
-    return { pts, xs, price, line, y0, y1, yTicks, xTicks, short, savings, reach };
-  }, [r, samples, status.lltv]);
+    return { pts, xs, price, lines, y0, y1, yTicks, xTicks, short };
+  }, [r, samples, line]);
 
-  if (!r || !chart) {
+  if (!r || !chart || line == null) {
     return (
       <Panel className={className}>
         <p className="text-[16px] font-medium text-on-panel-2">Bitcoin and the loan</p>
@@ -39,9 +52,8 @@ export function PriceCard({ status, reading, samples, className }: { status: Sta
       </Panel>
     );
   }
-  const room = Math.max(0, r.priceUsed - r.line);
-  const danger = r.health < status.rule.actBelowHealth || (r.decision.odds != null && r.decision.odds > status.limit);
-  const lineNow = chart.line[chart.line.length - 1];
+  const room = Math.max(0, r.priceUsed - line);
+  const danger = view.danger;
 
   return (
     <Panel className={className} aria-label="Bitcoin's price and the price where the bitcoin is lost">
@@ -56,17 +68,16 @@ export function PriceCard({ status, reading, samples, className }: { status: Sta
           <p className="flex min-h-[2.6em] items-start gap-2 text-[15px] font-medium leading-snug text-on-panel-2 sm:min-h-0 sm:items-center sm:text-[16px]">
             <span aria-hidden="true" className="mt-[0.6em] h-0.5 w-4 shrink-0 rounded sm:mt-0" style={{ background: SERIES.s1 }} /> You lose it below
           </p>
-          <p className="figure mt-2 text-[2.6rem] text-on-panel sm:mt-3 sm:text-[4.2rem]"><Count value={r.line} format={usd} /></p>
+          <p className={cn("figure mt-2 text-[2.6rem] sm:mt-3 sm:text-[4.2rem]", danger ? "text-[#ff6b5e]" : "text-on-panel")}><Count value={line} format={usd} /></p>
         </div>
       </div>
 
       <div className="mt-6">
         <XYChart
           xs={chart.xs}
-          series={[
-            { key: "btc", label: "Bitcoin's price", color: SERIES.s2, values: chart.price },
-            { key: "line", label: "You lose it below", color: SERIES.s1, values: chart.line, curve: "step" },
-          ]}
+          series={[{ key: "btc", label: "Bitcoin's price", color: SERIES.s2, values: chart.price }]}
+          floor={{ y: line, color: SERIES.s1, label: "you lose it down here", strong: danger }}
+          gap={{ from: r.priceUsed, to: line, color: danger ? STATUS.critical : STATUS.good, label: usd(room), sub: "room" }}
           yDomain={[chart.y0, chart.y1]}
           yTicks={chart.yTicks}
           xTicks={chart.xTicks}
@@ -76,12 +87,14 @@ export function PriceCard({ status, reading, samples, className }: { status: Sta
             title: clock(chart.pts[i].t),
             rows: [
               { label: "Bitcoin", value: usd(chart.price[i]), color: SERIES.s2 },
-              { label: "You lose it below", value: usd(chart.line[i]), color: SERIES.s1 },
+              { label: "You lose it below", value: usd(chart.lines[i]), color: SERIES.s1 },
             ],
           })}
           height={190}
+          padRight={74}
+          pulse
           hideLegend
-          ariaLabel={`Bitcoin's price is ${usd(r.priceUsed)}. The bitcoin is lost if it falls below ${usd(lineNow)}.`}
+          ariaLabel={`Bitcoin's price is ${usd(r.priceUsed)}. The bitcoin is lost if it falls below ${usd(line)}. That leaves ${usd(room)} of room.`}
           table={{ head: ["Time", "Bitcoin", "You lose it below"], rows: chart.pts.slice().reverse().map((p) => [clock(p.t), usd(p.btc), usd(p.line)]) }}
         />
       </div>

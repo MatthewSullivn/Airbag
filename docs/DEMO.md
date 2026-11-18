@@ -7,7 +7,7 @@ The page has two parts. `/` is the landing page, a walk-through: what it does, w
 ## Which link
 
 - **https://airbagged.me** is the live bot: a real loan on Arc Testnet. Record the video here.
-- **The simulator** (Ahmad's Render link) is for judges without a wallet: *Push a loan yourself* on the first screen, then *Push it to the edge*.
+- **The simulator** (Ahmad's Render link) is for judges without a wallet: *Push it to the edge* is on the first screen. Its simulated savings last about a dozen pushes, then it needs a restart.
 
 ## Pre-demo checklist (30 minutes before)
 

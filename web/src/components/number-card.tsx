@@ -1,74 +1,15 @@
-// The one number: the chance this loan loses its bitcoin. One figure, one word (safe or at risk), one small line.
-import { useEffect, useRef, useState } from "react";
+// The one number: the chance this loan loses its bitcoin. One figure, one word (safe or at risk), and one small
+// chart: the chance over the last hour against the level where Airbag steps in.
 import { Spark } from "@/charts/spark";
-import { SERIES, STATUS } from "@/charts/xy-chart";
+import { SERIES } from "@/charts/xy-chart";
 import type { LogEntry, Reading, Sample, Status } from "@/lib/api";
 import { dayET, pct } from "@/lib/format";
+import type { LoanView } from "@/lib/loan-view";
 import { cn } from "@/lib/utils";
 import { Count, Panel, StatusPill } from "./bits";
 
-/**
- * An alarm must be seen. The bot can answer a danger within a second, faster than anyone can read "At risk".
- * So once the card turns red it stays red, showing the highest chance it read, for at least this long.
- * The log underneath keeps the true times.
- */
-const MIN_ALARM_MS = 3000;
-function useAlarm(on: boolean, odds: number | null) {
-  const since = useRef<number | null>(null);
-  const peak = useRef<number | null>(null);
-  const [held, setHeld] = useState(false);
-  useEffect(() => {
-    if (on) {
-      if (since.current == null) since.current = Date.now();
-      if (odds != null) peak.current = Math.max(peak.current ?? 0, odds);
-      setHeld(true);
-      return;
-    }
-    if (since.current == null) return;
-    const end = () => { since.current = null; peak.current = null; setHeld(false); };
-    const left = MIN_ALARM_MS - (Date.now() - since.current);
-    if (left <= 0) { end(); return; }
-    const t = setTimeout(end, left);
-    return () => clearTimeout(t);
-  }, [on, odds]);
-  return { ringing: on || held, peak: peak.current };
-}
-
-/** A save the bot made a moment ago: when, and the odds it acted on. */
-export interface SaveNote { t: number; odds: number }
-/**
- * The bot's latest save, while it is fresh, read from its own log line
- * ("Odds hit 45.6% (limit 5%). Moved 0.77 USDC from savings into the loan in 0.4 s. ...").
- */
-export function freshSave(log: LogEntry[], now: number): SaveNote | null {
-  const last = log.find((e) => e.level === "action");
-  if (!last || now - last.t > 10_000 || /dry run/.test(last.text) || !/into the loan/.test(last.text)) return null;
-  const hit = last.text.match(/^Odds hit (\d+(?:\.\d+)?)%/);
-  return hit ? { t: last.t, odds: Number(hit[1]) / 100 } : null;
-}
-/**
- * The bot can answer between two reads of the page, so the page never sees the danger at all. The alarm must
- * still be seen: for a save it did not see coming, the card rings anyway, showing the odds the bot acted on.
- */
-function useMissedSave(save: SaveNote | null, ringing: boolean) {
-  const seen = useRef<number | null | undefined>(undefined);
-  const [shown, setShown] = useState<SaveNote | null>(null);
-  const t = save?.t ?? null;
-  useEffect(() => {
-    if (seen.current === undefined) { seen.current = t; return; }   // a save from before the page opened stays quiet
-    if (t == null || t === seen.current) return;
-    seen.current = t;
-    if (!ringing) setShown(save);                                    // ringing: the page saw this one itself
-    // only when a new save arrives
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t]);
-  useEffect(() => {
-    if (!shown) return;
-    const timer = setTimeout(() => setShown(null), MIN_ALARM_MS);
-    return () => clearTimeout(timer);
-  }, [shown]);
-  return shown;
-}
+const ALARM = "#ff6b5e";
+const LEVEL = "#a3a299";
 
 /**
  * For half a minute after the bot moves money, the badge says what it just did instead of plain "Safe".
@@ -82,37 +23,32 @@ export function recentMove(log: LogEntry[], now: number): string | null {
   return took ? `Saved by Airbag in ${took[1]} s` : "Saved by Airbag";
 }
 
-export function NumberCard({ status, reading, samples, footer, pending, justNow, lastSave, beam, spark = true, className }: {
+export function NumberCard({ status, reading, samples, view, footer, pending, justNow, beam, className }: {
   status: Status;
   reading: Reading | null;
   samples: Sample[];
-  /** One link or line under the number, e.g. "Where does this come from?" */
+  /** What to show right now: the live reading, or a danger held on screen long enough to be seen (lib/loan-view). */
+  view: LoanView;
+  /** One link or line under the chart, e.g. "Where does this come from?" */
   footer?: React.ReactNode;
   /** Something was just pressed and the chain has not answered yet, e.g. "Pushing the loan…" */
   pending?: string | null;
   /** What the bot did a moment ago, e.g. "Saved by Airbag in 0.4 s". Replaces "Safe" for a short while. */
   justNow?: string | null;
-  /** The bot's save of a moment ago (freshSave), so the alarm shows even when the bot was faster than the page. */
-  lastSave?: SaveNote | null;
-  /** A slow beam of light round the card while it is calm (the first screen uses it). */
+  /** A slow beam of light round the card while it is calm. */
   beam?: boolean;
-  /** The small chart of the last hour under the number. The first screen leaves it out: one number, nothing else. */
-  spark?: boolean;
   className?: string;
 }) {
   const limit = status.limit;
   const r = reading;
-  const live = r?.decision.odds ?? null;
   const ladder = r ? r.ladders.find((l) => l.ticker === r.odds?.ticker) ?? r.ladders[0] : undefined;
-  const inDanger = (live != null && live > limit) || (!!r && r.health < status.rule.actBelowHealth);
-  const alarm = useAlarm(inDanger, live);
-  const missed = useMissedSave(lastSave ?? null, alarm.ringing);
-  const danger = alarm.ringing || !!missed;
-  // while the alarm is held after the danger has passed, the card still shows what set it off
-  const odds = missed && !inDanger ? missed.odds : danger && !inDanger && alarm.peak != null ? alarm.peak : live;
+  const danger = view.danger;
+  const odds = view.odds;
+  // The line ends at this very moment. The bot only keeps a sample every 15 s, so without the last point a
+  // danger would show on the big number and not on the chart.
   const history = samples.map((s) => s.odds).filter((v): v is number => v != null);
+  const trace = odds != null ? [...history, odds] : history;
   const waiting = !r ? (status.bot.noLoan ? "No loan yet" : status.bot.syncing ? "Updating…" : "Reading…") : null;
-  const share = odds == null ? 0 : Math.min(1, odds / (limit * 4));
   const estimated = !danger && r?.odds?.source === "estimated";
 
   return (
@@ -142,28 +78,28 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
         </div>
       </div>
 
-      <div className="mt-auto pt-8">
-      {/* a flat line near zero says nothing, so the small chart only shows once the number has moved */}
-      {spark && history.length > 2 && Math.max(...history) - Math.min(...history) >= limit * 0.02 && (
-        <div className="mb-5">
-          <Spark values={history} color={SERIES.s1} floor={0} ceiling={limit} height={64} label={`The chance over the last hour. Now ${pct(live)}. Airbag steps in at ${pct(limit)}.`} />
-          <p className="mt-1 text-right text-[12.5px] text-on-panel-faint">the last hour</p>
-        </div>
-      )}
-
-      {odds != null && (
-        <div role="img" aria-label={`${pct(odds)} against a limit of ${pct(limit)}`}>
-          <div className="relative h-2 rounded-full" style={{ background: danger ? "#4a1d1b" : "#1b2b1b" }}>
-            <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${Math.max(share * 100, 1.5)}%`, background: danger ? STATUS.critical : STATUS.good }} />
-            <span aria-hidden="true" className="absolute left-1/4 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded bg-on-panel" />
-          </div>
-          <p className="relative mt-2 h-5 text-[14px] text-on-panel-faint">
-            <span className="absolute left-1/4 -translate-x-1/2 whitespace-nowrap">Airbag steps in at {pct(limit)}</span>
-          </p>
-        </div>
-      )}
-
-      {footer && <div className="mt-6 border-t border-panel-line pt-4 text-[15px] text-on-panel-2">{footer}</div>}
+      <div className="mt-auto pt-7">
+        {trace.length > 0 && (
+          <>
+            <Spark
+              values={trace.length > 1 ? trace : [trace[0], trace[0]]}
+              color={danger ? ALARM : SERIES.s1}
+              floor={0}
+              ceiling={limit * 2}
+              mark={{ y: limit, color: LEVEL }}
+              height={84}
+              label={`The chance over the last hour. Now ${pct(odds)}. Airbag steps in at ${pct(limit)}.`}
+            />
+            <p className="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[13.5px] text-on-panel-faint">
+              <span className="flex items-center gap-2">
+                <svg width="20" height="6" aria-hidden="true"><line x1="0" y1="3" x2="20" y2="3" stroke={LEVEL} strokeWidth="1.5" strokeDasharray="4 3" /></svg>
+                Airbag steps in at {pct(limit)}
+              </span>
+              <span>the last hour</span>
+            </p>
+          </>
+        )}
+        {footer && <div className="mt-5 border-t border-panel-line pt-4 text-[15px] text-on-panel-2">{footer}</div>}
       </div>
     </Panel>
   );

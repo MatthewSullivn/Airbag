@@ -47,6 +47,10 @@ export interface XYMarker {
   /** On a narrow chart, name this mark under the chart instead of beside it (where it would sit on the data). */
   legend?: boolean;
 }
+/** A level with everything under it shaded as one zone ("lost below here"). The zone glides when the level moves. */
+export interface XYFloor { y: number; color: string; label?: string; /** Drawn heavier: the level is dangerously close. */ strong?: boolean }
+/** A bracket right of the plot between two levels, with the size of the gap written beside it. It glides too. */
+export interface XYGap { from: number; to: number; color: string; label: string; sub?: string }
 export interface XYTip { title: string; rows: { label: string; value: string; color: string }[]; note?: string }
 
 export interface XYChartProps {
@@ -62,6 +66,8 @@ export interface XYChartProps {
   vlines?: XYVLine[];
   bands?: XYBand[];
   markers?: XYMarker[];
+  floor?: XYFloor;
+  gap?: XYGap;
   tip?: (i: number) => XYTip;
   height?: number;
   /** Extra room right of the plot, for end labels. */
@@ -113,7 +119,7 @@ function nearest(xs: number[], x: number) {
 
 export function XYChart({
   xs, series, xDomain, yDomain, yTicks, xTicks, yFormat, xFormat, refs = [], vlines = [], bands = [], markers = [],
-  tip, height = 220, padRight = 14, pulse = false, ariaLabel, table, hideLegend = false, className,
+  floor, gap, tip, height = 220, padRight = 14, pulse = false, ariaLabel, table, hideLegend = false, className,
 }: XYChartProps) {
   const theme = PANEL_THEME;
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -133,6 +139,7 @@ export function XYChart({
   const X = (v: number) => r2(padL + ((v - x0) / (x1 - x0 || 1)) * plotW);
   const Y = (v: number) => r2(padT + (1 - (v - y0) / (y1 - y0 || 1)) * plotH);
   const baseY = Y(y0);
+  const inY = (v: number) => Y(Math.min(Math.max(v, y0), y1));
   // on a narrow screen the time or price labels would run into each other: show every second or third one
   const xLabelW = Math.max(...xTicks.map((t) => xFormat(t).length), 1) * 7.4 + 14;
   const everyX = Math.max(1, Math.ceil((xTicks.length * xLabelW) / plotW));
@@ -241,6 +248,11 @@ export function XYChart({
                   <circle cx="3.75" cy="3.75" r="1.05" fill={s.color} />
                 </pattern>
               ))}
+              {floor && (
+                <pattern id={`${uid}-floor`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1="0" y1="0" x2="0" y2="7" stroke={floor.color} strokeWidth="1.5" opacity="0.75" />
+                </pattern>
+              )}
               {bands.map((b, i) => (
                 <pattern key={i} id={`${uid}-hatch-${i}`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                   <line x1="0" y1="0" x2="0" y2="7" stroke={b.color} strokeWidth="1.4" opacity="0.7" />
@@ -263,6 +275,22 @@ export function XYChart({
             ))}
 
             {bands.map((b, i) => (b.cover ? null : band(b, i)))}
+
+            {/* the floor: one group that slides up and down, so a jump of the level is seen as a move */}
+            {floor && (
+              <g clipPath={`url(#${uid}-plot)`}>
+                <motion.g initial={false} animate={{ y: inY(floor.y) }} transition={t(0.7)}>
+                  <rect x={padL} y={0} width={plotW} height={svgH} fill={floor.color} opacity={floor.strong ? 0.22 : 0.1} />
+                  <rect x={padL} y={0} width={plotW} height={svgH} fill={`url(#${uid}-floor)`} opacity={floor.strong ? 0.8 : 0.5} />
+                  <line x1={padL} x2={padL + plotW} y1={0} y2={0} stroke={floor.color} strokeWidth={2.25} />
+                  {floor.label && (
+                    <text x={padL + 10} y={19} fontSize={12.5} fill={theme.fg} {...halo}>
+                      {floor.label}
+                    </text>
+                  )}
+                </motion.g>
+              </g>
+            )}
 
             <g clipPath={`url(#${uid}-reveal)`}>
               {paths.map((p, i) =>
@@ -329,6 +357,22 @@ export function XYChart({
                 </text>
               ) : null,
             )}
+
+            {gap && (() => {
+              const gx = padL + plotW + 10, ya = inY(gap.from), yb = inY(gap.to);
+              const stroke = { stroke: gap.color, strokeWidth: 2.25, strokeLinecap: "round" as const };
+              return (
+                <g pointerEvents="none">
+                  <motion.line x1={gx} x2={gx} initial={false} animate={{ y1: ya, y2: yb }} transition={t(0.7)} {...stroke} />
+                  <motion.line x1={gx - 4} x2={gx + 4} initial={false} animate={{ y1: ya, y2: ya }} transition={t(0.7)} {...stroke} />
+                  <motion.line x1={gx - 4} x2={gx + 4} initial={false} animate={{ y1: yb, y2: yb }} transition={t(0.7)} {...stroke} />
+                  <motion.g initial={false} animate={{ y: (ya + yb) / 2 }} transition={t(0.7)}>
+                    <text x={gx + 10} y={gap.sub ? -2 : 4} fontSize={13} fontWeight={600} fill={theme.fg} className="tabular-nums">{gap.label}</text>
+                    {gap.sub && <text x={gx + 10} y={13} fontSize={11.5} fill={theme.muted}>{gap.sub}</text>}
+                  </motion.g>
+                </g>
+              );
+            })()}
 
             {pulse && first?.end && (
               <g transform={`translate(${first.end[0]},${first.end[1]})`} pointerEvents="none">

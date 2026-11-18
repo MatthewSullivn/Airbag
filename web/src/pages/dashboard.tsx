@@ -1,6 +1,7 @@
 // The app. Two screens: the live demo (a loan Airbag is guarding right now) and my loan (do it with your own
 // wallet). How the number is made and what happens on Arc are explained on the first page, not here.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePressed } from "@/lib/use-pressed";
 import { Wallet } from "lucide-react";
 import { useStatus } from "@/lib/api";
 import { short } from "@/lib/format";
@@ -9,9 +10,8 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { MetalButton } from "@/components/ui/cta";
 import { Wordmark } from "@/components/bits";
 import { DemoDrawer, useDemoDrawer } from "@/components/demo-drawer";
+import { LoanCards } from "@/components/loan-cards";
 import { Facts, Moves } from "@/components/loan-parts";
-import { freshSave, NumberCard, recentMove } from "@/components/number-card";
-import { PriceCard } from "@/components/price-card";
 import { SiteFooter } from "@/components/site-footer";
 import { BotBadge, ModeBadge } from "@/components/top-bar";
 import { Wizard } from "@/components/wizard";
@@ -86,19 +86,8 @@ export function Dashboard() {
     if (lastStep?.state === "done" && /^(Pushed|Calmer)\./.test(lastStep.text)) ownRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [lastStep?.id, lastStep?.state, lastStep?.text]);
 
-  // A demo button was pressed: say so on the big number at once (the chain takes a few seconds to answer),
-  // and bring the number into view. Cleared when the loan's line has moved, or after 15 s.
-  const [pressed, setPressed] = useState<{ kind: "push" | "reset"; at: number; line: number | null; move: number | null } | null>(null);
-  const lineNow = status?.reading?.line ?? null;
-  const lastMove = botActions[0]?.t ?? null;
-  useEffect(() => {
-    if (!pressed) return;
-    // the line moved, or the bot has already answered (its save can put the line right back where it was)
-    if ((lineNow != null && pressed.line != null && Math.abs(lineNow - pressed.line) > 1) || lastMove !== pressed.move) { setPressed(null); return; }
-    const t = setTimeout(() => setPressed(null), Math.max(0, 15_000 - (Date.now() - pressed.at)));
-    return () => clearTimeout(t);
-  }, [pressed, lineNow, lastMove]);
-  const pending = pressed ? (pressed.kind === "push" ? "Pushing the loan…" : "Resetting…") : null;
+  // A demo button was pressed: say so on the big number at once, and bring the number into view.
+  const pressed = usePressed(status, botActions[0]?.t ?? null);
 
   const live = status?.mode === "live";
 
@@ -143,22 +132,18 @@ export function Dashboard() {
                   open={demo.open}
                   onClose={() => demo.setOpen(false)}
                   onActs={(kind) => {
-                    setPressed({ kind, at: Date.now(), line: status.reading?.line ?? null, move: lastMove });
+                    pressed.press(kind);
                     scrollTo({ top: 0, behavior: "smooth" });
                   }}
                 />
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <NumberCard
-                    status={status}
-                    reading={status.reading}
-                    samples={status.samples}
-                    pending={pending}
-                    justNow={recentMove(botActions, status.now)}
-                    lastSave={freshSave(botActions, status.now)}
-                    footer={<a href="/#gemini" className="underline decoration-on-panel-faint/60 underline-offset-[3px] hover:decoration-on-panel">Where does this number come from?</a>}
-                  />
-                  <PriceCard status={status} reading={status.reading} samples={status.samples} />
-                </div>
+                <LoanCards
+                  status={status}
+                  reading={status.reading}
+                  samples={status.samples}
+                  actions={botActions}
+                  pending={pressed.pending}
+                  footer={<a href="/#gemini" className="underline decoration-on-panel-faint/60 underline-offset-[3px] hover:decoration-on-panel">Where does this number come from?</a>}
+                />
                 <Facts reading={status.reading} />
                 <Moves log={botLog} empty="Nothing yet. It is watching." />
                 <p className="px-1 pt-2 text-[16px] text-ink-2">
@@ -181,10 +166,8 @@ export function Dashboard() {
                       <h2 id="own-loan" className="display text-[clamp(1.7rem,3.4vw,2.4rem)] text-ink">{mine ? "Your loan" : `The loan of ${short(W.address)}`}</h2>
                       <p className="text-[15px] text-ink-2" role="status">{W.protectedHere || W.reading?.protected ? "Airbag is protecting it." : "Not protected yet."}</p>
                     </div>
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      <NumberCard status={status} reading={own.reading} samples={own.samples} justNow={recentMove(ownActions, status.now)} lastSave={freshSave(ownActions, status.now)} />
-                      <PriceCard status={status} reading={own.reading} samples={own.samples} />
-                    </div>
+                    {/* a new wallet starts with a clean chart */}
+                    <LoanCards key={who ?? "bot"} status={status} reading={own.reading} samples={own.samples} actions={ownActions} />
                     <Facts reading={own.reading} />
                     <Moves log={ownLog} empty="Nothing yet for this loan." />
                   </section>

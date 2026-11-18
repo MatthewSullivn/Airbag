@@ -1,9 +1,10 @@
 // The first page a visitor sees: a walk-through. What Airbag is (with the live app in a frame), what it does,
 // who it is for, how it works step by step (the problem, then a real save replayed), and then in depth how it
 // uses Gemini's prediction market and Arc with Circle's kits. Few words per screen, one real picture each.
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
-import { useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
+import { postJson, useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
+import { usePressed } from "@/lib/use-pressed";
 import { ADDRESSES, EXPLORER, LIVE_URL, SAVES, SIM_URL, VISITOR_RUN } from "@/recorded/proof";
 import { pct } from "@/lib/format";
 import { ExplorerLink, Section, Wordmark } from "@/components/bits";
@@ -13,12 +14,11 @@ import { GeminiMarketCard } from "@/components/gemini-market-card";
 import { HedgeCard } from "@/components/hedge-card";
 import { LadderCard } from "@/components/ladder-card";
 import { OverTime } from "@/components/market-parts";
-import { freshSave, NumberCard, recentMove } from "@/components/number-card";
-import { PriceCard } from "@/components/price-card";
+import { LoanCards } from "@/components/loan-cards";
 import { SaveReplay } from "@/components/save-replay";
 import { BounceCard } from "@/components/ui/bounce-card";
 import { TiltFrame } from "@/components/ui/tilt-frame";
-import { MetalLink, ShinyLink } from "@/components/ui/cta";
+import { MetalLink, ShinyButton, ShinyLink } from "@/components/ui/cta";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { FadeIn } from "@/components/ui/fade-in";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
@@ -36,6 +36,29 @@ export function Landing() {
   // what the bot did for its own loan (a connected wallet's moves are marked with that wallet, and belong to My loan)
   const botLog = useMemo(() => (status?.log ?? []).filter((e) => !e.who), [status]);
   const botActions = useMemo(() => botLog.filter((e) => e.level === "action"), [botLog]);
+  // The first screen's own button: push the simulated loan to the edge, right there in the frame.
+  // (The live bot's loan can only be pushed with the team's key, from the app.)
+  const pressed = usePressed(status, botActions[0]?.t ?? null);
+  const [pushing, setPushing] = useState(false);
+  const [pushNote, setPushNote] = useState("");
+  const atRisk = !!status && !!reading && ((reading.decision.odds ?? 0) > status.limit || reading.health < status.rule.actBelowHealth);
+  // every save keeps some of the simulated savings in the loan, so after a dozen pushes there is nothing left to save with
+  const spent = !!reading && (reading.savings?.balance ?? 0) < 1;
+  const push = async () => {
+    setPushing(true);
+    setPushNote("");
+    pressed.press("push");
+    try {
+      await postJson("/api/demo/push", {});
+    } catch (e) {
+      pressed.clear();
+      const why = (e as Error).message;
+      setPushNote(/already at the edge/.test(why) ? "It is already at the edge. Give Airbag a few seconds." : `That did not work: ${why}`);
+    } finally {
+      setPushing(false);
+    }
+  };
+
   // Gemini's market for the ladder the number comes from, and its own hourly history
   const ticker = reading?.odds?.ticker ?? ladders?.events[0]?.ticker ?? null;
   const event = ladders?.events.find((e) => e.ticker === ticker) ?? ladders?.events[0];
@@ -97,24 +120,46 @@ export function Landing() {
               </p>
               <div className="mt-9 flex flex-wrap justify-center gap-3">
                 <ShinyLink href="#save">Watch a real save <ArrowDown aria-hidden="true" className="size-5" /></ShinyLink>
-                <MetalLink href="/app/">{status?.mode === "sim" ? "Push a loan yourself" : "Open the live demo"}</MetalLink>
+                <MetalLink href="/app/">Open the live demo</MetalLink>
               </div>
             </div>
             <TiltFrame className="relative mt-10 sm:mt-12">
               {status ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <NumberCard
+                <>
+                  {/* what this is, in one line, and the one thing to press */}
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-1 pt-0.5 sm:px-2">
+                    <p className="flex min-w-0 flex-1 basis-64 items-start gap-2.5 text-[15px] leading-snug text-ink-2 sm:text-[16px]">
+                      <span aria-hidden="true" className="relative mt-[0.4em] flex size-2.5 shrink-0">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-good opacity-60" />
+                        <span className="relative inline-flex size-2.5 rounded-full bg-good" />
+                      </span>
+                      <span>
+                        <strong className="font-semibold text-ink">{live ? "Live on Arc Testnet." : "Live demo."}</strong>{" "}
+                        {live
+                          ? "A real bitcoin loan. Airbag is watching it right now."
+                          : spent
+                            ? "This simulated loan has been pushed many times and its savings are used up."
+                            : "A simulated bitcoin loan with the market's real odds. Push it into danger and watch."}
+                      </span>
+                    </p>
+                    {live ? (
+                      <MetalLink href="/app/" small>Open the live demo</MetalLink>
+                    ) : (
+                      <ShinyButton small onClick={push} disabled={pushing || !!pressed.pending || atRisk || spent}>Push it to the edge</ShinyButton>
+                    )}
+                  </div>
+                  {pushNote && <p role="status" className="mb-3 px-1 text-[14.5px] text-ink-2 sm:px-2">{pushNote}</p>}
+                  <LoanCards
                     status={status}
                     reading={reading}
                     samples={status.samples}
-                    justNow={recentMove(botLog, status.now)}
-                    lastSave={freshSave(botLog, status.now)}
-                    footer={live
-                      ? <>A real loan on Arc Testnet, right now.</>
-                      : <>A simulated loan, real odds. <a href={LIVE_URL} className={LINK}>See the real one</a>.</>}
+                    actions={botActions}
+                    pending={pressed.pending}
+                    split="md"
+                    priceOnPhone={false}
+                    footer={<a href="#gemini" className="underline decoration-on-panel-faint/60 underline-offset-[3px] hover:decoration-on-panel">Where does this number come from?</a>}
                   />
-                  <PriceCard status={status} reading={reading} samples={status.samples} className="hidden md:flex" />
-                </div>
+                </>
               ) : (
                 <div className="min-h-[24rem] rounded-[28px] bg-panel" aria-hidden="true" />
               )}
@@ -257,7 +302,7 @@ export function Landing() {
             <DotPattern width={20} height={20} cr={1.2} className="text-on-panel/20 [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]" />
             <h2 className="display relative mx-auto max-w-[16ch] text-[clamp(2.4rem,6vw,4.4rem)]">See it <span className="accent">{live ? "live." : "work."}</span></h2>
             <div className="relative mt-9 flex flex-wrap justify-center gap-3">
-              <ShinyLink href="/app/">{status?.mode === "sim" ? "Push a loan yourself" : "Open the live demo"} <ArrowRight aria-hidden="true" className="size-5" /></ShinyLink>
+              <ShinyLink href="/app/">Open the live demo <ArrowRight aria-hidden="true" className="size-5" /></ShinyLink>
               <MetalLink href="/app/#mine">Protect my own loan</MetalLink>
             </div>
             <p className="relative mt-6 text-[15px] text-on-panel-faint">

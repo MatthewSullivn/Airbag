@@ -4,13 +4,13 @@
 
 Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's Borrow Kit). It reads the odds of bitcoin falling under the loan's liquidation line from Gemini's prediction market. When those odds pass your limit, it moves USDC from a savings vault (Circle's Earn Kit) into the loan. When the market calms down, it moves the money back. Nobody presses anything.
 
-**Try it:** [airbag-demo.onrender.com](https://airbag-demo.onrender.com) is an always-on simulator with a simulated loan and live Gemini odds. Press *Push a loan yourself*, then *Push it to the edge*, and watch the bot save the loan. No wallet is needed. The first visit after a quiet spell takes about a minute to load.
+**Try it:** [airbag-demo.onrender.com](https://airbag-demo.onrender.com) is an always-on simulator with a simulated loan and live Gemini odds. Press *Push it to the edge* on the first screen and watch the bot save the loan. No wallet is needed. The first visit after a quiet spell takes about a minute to load.
 
 **Live on Arc Testnet (Nov 17, 2026):** we pushed a real loan into danger and Airbag saved it with no human input. The push landed at 21:53:55 UTC. The bot read the odds at 42% (limit 5%), withdrew 0.78 USDC from savings and repaid the loan. The repay landed at 21:53:59, and the odds were back to 0.8%. Two transactions, 0.0154 USDC of gas. See [Live proof](#live-proof).
 
 | The first screen | A loan pushed to the edge | The same loan, saved seconds later |
 |---|---|---|
-| ![The landing page: the headline, and the live app in a frame](docs/page-1-first-screen.jpg) | ![The app's Live demo screen in red: 44% chance, at risk](docs/page-2-at-risk.jpg) | ![The Live demo screen after the save: 0.3%, saved by Airbag in 0.4 s](docs/page-3-saved.jpg) |
+| ![The landing page: the headline, and the live loan in a frame with its push button](docs/page-1-first-screen.jpg) | ![The live loan on the first screen, pushed to the edge: 42% chance, at risk, the price where the bitcoin is lost right under bitcoin's price](docs/page-2-at-risk.jpg) | ![The same loan seconds later: 0.4%, saved by Airbag in 0.4 s, the room is back](docs/page-3-saved.jpg) |
 
 | Gemini's bets, and how they become the number | The market's own odds, hour by hour | How the money moves on Arc |
 |---|---|---|
@@ -308,7 +308,7 @@ Server endpoints:
 
 POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no secret set, they only accept requests from localhost.
 
-**The page.** `/` is the landing page, a walk-through: what Airbag is (with the live app in a frame), what it does, who it is for, then four numbered steps. 1: the February crash. 2: a real save replayed from its recorded transactions. 3: **Gemini** (a card with the market's live bets, the ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, a hedge quote). 4: **Arc** (a picture of who tells the bot and how the money moves between the contracts, what the QuickNode Stream saw, what a move costs). It ends with the three recorded saves as receipts. `/app/` is the app, with two screens: **Live demo** (the loan the bot guards: the chance of losing the bitcoin, bitcoin's price against the price where it is lost, and what Airbag did) and **My loan** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
+**The page.** `/` is the landing page, a walk-through: what Airbag is (with the live app in a frame), what it does, who it is for, then four numbered steps. 1: the February crash. 2: a real save replayed from its recorded transactions. 3: **Gemini** (a card with the market's live bets, the ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, a hedge quote). 4: **Arc** (a picture of who tells the bot and how the money moves between the contracts, what the QuickNode Stream saw, what a move costs). It ends with the three recorded saves as receipts. `/app/` is the app, with two screens: **Live demo** (the loan the bot guards: the chance of losing the bitcoin against the level where Airbag steps in, bitcoin's price above the price where it is lost, and what Airbag did) and **My loan** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
 
 **Demo controls.** On the live bot, press `d` in the app and enter `WEBHOOK_SECRET`. On the simulator they are open at the top of the *Live demo* screen.
 - **Push it to the edge** borrows up to Borrow Kit's maximum. The USDC stays in the wallet, as if spent.

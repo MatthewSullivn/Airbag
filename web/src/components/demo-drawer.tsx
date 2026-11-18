@@ -72,6 +72,9 @@ export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; 
     }
   };
 
+  // every save keeps some of the simulated savings in the loan: after a dozen pushes there is nothing left to save with
+  const spent = status.mode === "sim" && !!status.reading && (status.reading.savings?.balance ?? 0) < 1;
+
   if (!open) return null;
   // A slim strip that takes its own room at the top of the screen (and stays there while scrolling): it must
   // never sit on the numbers it changes.
@@ -88,7 +91,7 @@ export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; 
           </form>
         ) : (
           <>
-            <ShinyButton small disabled={!!busy} onClick={() => act("Push it to the edge", "/api/demo/push", {})}>Push it to the edge</ShinyButton>
+            <ShinyButton small disabled={!!busy || spent} onClick={() => act("Push it to the edge", "/api/demo/push", {})}>Push it to the edge</ShinyButton>
             <MetalButton small disabled={!!busy} onClick={() => act("Reset", "/api/demo/reset", {})}>Reset</MetalButton>
             {!status.publicDemo && (
               <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => act("Pause / resume", "/api/demo/pause", { paused: !status.paused })}>{status.paused ? "Resume bot" : "Pause bot"}</Button>
@@ -102,7 +105,7 @@ export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; 
           </>
         )}
       </div>
-      <p role="status" className="mt-2 line-clamp-2 text-[13px] leading-snug text-on-panel-2 empty:hidden">{out || (status.mode === "sim" ? "Press it, then hands off. Airbag saves the loan by itself." : "")}</p>
+      <p role="status" className="mt-2 line-clamp-2 text-[13px] leading-snug text-on-panel-2 empty:hidden">{spent ? "This simulated loan has used up its savings, so Airbag cannot save it again. It starts fresh when the simulator restarts." : out || (status.mode === "sim" ? "Press it, then hands off. Airbag saves the loan by itself." : "")}</p>
     </aside>
   );
 }
