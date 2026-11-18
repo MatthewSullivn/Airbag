@@ -10,8 +10,8 @@ import { config } from "./config.js";
 import { makeArc } from "./arc.js";
 import { GeminiOdds } from "./gemini.js";
 import { Store, type StreamEvent } from "./state.js";
-import { Bot } from "./bot.js";
-import { RULE } from "./brain.mjs";
+import { Bot, ladderStatus } from "./bot.js";
+import { RULE, health as healthOf } from "./brain.mjs";
 import { describeReceipt, isTxHash } from "./stream-verify.mjs";
 import { makeRateLimiter, publicAllows, publicDemoOn } from "./public-demo.mjs";
 import { makeWalletReader } from "./wallet-view.js";
@@ -132,18 +132,45 @@ const walletIds = { marketId: arc.marketId, vault: arc.vault?.address ?? null };
 const readWalletView = makeWalletReader(config, gemini, walletIds);
 // Wallets that turned protection on from the page: each has its own AirbagGuard for our bot key (src/protector.ts).
 const protector = new Protector(config, gemini, store, readWalletView, { ids: walletIds, limit: () => bot.limit, skipGuard: arc.custody?.guard ?? null });
-const walletHit = makeRateLimiter(120, 60_000);
+const walletHit = makeRateLimiter(300, 60_000);
 app.get("/api/wallet/:address", async (req, res) => {
   const address = String(req.params.address);
   if (!isAddress(address)) return res.status(400).json({ error: "that is not a wallet address (0x followed by 40 characters)" });
   if (!walletHit()) return res.status(429).json({ error: "lots of lookups right now, try again in a minute" });
   try {
-    const view = await readWalletView(address);
+    // ?fresh=1: the page asks right after the visitor's own transaction, so it must not get the answer from before it
+    const view = await readWalletView(address, { fresh: req.query.fresh === "1" });
     const guarded = protector.forOwner(address);
+    const live = config.mode === "live";
+    const protectedHere = live && address.toLowerCase() === arc.address.toLowerCase();
+    const L = view.loan;
     res.json({
       ...view,
+      // The same shape as "reading" in /api/status, so the page can show THIS loan in the big number, the cards and the chart.
+      reading: L && {
+        at: view.at,
+        loan: {
+          debt: L.debt,
+          collateral: L.collateral,
+          borrowApy: live ? bot.last?.loan.borrowApy ?? null : null,   // one market, so one borrow rate for everybody
+          healthFactor: healthOf(L.debt, L.collateral, view.market.oraclePrice, view.market.lltv),
+          band: null,
+          oraclePrice: view.market.oraclePrice,
+        },
+        savings: { vaultName: live && arc.vault ? arc.vault.name : "Earn Kit savings vault", balance: view.savings, apy: live ? arc.vault?.apy ?? null : null },
+        inLoan: protectedHere ? store.inLoan : guarded?.inLoan ?? 0,
+        spot: L.priceSource === "real" ? L.priceUsed : null,
+        priceUsed: L.priceUsed,
+        priceSource: L.priceSource,
+        line: L.line,
+        health: L.health,
+        odds: L.odds,
+        ladders: ladderStatus(await gemini.get(), L.line),
+        decision: { odds: L.odds?.odds ?? null },
+        protected: protectedHere || !!guarded,
+      },
       offers: offersFor(view),
-      protectedHere: config.mode === "live" && address.toLowerCase() === arc.address.toLowerCase(),
+      protectedHere,
       protection: {
         available: protector.enabled,
         why: protector.why(),

@@ -40,6 +40,19 @@ export interface Reading {
   decision: Decision;
 }
 
+/** Each ladder with its own odds for one line. Also used for a connected wallet's loan (src/server.ts). */
+export function ladderStatus(odds: OddsSnapshot, line: number): LadderStatus[] {
+  return odds.events.map((e) => ({
+    ticker: e.ticker,
+    title: e.title,
+    expiryDate: e.expiryDate,
+    volume: e.volume,
+    lowestStrike: e.ladder[0]?.strike ?? null,
+    highestStrike: e.ladder[e.ladder.length - 1]?.strike ?? null,
+    odds: odds.detailFor(e.ticker, line),
+  }));
+}
+
 export class Bot {
   paused = false;
   last: Reading | null = null;
@@ -181,22 +194,11 @@ export class Bot {
       line,
       health: healthOf(loan.debt, loan.collateral, priceUsed, lltv),
       odds: odds.events.length ? odds.detail(line) : null,
-      ladders: this.ladderStatus(odds, line),
+      ladders: ladderStatus(odds, line),
       decision,
     };
   }
 
-  private ladderStatus(odds: OddsSnapshot, line: number): LadderStatus[] {
-    return odds.events.map((e) => ({
-      ticker: e.ticker,
-      title: e.title,
-      expiryDate: e.expiryDate,
-      volume: e.volume,
-      lowestStrike: e.ladder[0]?.strike ?? null,
-      highestStrike: e.ladder[e.ladder.length - 1]?.strike ?? null,
-      odds: odds.detailFor(e.ticker, line),
-    }));
-  }
 
   private async runOnce(reason: string) {
     const r = await this.read();

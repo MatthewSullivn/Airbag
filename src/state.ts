@@ -5,7 +5,7 @@ import { dirname } from "node:path";
 import type { TxRef } from "./arc.js";
 
 export type Level = "action" | "info" | "warn" | "error";
-export interface LogEntry { t: number; level: Level; text: string; txs?: TxRef[] }
+export interface LogEntry { t: number; level: Level; text: string; txs?: TxRef[]; who?: string }
 export interface Sample {
   t: number;
   odds: number | null;
@@ -51,8 +51,9 @@ export class Store {
   get limit() { return this.data.limit; }
   set limit(v: number | null) { this.data.limit = v; this.save(); }
 
-  log(level: Level, text: string, txs?: TxRef[]) {
-    const entry: LogEntry = { t: Date.now(), level, text, ...(txs?.length ? { txs } : {}) };
+  /** `who` = the wallet a line is about (a connected wallet's loan, not the bot's own). The page filters on it. */
+  log(level: Level, text: string, txs?: TxRef[], who?: string) {
+    const entry: LogEntry = { t: Date.now(), level, text, ...(txs?.length ? { txs } : {}), ...(who ? { who: who.toLowerCase() } : {}) };
     this.data.log.unshift(entry);
     if (this.data.log.length > MAX_LOG) this.data.log.length = MAX_LOG;
     const stamp = new Date(entry.t).toISOString().slice(11, 19);

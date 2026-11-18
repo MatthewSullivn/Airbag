@@ -12,7 +12,7 @@ const ARC = {
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
 };
 const CIRBTC = { address: "0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF", symbol: "cirBTC", decimals: 8 };
-const REFRESH_MS = 10_000;
+const REFRESH_MS = 5_000;
 
 const isAddress = (x) => /^0x[0-9a-fA-F]{40}$/.test(x);
 const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -55,6 +55,7 @@ function link(href, text) {
 function render(v) {
   explorer = v.explorer || explorer;
   lastView = v;
+  window.airbag?.wallet(v, how);   // app.js shows this wallet's loan in the big number and the cards
   $("wallet-addr").replaceChildren(`${how === "connected" ? `connected with ${walletName}` : how} · `, link(`${explorer}/address/${v.address}`, short(v.address)));
 
   set("w-usdc", usdc(v.usdc));
@@ -84,11 +85,20 @@ function render(v) {
   renderActions(v);
 }
 
+// Right after the visitor's own transaction: look often and skip the server's short cache, so the pushed loan
+// and the bot's answer both show up on the page within a second or two.
+let closeUntil = 0;
+function keepLooking() {
+  clearTimeout(timer);
+  const left = closeUntil - Date.now();
+  timer = setTimeout(async () => { await load(); if (address) keepLooking(); }, left > 33_000 ? 1_000 : left > 0 ? 2_000 : REFRESH_MS);
+}
+
 async function load() {
   if (!address) return;
   const asked = address;
   try {
-    const res = await fetch(`/api/wallet/${asked}`, { cache: "no-store" });
+    const res = await fetch(`/api/wallet/${asked}${Date.now() < closeUntil ? "?fresh=1" : ""}`, { cache: "no-store" });
     const body = await res.json().catch(() => ({}));
     if (asked !== address) return;                    // the visitor switched wallets meanwhile
     if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
@@ -114,9 +124,9 @@ function show(next, source) {
   const viaExtension = source === "connected" && !!eth;
   $("wallet-add-chain").hidden = !viaExtension;
   $("wallet-add-token").hidden = !viaExtension;
-  clearInterval(timer);
-  timer = setInterval(load, REFRESH_MS);
+  window.airbag?.wallet(null);
   load();
+  keepLooking();
 }
 
 const onAccounts = (accounts) => {
@@ -132,7 +142,8 @@ function forget() {
 function hide() {
   card.hidden = true;
   address = null;
-  clearInterval(timer);
+  clearTimeout(timer);
+  window.airbag?.wallet(null);
   forget();
   button.textContent = "Connect wallet";
 }
@@ -317,6 +328,7 @@ async function withWallet(job, done = "All done.") {
   const wallet = eth, from = address;
   if (busy || !from || !wallet) return;
   busy = true;
+  window.airbag?.show(true);   // the visitor is working on their own loan: put it in the big number
   const buttons = [...$("wallet-do").querySelectorAll("button")];
   buttons.forEach((b) => (b.disabled = true));
   $("wallet-steps").replaceChildren();
@@ -330,8 +342,10 @@ async function withWallet(job, done = "All done.") {
   } finally {
     busy = false;
     buttons.forEach((b) => (b.disabled = false));
-    await sleep(800);
-    load();
+    closeUntil = Date.now() + 45_000;
+    await sleep(300);
+    await load();
+    keepLooking();
   }
 }
 const run = (action, body, done) => withWallet((wallet, from) => execute(wallet, from, action, body), done);

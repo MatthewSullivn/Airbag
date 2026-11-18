@@ -165,7 +165,7 @@ export class Protector {
     if (this.loans.size >= MAX_LOANS) throw new Error("This demo server is already watching as many loans as it can.");
     const loan: ProtectedLoan = { guard: v.guard, owner: v.owner, since: Date.now(), capUsdc: v.capUsdc, inLoan: await this.history(v.guard), lastCheck: null, lastMove: null, lastError: null, cooldownUntil: 0 };
     this.loans.set(key, loan);
-    this.store.log("info", `Now protecting wallet ${short(v.owner)} through its guard ${short(v.guard)} (its cap: ${v.capUsdc} USDC a day).`, [{ label: "guard", hash: v.guard, url: `${this.cfg.explorer}/address/${v.guard}` }]);
+    this.store.log("info", `Now protecting wallet ${short(v.owner)} through its guard ${short(v.guard)} (its cap: ${v.capUsdc} USDC a day).`, [{ label: "guard", hash: v.guard, url: `${this.cfg.explorer}/address/${v.guard}` }], v.owner);
     return loan;
   }
 
@@ -232,7 +232,7 @@ export class Protector {
           loan.lastError = null;
         } catch (e) {
           const message = firstLine(e);
-          if (loan.lastError !== message) this.store.log("error", `Protected wallet ${short(loan.owner)}: ${message}`);
+          if (loan.lastError !== message) this.store.log("error", `Protected wallet ${short(loan.owner)}: ${message}`, undefined, loan.owner);
           loan.lastError = message;
         }
       }
@@ -272,7 +272,7 @@ export class Protector {
       return;
     }
     if (this.cfg.dryRun) {
-      this.store.log("action", `${text.replace("{amount}", amount.toFixed(2)).replace("Moved", "Would move").replace("Gave", "Would give")} (dry run)`);
+      this.store.log("action", `${text.replace("{amount}", amount.toFixed(2)).replace("Moved", "Would move").replace("Gave", "Would give")} (dry run)`, undefined, loan.owner);
       loan.cooldownUntil = Date.now() + COOLDOWN_MS;
       return;
     }
@@ -284,7 +284,7 @@ export class Protector {
     loan.inLoan = Math.max(0, Math.round((loan.inLoan + (fn === "save" ? amount : -amount)) * 1e6) / 1e6);
     loan.lastMove = { t: Date.now(), kind: fn === "save" ? "save" : "give_back", usdc: amount, tx: hash };
     loan.cooldownUntil = Date.now() + COOLDOWN_MS;
-    this.store.log("action", text.replace("{amount}", amount.toFixed(2)), [{ label: fn === "save" ? "save through its guard" : "give back through its guard", hash, url: `${this.cfg.explorer}/tx/${hash}` }]);
+    this.store.log("action", text.replace("{amount}", amount.toFixed(2)), [{ label: fn === "save" ? "save through its guard" : "give back through its guard", hash, url: `${this.cfg.explorer}/tx/${hash}` }], loan.owner);
   }
 
   /** Stop watching a guard whose owner took its permissions away. */
@@ -295,7 +295,7 @@ export class Protector {
     const v = await this.verify(guard);
     if (v.active) return true;
     this.loans.delete(key);
-    this.store.log("info", `Stopped protecting wallet ${short(loan.owner)}: it took its guard's permissions away.`);
+    this.store.log("info", `Stopped protecting wallet ${short(loan.owner)}: it took its guard's permissions away.`, undefined, loan.owner);
     return false;
   }
 }

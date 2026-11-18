@@ -4,7 +4,32 @@ const $ = (id) => document.getElementById(id);
 const POLL_MS = 1500;
 let S = null;            // last /api/status
 let replay = null;       // /api/replay
+// A connected (or looked-up) wallet with a loan: the top of the page then shows THAT loan, not the bot's own.
+let W = null;            // last /api/wallet/:address answer (from wallet.js), plus the readings collected in this tab
+let follow = true;       // false = the visitor asked to see the bot's own loan again
 const drawn = { log: "", stream: "", odds: "", width: 0 };
+const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+const focus = () => (follow && W?.reading && !W.protectedHere ? W : null);
+window.airbag = {
+  /** wallet.js reports every look at the visitor's wallet (null = no wallet any more). */
+  wallet(view, how) {
+    if (!view) W = null;
+    else {
+      const same = !!W && W.address.toLowerCase() === view.address.toLowerCase();
+      const samples = same ? W.samples : [];
+      const r = view.reading;
+      if (r && (!samples.length || r.at > samples.at(-1).t)) {
+        samples.push({ t: r.at, odds: r.decision.odds, source: r.odds?.source ?? null, line: r.line, health: r.health, btc: r.priceUsed });
+        if (samples.length > 900) samples.shift();
+      }
+      if (!same) follow = true;
+      W = { ...view, how, samples };
+    }
+    if (S) render();
+  },
+  /** The visitor is working on their own loan (true) or on the bot's demo loan (false): show that one. */
+  show(mine) { follow = mine; if (S) render(); },
+};
 
 // ------------------------------------------------------------------ formatting
 const pct = (x) => (x == null ? "–" : x > 0 && x < 0.001 ? "<0.1%" : x < 0.1 ? `${+(x * 100).toFixed(1)}%` : `${Math.round(x * 100)}%`);
@@ -80,7 +105,8 @@ async function loadReplay() {
 let lastZone = null;
 function render() {
   const s = S;
-  const r = s.reading;
+  const f = focus();
+  const r = f ? f.reading : s.reading;
 
   // badges
   const mb = $("mode-badge");
@@ -98,11 +124,12 @@ function render() {
   bb.className = `badge ${botClass}`;
   $("bot-text").textContent = botText;
 
+  renderWhose(s, f);
   renderHero(s, r);
   renderTiles(s, r);
-  renderLog(s);
+  renderLog(s, f);
   renderStream(s);
-  renderOdds(s);
+  renderOdds(s, f);
 
   // price note + footer
   const pn = $("price-note");
@@ -121,6 +148,23 @@ function render() {
       s.custody.ownerKeyOnServer ? ", with its own key." : ", with its own key. This server does not hold the wallet's key.");
   syncDemoButtons();
 }
+
+// One line above the big number saying whose loan the page is showing, with a switch.
+function renderWhose(s, f) {
+  const box = $("whose"), btn = $("whose-switch");
+  box.hidden = !W || !!W.protectedHere;
+  if (box.hidden) return;
+  const theirs = s.mode === "live" ? "the bot's own loan" : "the simulated demo loan";
+  const mine = W.how === "connected";
+  let text;
+  if (f) text = `Showing ${mine ? "your loan" : "the loan of"} ${mine ? `(${short(W.address)})` : short(W.address)}, read from Arc Testnet. ${W.reading.protected ? "Airbag is protecting it." : "Airbag is not protecting it yet."}`;
+  else if (W.reading) text = `Showing ${theirs}.`;
+  else text = `This is ${theirs}. ${mine ? "Open a loan below and your own numbers show up here." : "That wallet has no loan."}`;
+  $("whose-text").textContent = text;
+  btn.hidden = !W.reading;
+  btn.textContent = f ? `Show ${theirs}` : mine ? "Show my loan" : "Show that wallet's loan";
+}
+$("whose-switch").addEventListener("click", () => { follow = !follow; if (S) render(); });
 
 function renderHero(s, r) {
   const hero = $("hero"), fig = $("hero-odds"), text = $("hero-text"), pill = $("hero-pill"), meter = $("meter");
@@ -188,9 +232,12 @@ function renderTiles(s, r) {
   const tb = $("t-band");
   tb.textContent = band; tb.className = `pill small ${cls}`;
   const hs = $("t-health-sub");
-  hs.replaceChildren(`1.00 means liquidation. The bot acts under ${s.rule.actBelowHealth.toFixed(2)} or when the odds pass your limit.`);
+  // r.protected only exists for a connected wallet's loan: false = the bot is not watching it (yet)
+  hs.replaceChildren(r.protected === false
+    ? `1.00 means liquidation. With protection on, the bot acts under ${s.rule.actBelowHealth.toFixed(2)} or when the odds pass the limit.`
+    : `1.00 means liquidation. The bot acts under ${s.rule.actBelowHealth.toFixed(2)} or when the odds pass your limit.`);
   if (L.healthFactor != null)
-    hs.append(el("span", { class: "muted", text: `Borrow Kit on-chain${L.oraclePrice ? ` (cirBTC at ${usd(L.oraclePrice)})` : ""}: ${L.healthFactor.toFixed(2)} ${L.band ?? ""}` }));
+    hs.append(el("span", { class: "muted", text: `${r.protected === undefined ? "Borrow Kit on-chain" : "The lending market's own number"}${L.oraclePrice ? ` (cirBTC at ${usd(L.oraclePrice)})` : ""}: ${L.healthFactor.toFixed(2)} ${L.band ?? ""}` }));
   const sv2 = r.savings;
   $("t-savings").textContent = sv2 ? usdc(sv2.balance) : "–";
   const ss = $("t-savings-sub");
@@ -198,18 +245,25 @@ function renderTiles(s, r) {
   if (sv2) ss.append(el("span", { class: "muted", text: `${sv2.vaultName}${sv2.apy != null ? ` · earning ${(sv2.apy * 100).toFixed(1)}% a year` : ""}` }));
 }
 
-function renderLog(s) {
-  const key = `${s.log.length}:${s.log[0]?.t}:${s.mode}`;
+function renderLog(s, f) {
+  // showing a connected wallet's loan: only the lines about that wallet
+  const who = f ? f.address.toLowerCase() : null;
+  const guard = f?.protection?.guard;
+  const key = `${s.log.length}:${s.log[0]?.t}:${s.mode}:${who}:${guard?.capUsdc}:${s.movedLast24h}:${s.protector?.loans?.length}`;
   if (key === drawn.log) return;
   drawn.log = key;
   const ol = $("log");
   const icon = { action: "●", info: "·", warn: "▲", error: "✕" };
-  ol.replaceChildren(...(s.log.length ? s.log.map((e) =>
+  const log = who ? s.log.filter((e) => e.who === who) : s.log;
+  $("log-meta").textContent = f
+    ? guard ? `this loan only · its guard may move up to ${guard.capUsdc} USDC a day` : "this loan only · not protected yet"
+    : `${s.protector?.loans?.length ? "the bot's own loan: " : ""}moved ${usdc(s.movedLast24h)} in the last 24 h (cap ${s.dailyCapUsdc} USDC)`;
+  if (!log.length) return ol.replaceChildren(el("li", { class: "empty", text: who ? "Nothing yet for this loan." : "Nothing yet." }));
+  ol.replaceChildren(...(log.length ? log.map((e) =>
     el("li", { class: e.level },
       el("time", { datetime: new Date(e.t).toISOString(), text: clock(e.t) }),
       el("div", { class: "msg" }, el("span", { class: "lvl", "aria-hidden": "true", text: icon[e.level] ?? "·" }), e.text, txLinks(e.txs)),
-    )) : [el("li", { class: "empty", text: "Nothing yet." })]));
-  $("log-meta").textContent = `moved ${usdc(s.movedLast24h)} in the last 24 h (cap ${s.dailyCapUsdc} USDC)`;
+    )) : []));
 }
 
 function renderStream(s) {
@@ -350,15 +404,20 @@ function lineChart(host, cfg) {
   host.replaceChildren(svg);
 }
 
-function renderOdds(s, force = false) {
+function renderOdds(s, f, force = false) {
   const host = $("odds-chart");
-  const pts = s.samples;
-  const key = `${pts.length}:${pts.at(-1)?.t}:${s.limit}:${host.clientWidth}`;
+  // a connected wallet's loan has no history on the server: the chart is what this tab has seen since it connected
+  const pts = f ? f.samples : s.samples;
+  const who = f ? f.address.toLowerCase() : null;
+  const key = `${pts.length}:${pts.at(-1)?.t}:${s.limit}:${host.clientWidth}:${who}`;
   if (!force && key === drawn.odds) return;
   drawn.odds = key;
+  $("odds-title").textContent = f ? "Odds for this loan since you connected" : "Odds over the last hour";
+  const every = f ? "one reading every few seconds" : "one reading every 15 s";
   if (pts.length < 2) {
-    host.replaceChildren(el("p", { class: "empty", text: "Collecting readings… the bot saves one every 15 seconds." }));
+    host.replaceChildren(el("p", { class: "empty", text: f ? "Collecting readings for this loan…" : "Collecting readings… the bot saves one every 15 seconds." }));
     $("odds-table").replaceChildren();
+    $("odds-meta").textContent = every;
     return;
   }
   const xs = pts.map((p) => p.t);
@@ -372,7 +431,7 @@ function renderOdds(s, force = false) {
   const tickStep = x1 - x0 > 40 * 60_000 ? 10 * 60_000 : x1 - x0 > 12 * 60_000 ? 5 * 60_000 : 60_000;
   const xTicks = [];
   for (let t = Math.ceil(x0 / tickStep) * tickStep; t <= x1; t += tickStep) xTicks.push(t);
-  const actions = s.log.filter((e) => e.level === "action" && e.t >= x0 && e.t <= x1 + 5000);
+  const actions = s.log.filter((e) => e.level === "action" && (who ? e.who === who : !e.who) && e.t >= x0 && e.t <= x1 + 5000);
   const markers = actions.map((a) => { const i = nearestIndex(xs, a.t); return vals[i] == null ? null : { x: xs[i], y: vals[i], color: "var(--series-1)" }; }).filter(Boolean);
   const last = pts.at(-1);
   lineChart(host, {
@@ -395,7 +454,7 @@ function renderOdds(s, force = false) {
       };
     },
   });
-  $("odds-meta").textContent = `one reading every 15 s · ${markers.length} bot move${markers.length === 1 ? "" : "s"} marked`;
+  $("odds-meta").textContent = `${every} · ${markers.length} bot move${markers.length === 1 ? "" : "s"} marked`;
   const tbl = $("odds-table");
   tbl.replaceChildren(el("thead", {}, el("tr", {}, ...["Time", "Odds", "How", "Line", "Health", "BTC"].map((h) => el("th", { text: h })))),
     el("tbody", {}, ...pts.slice().reverse().map((p) => el("tr", {}, ...[clock(p.t), pct(p.odds), p.source ?? "–", usd(p.line), p.health?.toFixed(2) ?? "–", usd(p.btc)].map((v) => el("td", { text: v }))))));
@@ -488,7 +547,7 @@ new ResizeObserver(() => {
   const w = $("odds-chart").clientWidth;
   if (Math.abs(w - drawn.width) < 4) return;
   drawn.width = w;
-  if (S) renderOdds(S, true);
+  if (S) renderOdds(S, focus(), true);
   if (replayDraw) replayDraw();
 }).observe(document.querySelector("main"));
 
@@ -550,6 +609,7 @@ document.addEventListener("keydown", (e) => {
 $("demo-close").addEventListener("click", () => toggleDemo(false));
 $("demo-key-form").addEventListener("submit", (e) => { e.preventDefault(); demoKey = $("demo-key").value.trim(); unlock(); });
 const run = (btn, path, body, label) => async () => {
+  if (/push|reset/.test(path)) window.airbag.show(false);   // these act on the bot's own loan, so show that one
   btn.disabled = true;
   out(`${label}…`);
   try { const j = await api(path, body?.()); out(`${label}: ${j.result ?? "done"}`); }
