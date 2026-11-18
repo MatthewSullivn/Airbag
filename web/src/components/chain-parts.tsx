@@ -2,7 +2,7 @@
 // what a QuickNode Stream saw on Arc, and what a move costs.
 import { ArrowDown, ArrowLeftRight, ArrowUpDown, ArrowUpRight } from "lucide-react";
 import type { GasPrices, Status } from "@/lib/api";
-import { ADDRESSES, EXPLORER, GAS, STREAM_RUN, TESTNET_GAS_PRICE_WEI } from "@/data/proof";
+import { ADDRESSES, EXPLORER, GAS, STREAM_RUN, TESTNET_GAS_PRICE_WEI } from "@/recorded/proof";
 import { clock } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Card, ExplorerLink, Panel } from "./bits";

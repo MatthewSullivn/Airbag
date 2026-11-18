@@ -2,6 +2,7 @@
 // So a change in web/ without a rebuild would ship an old page. This catches it: the build stamps a hash of its
 // sources into public/build.json, and here we compute that hash again.
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,18 @@ test("the built page in public/ is up to date with web/ (if not: npm run web:bui
   assert.ok(existsSync(pub("build.json")), "public/build.json is missing: run npm run web:build");
   const { sources } = JSON.parse(readFileSync(pub("build.json"), "utf8"));
   assert.equal(sources, sourceHash(), "web/ changed since the last build: run npm run web:build and commit public/ too");
+});
+
+test("no source file of the page is git-ignored (an ignored file builds here and is missing for everyone else)", (t) => {
+  // This happened: web/src/data/ was caught by the repo's "data/" ignore rule, so the page built on one machine
+  // and the file never reached GitHub. Only a fresh clone showed it.
+  let ignored;
+  try {
+    ignored = execFileSync("git", ["ls-files", "--others", "--ignored", "--exclude-standard", "--", "web/src", "web/scripts", "web/index.html", "web/app", "src", "test"], { cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8" });
+  } catch {
+    return t.skip("git is not available here");
+  }
+  assert.equal(ignored.trim(), "", "these files are ignored by .gitignore, so they will never be committed");
 });
 
 test("both pages and the old page are there to serve", () => {

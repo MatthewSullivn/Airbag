@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { ArrowDown, ArrowRight } from "lucide-react";
 import { useCrashReplay, useLadders, useStatus } from "@/lib/api";
-import { ADDRESSES, EXPLORER, LIVE_URL, OTHER_SAVES, SIM_URL } from "@/data/proof";
+import { ADDRESSES, EXPLORER, LIVE_URL, OTHER_SAVES, SIM_URL } from "@/recorded/proof";
 import { ButtonLink, ExplorerLink, Section, Wordmark } from "@/components/bits";
 import { CrashCard } from "@/components/crash-card";
 import { LadderCard } from "@/components/ladder-card";

@@ -6,7 +6,7 @@ import { ArrowUpRight, Check, Loader, Wallet, X } from "lucide-react";
 import type { Status, WalletView } from "@/lib/api";
 import { btc, short, usd, usdc } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { LIVE_URL } from "@/data/proof";
+import { LIVE_URL } from "@/recorded/proof";
 import { recall } from "@/wallet/core";
 import type { WalletApi } from "@/wallet/use-wallet";
 import { Button, Card, ExplorerLink, Panel } from "./bits";

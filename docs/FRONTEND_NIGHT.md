@@ -44,7 +44,7 @@ He saw my first build of the dashboard and said it looked terrible: AI slop, far
 - `web/src/wallet/core.js`: the signing logic, moved from the classic page with the same requests in the same order. `use-wallet.ts` is the React side.
 - `web/src/charts/xy-chart.tsx`: one chart for every line picture (built on tweenly's chart kit). On a narrow screen its in-plot labels move under the chart.
 - `web/src/components/`: `number-card` (the one number), `price-card` (bitcoin against the price where it is lost), `loan-parts` (four facts, the log), `ladder-card` (Gemini's curve with the line on it, the ×2 row), `market-parts` (the odds over time: Gemini's own history, and this loan's), `hedge-card`, `chain-parts` (the money map, the Stream's rows, the costs), `save-replay` (the recorded save), `crash-card` (February), `wizard` (the four steps), `demo-drawer` (a bar at the bottom), `top-bar`, `site-footer`.
-- `web/src/data/proof.ts`: the recorded real runs (README "Live proof"), the gas each move used, the four Stream deliveries of Nov 17.
+- `web/src/recorded/proof.ts`: the recorded real runs (README "Live proof"), the gas each move used, the four Stream deliveries of Nov 17.
 - Pure helpers shared with the server and the tests: `src/brain.mjs` (@brain), `src/hedge.mjs` (@hedge), `src/market-history.mjs` (@history).
 - Server, read-only additions: `GET /api/ladders` (ladder points, bet prices, the market's link on gemini.com), `GET /api/market-history` (Gemini's hourly candles per bet), `GET /api/gas` (Arc testnet and mainnet gas price).
 

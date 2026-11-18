@@ -1,12 +1,12 @@
 // A real save, replayed. Every step is a transaction on Arc Testnet (README "Live proof"), so a visitor with no
-// wallet still sees the product work, and nothing on screen is simulated. The data is in data/proof.ts.
+// wallet still sees the product work, and nothing on screen is simulated. The data is in recorded/proof.ts.
 // The card shows the same two prices as the Loan screen: bitcoin, and the price below which the bitcoin is lost.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInView } from "motion/react";
 import { useStill } from "@/lib/chart-kit";
 import { Play, RotateCcw } from "lucide-react";
 import { XYChart, SERIES, STATUS } from "@/charts/xy-chart";
-import { EXPLORER, VISITOR_RUN } from "@/data/proof";
+import { EXPLORER, VISITOR_RUN } from "@/recorded/proof";
 import { short, usd, usdK } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button, Count, ExplorerLink, Panel, StatusPill } from "./bits";
