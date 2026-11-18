@@ -291,6 +291,7 @@ Server endpoints:
 | `GET /api/status` | JSON: loan, odds, savings, limit, log, odds samples |
 | `GET /api/replay` | crash replay results |
 | `GET /api/wallet/:address` | read-only: any wallet's USDC, cirBTC, savings, loan and odds (the dashboard's Connect wallet) |
+| `POST /api/plan/open-loan`, `/add-savings` | prepares the transactions a connected wallet signs for itself; signs nothing |
 | `POST /api/borrow-webhook?key=` | Borrow Kit band change, wakes the bot |
 | `POST /api/stream?key=` | QuickNode Stream delivery, wakes the bot |
 | `POST /api/demo/push`, `/reset`, `/pause`, `/limit` | demo controls (header `x-airbag-key`) |
@@ -302,9 +303,10 @@ POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no se
 - **Reset** repays from the wallet back to health 1.5. The bot then gives the savings back by itself.
 
 **Connect wallet.** The button at the top shows a visitor's own wallet on Arc Testnet: its USDC and cirBTC, its savings, its loan in the same market, and the odds for that loan's line.
-- It is read-only. Connecting shares the address; nothing is signed or sent.
-- Without a wallet extension, paste any address instead.
-- It does not switch protection on for that wallet. That takes an AirbagGuard for the wallet, which is not on the page yet.
+- Connecting shares the address and nothing else. Without a wallet extension, paste any address instead (read-only).
+- **A connected wallet can act for itself:** *Open a loan* (lock cirBTC and borrow USDC, straight on the lending contract) and *Add savings* (deposit USDC into the Earn vault). The server prepares each transaction after checking it against the chain (`POST /api/plan/...`); the visitor's own wallet shows it, signs it and sends it. The server never sees a key.
+- A new loan must start at health 1.25 or better at the live price, the level the bot repays to.
+- It does not switch protection on for that wallet yet. That takes an AirbagGuard for the wallet, which is not on the page yet.
 
 All settings are in [`.env.example`](.env.example).
 

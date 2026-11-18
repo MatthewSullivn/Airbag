@@ -1,7 +1,40 @@
 // The read-only wallet lookup: address checks and Morpho's share-to-debt math.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isAddress, debtFromShares } from "../src/wallet-math.mjs";
+import { isAddress, debtFromShares, isAmount, loanAfter, maxBorrow } from "../src/wallet-math.mjs";
+
+test("typed amounts: plain decimals only, within the token's precision, above zero", () => {
+  assert.equal(isAmount("0.0005", 8), true);
+  assert.equal(isAmount("19.755861", 6), true);
+  assert.equal(isAmount("19.7558611", 6), false);      // more decimals than USDC has
+  assert.equal(isAmount("0", 6), false);
+  assert.equal(isAmount("-1", 6), false);
+  assert.equal(isAmount("1e9", 6), false);
+  assert.equal(isAmount("1,000", 6), false);
+  assert.equal(isAmount(" 5", 6), false);
+  assert.equal(isAmount(5, 6), false);
+});
+
+test("opening a loan: health at the live price, and the lending contract's own health", () => {
+  // the first real loan on this project: 0.0005 cirBTC, 19.755861 USDC, BTC $64,321, oracle $75,000
+  const a = loanAfter({ collateral: 0, debt: 0, addCollateral: 0.0005, addDebt: 19.755861, price: 64321.41, oraclePrice: 75000, lltv: 0.86 });
+  assert.ok(Math.abs(a.health - 1.4) < 1e-3, `health ${a.health}`);
+  assert.ok(Math.abs(a.onChainHealth - 1.632) < 1e-3, `on-chain ${a.onChainHealth}`);
+  assert.ok(Math.abs(a.line - 45944) < 1, `line ${a.line}`);
+  assert.equal(loanAfter({ collateral: 0.0005, debt: 0, price: 64000, oraclePrice: 75000, lltv: 0.86 }).health, Infinity);
+});
+
+test("the most a wallet may borrow keeps health at the floor or better, counting debt it already has", () => {
+  const base = { collateral: 0, debt: 0, addCollateral: 0.0005, price: 64000, oraclePrice: 75000, lltv: 0.86, minHealth: 1.25 };
+  const max = maxBorrow(base);
+  assert.ok(Math.abs(max - (0.0005 * 64000 * 0.86) / 1.25) < 1e-9);
+  assert.ok(loanAfter({ ...base, addDebt: max }).health >= 1.25 - 1e-9);
+  assert.ok(Math.abs(maxBorrow({ ...base, debt: 10 }) - (max - 10)) < 1e-9);
+  assert.equal(maxBorrow({ ...base, debt: 1000 }), 0);
+  // when the live price is above the oracle, the lending contract's limit is the one that binds
+  const hot = maxBorrow({ ...base, price: 200000, minOnChain: 1.02 });
+  assert.ok(Math.abs(hot - (0.0005 * 75000 * 0.86) / 1.02) < 1e-9);
+});
 
 test("only real wallet addresses are looked up", () => {
   assert.equal(isAddress("0x3886E94702cA1dB4EdFCee34c20d66Ed79E5aC2e"), true);

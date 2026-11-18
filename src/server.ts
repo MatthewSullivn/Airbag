@@ -15,6 +15,7 @@ import { RULE } from "./brain.mjs";
 import { describeReceipt, isTxHash } from "./stream-verify.mjs";
 import { makeRateLimiter, publicAllows, publicDemoOn } from "./public-demo.mjs";
 import { makeWalletReader } from "./wallet-view.js";
+import { makeWalletPlanner, offersFor, PlanError } from "./wallet-plan.js";
 import { isAddress } from "./wallet-math.mjs";
 import { createPublicClient, http } from "viem";
 import { arcTestnet } from "viem/chains";
@@ -133,8 +134,21 @@ app.get("/api/wallet/:address", async (req, res) => {
   if (!walletHit()) return res.status(429).json({ error: "lots of lookups right now, try again in a minute" });
   try {
     const view = await readWalletView(address);
-    res.json({ ...view, protectedHere: config.mode === "live" && address.toLowerCase() === arc.address.toLowerCase(), explorer: config.explorer });
+    res.json({ ...view, offers: offersFor(view), protectedHere: config.mode === "live" && address.toLowerCase() === arc.address.toLowerCase(), explorer: config.explorer });
   } catch (e) {
+    res.status(502).json({ error: `could not read Arc Testnet: ${String((e as Error).message).split("\n")[0].slice(0, 140)}` });
+  }
+});
+
+// ---- What a CONNECTED wallet can do for itself: open a loan, add savings. The server only prepares the
+// transactions (to + data) after checking them against the chain. The visitor's own wallet signs and sends.
+const planFor = makeWalletPlanner(config, readWalletView, { marketId: arc.marketId, vault: arc.vault?.address ?? null });
+app.post("/api/plan/:action", async (req, res) => {
+  if (!walletHit()) return res.status(429).json({ error: "lots of requests right now, try again in a minute" });
+  try {
+    res.json(await planFor(String(req.params.action), req.body ?? {}));
+  } catch (e) {
+    if (e instanceof PlanError) return res.status(400).json({ error: e.message });
     res.status(502).json({ error: `could not read Arc Testnet: ${String((e as Error).message).split("\n")[0].slice(0, 140)}` });
   }
 });

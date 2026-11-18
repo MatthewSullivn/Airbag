@@ -13,3 +13,33 @@ export function debtFromShares(shares, totalBorrowAssets, totalBorrowShares) {
   const total = totalBorrowShares + 1_000_000n;
   return (shares * assets + total - 1n) / total;
 }
+
+/** An amount typed by a visitor: digits with at most `decimals` decimal places, and more than zero. */
+export function isAmount(x, decimals) {
+  return typeof x === "string" && new RegExp(`^\\d{1,12}(\\.\\d{1,${decimals}})?$`).test(x) && Number(x) > 0;
+}
+
+/**
+ * The loan after adding collateral and debt. Plain numbers (BTC, USDC).
+ * health uses `price` (the live BTC price Airbag shows); onChainHealth uses the lending market's own oracle.
+ */
+export function loanAfter({ collateral, debt, addCollateral = 0, addDebt = 0, price, oraclePrice, lltv }) {
+  const c = collateral + addCollateral, d = debt + addDebt;
+  return {
+    collateral: c,
+    debt: d,
+    health: d > 0 ? (c * price * lltv) / d : Infinity,
+    onChainHealth: d > 0 ? (c * oraclePrice * lltv) / d : Infinity,
+    line: c > 0 ? d / (c * lltv) : 0,
+  };
+}
+
+/**
+ * Most USDC a wallet can still borrow while starting at health `minHealth` or better at the live price,
+ * and staying clear of the lending contract's own limit (on-chain health `minOnChain`).
+ */
+export function maxBorrow({ collateral, debt, addCollateral = 0, price, oraclePrice, lltv, minHealth, minOnChain = 1.02 }) {
+  const c = collateral + addCollateral;
+  const cap = Math.min((c * price * lltv) / minHealth, (c * oraclePrice * lltv) / minOnChain);
+  return Math.max(0, cap - debt);
+}

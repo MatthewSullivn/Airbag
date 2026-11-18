@@ -35,24 +35,33 @@ export interface WalletView {
   cirbtc: number;
   savings: number;              // USDC in the Earn vault
   loan: WalletLoan | null;      // null = no loan in this market
+  /** The lending market's numbers, needed to size a new loan even when the wallet has none yet. */
+  market: { lltv: number; oraclePrice: number; priceUsed: number; priceSource: "real" | "oracle" };
   at: number;
 }
 
 const CACHE_MS = 5_000;
 
+/** The market and vault to read: the running bot's when it knows them (live mode), else Arc Testnet's defaults. */
+export function resolveIds(ids: { marketId: string | null; vault: string | null }) {
+  return {
+    marketId: (/^0x[0-9a-fA-F]{64}$/.test(ids.marketId ?? "") ? ids.marketId : ARC_TESTNET_MARKET) as `0x${string}`,
+    vault: (isAddress(ids.vault) ? ids.vault : ARC_TESTNET_VAULT) as Address,
+  };
+}
+
 /** Returns a function that reads one wallet. `ids` come from the running bot when it knows them (live mode). */
 export function makeWalletReader(cfg: Config, gemini: GeminiOdds, ids: { marketId: string | null; vault: string | null }) {
   const client = createPublicClient({ chain: arcTestnet, transport: http(cfg.rpcUrl) });
   const morpho = cfg.morphoAddress as Address;
-  const marketId = (/^0x[0-9a-fA-F]{64}$/.test(ids.marketId ?? "") ? ids.marketId : ARC_TESTNET_MARKET) as `0x${string}`;
-  const vault = (isAddress(ids.vault) ? ids.vault : ARC_TESTNET_VAULT) as Address;
+  const { marketId, vault } = resolveIds(ids);
   let market: { oracle: Address; lltv: number } | null = null;
   const cache = new Map<string, WalletView>();
 
-  return async function readWalletView(address: string): Promise<WalletView> {
+  return async function readWalletView(address: string, opts: { fresh?: boolean } = {}): Promise<WalletView> {
     const key = address.toLowerCase();
     const hit = cache.get(key);
-    if (hit && Date.now() - hit.at < CACHE_MS) return hit;
+    if (!opts.fresh && hit && Date.now() - hit.at < CACHE_MS) return hit;
     const a = address as Address;
     if (!market) {
       const mp = await client.readContract({ address: morpho, abi: MORPHO_ABI, functionName: "idToMarketParams", args: [marketId] });
@@ -72,11 +81,11 @@ export function makeWalletReader(cfg: Config, gemini: GeminiOdds, ids: { marketI
 
     const debt = Number(formatUnits(debtFromShares(pos[1], mkt[2], mkt[3]), 6));
     const collateral = Number(formatUnits(pos[2], 8));
+    const oraclePrice = Number(price) / 1e34;   // Morpho oracle scale: 1e36 * 10^(6 - 8)
+    const useReal = cfg.priceSource === "real" && spot.price != null;
+    const priceUsed = useReal ? spot.price! : oraclePrice;
     let loan: WalletLoan | null = null;
     if (debt > 0 && collateral > 0) {
-      const oraclePrice = Number(price) / 1e34;   // Morpho oracle scale: 1e36 * 10^(6 - 8)
-      const useReal = cfg.priceSource === "real" && spot.price != null;
-      const priceUsed = useReal ? spot.price! : oraclePrice;
       const line = liqPrice(debt, collateral, market.lltv);
       const detail = odds.events.length ? odds.detail(line) : null;
       loan = {
@@ -90,7 +99,15 @@ export function makeWalletReader(cfg: Config, gemini: GeminiOdds, ids: { marketI
         oddsBy: detail ? odds.events.find((e) => e.ticker === detail.ticker)?.expiryDate ?? null : null,
       };
     }
-    const view: WalletView = { address, usdc: Number(formatUnits(usdc, 6)), cirbtc: Number(formatUnits(btc, 8)), savings: Number(formatUnits(savingsRaw, 6)), loan, at: Date.now() };
+    const view: WalletView = {
+      address,
+      usdc: Number(formatUnits(usdc, 6)),
+      cirbtc: Number(formatUnits(btc, 8)),
+      savings: Number(formatUnits(savingsRaw, 6)),
+      loan,
+      market: { lltv: market.lltv, oraclePrice, priceUsed, priceSource: useReal ? "real" : "oracle" },
+      at: Date.now(),
+    };
     cache.set(key, view);
     if (cache.size > 200) cache.delete(cache.keys().next().value as string);
     return view;

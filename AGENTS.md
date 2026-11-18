@@ -75,7 +75,8 @@ demo buttons ───────┘        │        │         └─ Circl
 | `replay/` | The Feb 2026 crash replay, using the same `decide()`. |
 | `stream/filter.js` | The QuickNode Streams filter (paste into QuickNode as is). |
 | `src/public-demo.mjs` | When the demo buttons are open to everyone: hosted simulator with `PUBLIC_DEMO=true` only, never live. |
-| `src/wallet-view.ts`, `src/wallet-math.mjs`, `public/wallet.js` | Connect wallet: a read-only view of any wallet (USDC, cirBTC, savings, loan, odds) through `GET /api/wallet/:address`. It never signs or sends anything. |
+| `src/wallet-view.ts`, `src/wallet-math.mjs`, `public/wallet.js` | Connect wallet: a view of any wallet (USDC, cirBTC, savings, loan, odds) through `GET /api/wallet/:address`. |
+| `src/wallet-plan.ts` | What a connected wallet can do for itself: open a loan, add savings. It builds the transactions (`POST /api/plan/...`) after checking them against the chain. The visitor's wallet signs; the server never does. |
 | `src/guard-plan.mjs` | Guard mode's pure checks: which key setups may run, and clamping a move to the guard's on-chain cap. `LiveArc` uses them when `USE_GUARD=true`. |
 | `render.yaml`, `docs/HOSTING.md` | The always-on public demo (the simulator on Render). |
 | `contracts/` | `AirbagGuard`: a contract so the bot key can only move the owner's savings into the owner's own loan and back. Foundry. See `contracts/README.md`. |
