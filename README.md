@@ -86,7 +86,7 @@ So with a 5% limit the odds trigger fires around health 1.19, before Borrow Kit'
 
 ## 3. How Arc and Circle's kits are used
 
-All on **Arc Testnet** (chain id `5042002`, RPC `https://rpc.testnet.arc.io`, explorer `https://explorer.testnet.arc.io`), through `@circle-fin/app-kit` 1.22 with the `@circle-fin/adapter-viem-v2` private-key adapter. No Solidity: we only call Circle's kits and existing contracts.
+All on **Arc Testnet** (chain id `5042002`, RPC `https://rpc.testnet.arc.io`, explorer `https://explorer.testnet.arc.io`), through `@circle-fin/app-kit` 1.22 with the `@circle-fin/adapter-viem-v2` private-key adapter. The bot needs no Solidity: it only calls Circle's kits and existing contracts. `AirbagGuard` (`contracts/`) is the one contract we deployed ourselves.
 
 | What | Address / id |
 |---|---|
@@ -98,6 +98,7 @@ All on **Arc Testnet** (chain id `5042002`, RPC `https://rpc.testnet.arc.io`, ex
 | USDC (ERC-20 view of native USDC, 6 decimals) | `0x3600000000000000000000000000000000000000` |
 | Earn Kit savings vault "EarnKit USDC Vault (Arc Testnet)", 4.2% APY | `0xaabbef1d3971c710276ed41ec791bbe14cdb8e88` |
 | Bot wallet (testnet only) | `0xF6B5177872Fc12DCBcE76d023e96988fB7Fa3F0C` |
+| AirbagGuard (our contract, deployed Nov 18, 2026 for a second test loan) | `0x895fa892dc4ff752ec9114760201f4751c106bf3` |
 
 Kit calls in [`src/arc.ts`](src/arc.ts):
 
@@ -320,6 +321,7 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | **The save, by the bot alone** | Moved 0.78 USDC from savings into the loan: health 1.25, line $60,361 → $51,291, odds 0.8% | [withdraw](https://explorer.testnet.arc.io/tx/0xcdbb3219824b862d5fdf35834e89f00f4d5b8a61f04e7d7af6f3240165d01d41) (21:53:57), [repay](https://explorer.testnet.arc.io/tx/0x1b566cce68a7247928a296dba45b6b32ef78e210ba5ebeff863ebabe885c37dc) (21:53:59) |
 | "Reset" | Repaid 0.72 USDC from the wallet: health 1.50 | [repay](https://explorer.testnet.arc.io/tx/0xe50f280f378add056d40ff1b88f27bfce7b0386fb0f560c395bb63d4e01c9d60) |
 | **The give-back, by the bot alone** | Calm again, so it borrowed 0.55 USDC back into savings, stopping at health 1.30. Then it sat still. | [borrow](https://explorer.testnet.arc.io/tx/0x42dae1b0f36370e73b4021c959930f34f3a604006d4f01d1ebfa77a7b753e9d7), [deposit](https://explorer.testnet.arc.io/tx/0xab4900f8da65f7973a67c0d3359a91eb31ea92dbce035a3cbc2d6a97ea4782f6) |
+| **AirbagGuard, by its bot key alone** (Nov 18, a second loan on wallet `0x3886…aC2e`) | The guard's own bot key moved 0.25 USDC of the owner's savings into the owner's loan and back, 0.6 s each. The bot key received nothing, and a stranger's call was refused (`NotBot`). | [deploy](https://explorer.testnet.arc.io/tx/0xb0a106b2e4bfa2d27acb2c53a44e702e41eee71f6cc652cac7561a537eafbdf5), [save](https://explorer.testnet.arc.io/tx/0x7174a087244587bd540623741da4fadfdba59fc056f181a1ccd409ad53e97931), [give back](https://explorer.testnet.arc.io/tx/0x8a484048e67b0fab715c7a9a8863e46777e3cfba5b7678be521d14bf74174da3) |
 
 ![The bot's log and the odds chart after the save and the give-back](docs/3-bot-log-and-odds.jpg)
 
@@ -337,4 +339,4 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | Borrow Kit webhook | ✅ registered for our loan. Circle's Borrow Service called it through the tunnel and woke the bot (log: "Woke up: Borrow Kit webhook"). |
 | QuickNode Stream deliveries | ✅ The `airbag-arc-testnet` Stream delivered our live round trip (4 transactions, blocks 72754872–72754893); each delivery was verified on-chain and woke the bot. |
 | Server that stays on without a laptop | ✅ The simulator is live on Render at https://airbag-demo.onrender.com (`render.yaml`, `docs/HOSTING.md`), with demo buttons anyone can press. Checked from outside on Nov 18, 2026: a loan pushed from the public page was saved by the bot. ⏳ The live bot still runs on a laptop with a tunnel. |
-| AirbagGuard contract (the bot key can only move the owner's savings into the owner's own loan and back) | ⏳ 16 Foundry tests pass (incl. fuzz), and the deploy + try scripts ran on a local chain. Not yet run on Arc Testnet. See [`contracts/README.md`](contracts/README.md). |
+| AirbagGuard contract (the bot key can only move the owner's savings into the owner's own loan and back) | ✅ Live on Arc Testnet at [`0x895f…6bf3`](https://explorer.testnet.arc.io/address/0x895fa892dc4ff752ec9114760201f4751c106bf3) (Nov 18, 2026): its bot key ran a save and a give-back, and a stranger was refused. 16 Foundry tests pass (incl. fuzz). ⏳ The bot (`src/arc.ts`) does not call the guard yet. See [`contracts/README.md`](contracts/README.md). |

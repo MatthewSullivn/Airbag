@@ -172,7 +172,8 @@ Read these before touching `src/arc.ts`.
   - Pause it when nobody is testing, since it bills per block.
 - [ ] **Keep the bot wallet funded:** USDC for gas, at least 2 USDC in savings, more cirBTC for a bigger loan.
 - [x] **Deploy the public demo on Render** (`docs/HOSTING.md`). Live since Nov 17, 2026 at https://airbag-demo.onrender.com (Ahmad's Render account). The link is in `docs/SUBMISSION.md` and the README.
-- [ ] **Run AirbagGuard live on Arc Testnet** (`npm run guard:deploy`, then `npm run guard:try -- 0.25`) with your own wallet and loan, and add the links to README "Live proof". Then switch `src/arc.ts` to call the guard.
+- [x] **Run AirbagGuard live on Arc Testnet.** Done Nov 18, 2026 on a second test wallet: guard `0x895fa892dc4ff752ec9114760201f4751c106bf3`, links in README "Live proof".
+- [ ] **Switch `src/arc.ts` to call the guard**, so the server holds the guard's bot key instead of the owner's key.
 - [ ] **Optional:**
   - a Swap Kit fallback when savings run out
   - longer odds history on the chart

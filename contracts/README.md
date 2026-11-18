@@ -30,7 +30,7 @@ npm run guard:deploy           # deploy on Arc Testnet + the two owner signature
 npm run guard:try -- 0.25      # the BOT key runs save(0.25) and giveBack(0.25), and a stranger is refused
 ```
 
-Needs Foundry (`curl -L https://foundry.paradigm.xyz | bash && foundryup`, or `npm i -g @foundry-rs/forge`).
+Needs Foundry (`curl -L https://foundry.paradigm.xyz | bash && foundryup`, or `npm i -g @foundry-rs/forge`). On Windows the npm package's setup script fails under cmd, so point npm at Git Bash: `npm i --no-save --script-shell "C:\Program Files\Git\usr\bin\bash.exe" @foundry-rs/forge`.
 
 `guard:deploy` uses `PRIVATE_KEY` as the owner, and makes a separate `GUARD_BOT_KEY` in `.env` (never printed). Use your own wallet and loan (`npm run wallet:new`, faucet, `npm run loan:open`), not the team bot wallet, so you don't collide with the live bot.
 
@@ -38,7 +38,7 @@ Needs Foundry (`curl -L https://foundry.paradigm.xyz | bash && foundryup`, or `n
 
 - ✅ 16 Foundry tests pass against mocks of Morpho Blue, the vault and USDC (`test/`).
 - ✅ `guard:deploy` and `guard:try` ran end to end on a local chain with the same chain id as Arc Testnet.
-- ⏳ **Not yet run on Arc Testnet.** The real Earn Kit vault is a Morpho Vault V2; the first live run will show whether it accepts a contract withdrawing on the owner's behalf. Add the transaction links to the main README's "Live proof" once it does.
+- ✅ **Live on Arc Testnet (Nov 18, 2026)** at `0x895fa892dc4ff752ec9114760201f4751c106bf3`. The real Earn Kit vault (a Morpho Vault V2) accepts a contract withdrawing on the owner's behalf. The bot key ran `save(0.25)` and `giveBack(0.25)`, received nothing, and a stranger was refused. The links are in the main README's "Live proof".
 - ⏳ The bot (`src/arc.ts`) still moves money through Circle's kits with the owner key. Switching it to call the guard is the next step once the live run works.
 
 Compiled with solc 0.8.28 for EVM `paris` (no newer opcodes, the safe choice for a young chain).
