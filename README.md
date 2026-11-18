@@ -291,7 +291,8 @@ Server endpoints:
 | `GET /api/status` | JSON: loan, odds, savings, limit, log, odds samples |
 | `GET /api/replay` | crash replay results |
 | `GET /api/wallet/:address` | read-only: any wallet's USDC, cirBTC, savings, loan and odds (the dashboard's Connect wallet) |
-| `POST /api/plan/open-loan`, `/add-savings` | prepares the transactions a connected wallet signs for itself; signs nothing |
+| `POST /api/plan/open-loan`, `/add-savings`, `/protect`, `/protect-finish`, `/unprotect`, `/push`, `/calm` | prepares the transactions a connected wallet signs for itself; signs nothing |
+| `POST /api/protect` | a wallet's new guard asks to be watched; the server checks it on-chain first |
 | `POST /api/borrow-webhook?key=` | Borrow Kit band change, wakes the bot |
 | `POST /api/stream?key=` | QuickNode Stream delivery, wakes the bot |
 | `POST /api/demo/push`, `/reset`, `/pause`, `/limit` | demo controls (header `x-airbag-key`) |
@@ -307,7 +308,9 @@ POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no se
 - With several wallet extensions installed (MetaMask, Phantom, ...), the page asks which one to use and only ever talks to that one.
 - **A connected wallet can act for itself:** *Open a loan* (lock cirBTC and borrow USDC, straight on the lending contract) and *Add savings* (deposit USDC into the Earn vault). The server prepares each transaction after checking it against the chain (`POST /api/plan/...`); the visitor's own wallet shows it, signs it and sends it. The server never sees a key.
 - A new loan must start at health 1.25 or better at the live price, the level the bot repays to.
-- It does not switch protection on for that wallet yet. That takes an AirbagGuard for the wallet, which is not on the page yet.
+- **Turn on protection** (on a server run with `PROTECT=true`): three signatures. The wallet creates its own `AirbagGuard`, naming our bot key as the only caller, then lets the guard reach its savings and its loan. From then on the bot protects that loan with the same rule, through that guard. The wallet stays the guard's owner and can turn protection off again (two signatures).
+- **Push it to the edge** and **Calm it down** are the demo for a connected wallet: borrow more until the loan is risky, then watch the bot save it.
+- The server keeps no list of these wallets. It finds the guards made for its bot key, and how much of each owner's savings is inside their loan, from the guards' own events on Arc ([`src/protector.ts`](src/protector.ts)). A restart loses nothing.
 
 All settings are in [`.env.example`](.env.example).
 
@@ -352,5 +355,6 @@ Every step below ran on Arc Testnet on Nov 17, 2026, with the bot wallet `0xF6B5
 | Public link (Cloudflare quick tunnel) with key-protected POST routes | ✅ live; requests without the key, or faking localhost, get 401 |
 | Borrow Kit webhook | ✅ registered for our loan. Circle's Borrow Service called it through the tunnel and woke the bot (log: "Woke up: Borrow Kit webhook"). |
 | QuickNode Stream deliveries | ✅ The `airbag-arc-testnet` Stream delivered our live round trip (4 transactions, blocks 72754872–72754893); each delivery was verified on-chain and woke the bot. |
+| Protection for any connected wallet (its own guard, our bot key) | ⏳ Built. Checked against Arc Testnet without sending: the bot found the existing guard by itself and rebuilt its history (3.67 USDC inside the loan), the guard deployment a new wallet would sign estimates fine, and wrong or foreign contracts are refused. Not yet clicked through with a second wallet. |
 | Server that stays on without a laptop | ✅ The simulator is live on Render at https://airbag-demo.onrender.com (`render.yaml`, `docs/HOSTING.md`), with demo buttons anyone can press. Checked from outside on Nov 18, 2026: a loan pushed from the public page was saved by the bot. ⏳ The live bot still runs on a laptop with a tunnel. |
 | AirbagGuard contract (the bot key can only move the owner's savings into the owner's own loan and back) | ✅ Live on Arc Testnet at [`0x895f…6bf3`](https://explorer.testnet.arc.io/address/0x895fa892dc4ff752ec9114760201f4751c106bf3) (Nov 18, 2026): its bot key ran a save and a give-back, and a stranger was refused. 16 Foundry tests pass (incl. fuzz). With `USE_GUARD=true` the bot's own save and give-back go through it, tested live (links above). The hosted bot at https://airbag-live.onrender.com runs this way, without the wallet's key. ⏳ The first bot wallet (`0xF6B5…3F0C`) still signs with its own key. See [`contracts/README.md`](contracts/README.md). |

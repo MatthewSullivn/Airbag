@@ -43,3 +43,22 @@ export function maxBorrow({ collateral, debt, addCollateral = 0, price, oraclePr
   const cap = Math.min((c * price * lltv) / minHealth, (c * oraclePrice * lltv) / minOnChain);
   return Math.max(0, cap - debt);
 }
+
+const floorCents = (x) => Math.floor(x * 100 + 1e-9) / 100;
+
+/**
+ * Demo "push it to the edge": how much more to borrow so health drops to `pushHealth` at the live price
+ * (never past what the lending contract itself allows). 0 when the loan is already there.
+ */
+export function pushBorrow({ collateral, debt, price, oraclePrice, lltv, pushHealth, minOnChain = 1.02 }) {
+  return floorCents(maxBorrow({ collateral, debt, price, oraclePrice, lltv, minHealth: pushHealth, minOnChain }));
+}
+
+/**
+ * Demo "calm it down": how much to repay from the wallet so health rises to `calmHealth` at the live price,
+ * limited by what the wallet can spend. 0 when the loan is already calm or the wallet is empty.
+ */
+export function calmRepay({ collateral, debt, price, lltv, calmHealth, spendable }) {
+  const target = (collateral * price * lltv) / calmHealth;
+  return Math.max(0, floorCents(Math.min(debt - target, spendable, debt)));
+}

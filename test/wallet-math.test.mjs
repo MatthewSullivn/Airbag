@@ -1,7 +1,22 @@
 // The read-only wallet lookup: address checks and Morpho's share-to-debt math.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isAddress, debtFromShares, isAmount, loanAfter, maxBorrow } from "../src/wallet-math.mjs";
+import { isAddress, debtFromShares, isAmount, loanAfter, maxBorrow, pushBorrow, calmRepay } from "../src/wallet-math.mjs";
+
+test("demo push and calm for a connected wallet land on the health they aim for", () => {
+  const loan = { collateral: 0.0005, debt: 19.76, price: 64500, oraclePrice: 75000, lltv: 0.86 };
+  const push = pushBorrow({ ...loan, pushHealth: 1.06 });
+  const pushed = loanAfter({ ...loan, addDebt: push });
+  assert.ok(pushed.health >= 1.06 && pushed.health < 1.065, `pushed health ${pushed.health}`);
+  assert.ok(pushed.onChainHealth > 1.02, "still allowed by the lending contract");
+  assert.equal(pushBorrow({ ...loan, debt: pushed.debt, pushHealth: 1.06 }), 0);          // already at the edge
+
+  const calm = calmRepay({ collateral: 0.0005, debt: pushed.debt, price: 64500, lltv: 0.86, calmHealth: 1.5, spendable: 500 });
+  const calmed = loanAfter({ ...loan, debt: pushed.debt - calm });
+  assert.ok(calmed.health >= 1.495 && calmed.health < 1.51, `calmed health ${calmed.health}`);
+  assert.equal(calmRepay({ collateral: 0.0005, debt: pushed.debt, price: 64500, lltv: 0.86, calmHealth: 1.5, spendable: 2 }), 2);   // only what the wallet has
+  assert.equal(calmRepay({ collateral: 0.0005, debt: 10, price: 64500, lltv: 0.86, calmHealth: 1.5, spendable: 500 }), 0);           // already calm
+});
 
 test("typed amounts: plain decimals only, within the token's precision, above zero", () => {
   assert.equal(isAmount("0.0005", 8), true);

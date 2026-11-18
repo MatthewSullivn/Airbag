@@ -43,6 +43,7 @@
     "guard:deploy": "tsx --env-file=.env scripts/guard-deploy.ts",
     "guard:try": "tsx --env-file=.env scripts/guard-try.ts",
     "guard:limits": "tsx --env-file=.env scripts/guard-limits.ts",
+    "guard:artifact": "cd contracts && forge build && cd .. && node scripts/guard-artifact.mjs",
     "demo:push": "tsx --env-file=.env scripts/demo-push.ts",
     "demo:reset": "tsx --env-file=.env scripts/demo-push.ts --reset"
   }

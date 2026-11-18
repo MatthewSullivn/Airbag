@@ -21,6 +21,10 @@ export const config = {
   useGuard: str("USE_GUARD") === "true",
   guardAddress: str("GUARD_ADDRESS"),
   guardBotKey: str("GUARD_BOT_KEY"),
+  /** true = also protect every wallet that turned protection on from the page (each has its own guard for GUARD_BOT_KEY). One server per bot key. */
+  protect: str("PROTECT") === "true",
+  /** Where the search for guards starts on Arc Testnet (just before the first AirbagGuard was deployed). */
+  protectFromBlock: num("PROTECT_FROM_BLOCK", 72_800_000),
 
   limit: num("USER_LIMIT", 0.05),
   dailyCapUsdc: num("DAILY_CAP_USDC", 25),

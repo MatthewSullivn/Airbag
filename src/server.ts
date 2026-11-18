@@ -16,6 +16,7 @@ import { describeReceipt, isTxHash } from "./stream-verify.mjs";
 import { makeRateLimiter, publicAllows, publicDemoOn } from "./public-demo.mjs";
 import { makeWalletReader } from "./wallet-view.js";
 import { makeWalletPlanner, offersFor, PlanError } from "./wallet-plan.js";
+import { Protector } from "./protector.js";
 import { isAddress } from "./wallet-math.mjs";
 import { createPublicClient, http } from "viem";
 import { arcTestnet } from "viem/chains";
@@ -78,6 +79,7 @@ app.get("/api/status", (_req, res) => {
     explorer: config.mode === "live" ? config.explorer : null,
     wallet: { address: arc.address, ...(r?.wallet ?? {}) },
     custody: arc.custody,
+    protector: protector.summary(),
     marketId: arc.marketId,
     lltv: arc.lltv,
     limit: bot.limit,
@@ -126,7 +128,10 @@ app.get("/healthz", (_req, res) => res.json({ ok: true, ticks: bot.ticks }));
 
 // ---- "Connect wallet": a read-only look at any wallet on Arc Testnet (balances, its loan, its odds).
 // Public by design: it only reads public chain data and never signs anything. One shared rate limit.
-const readWalletView = makeWalletReader(config, gemini, { marketId: arc.marketId, vault: arc.vault?.address ?? null });
+const walletIds = { marketId: arc.marketId, vault: arc.vault?.address ?? null };
+const readWalletView = makeWalletReader(config, gemini, walletIds);
+// Wallets that turned protection on from the page: each has its own AirbagGuard for our bot key (src/protector.ts).
+const protector = new Protector(config, gemini, store, readWalletView, { ids: walletIds, limit: () => bot.limit, skipGuard: arc.custody?.guard ?? null });
 const walletHit = makeRateLimiter(120, 60_000);
 app.get("/api/wallet/:address", async (req, res) => {
   const address = String(req.params.address);
@@ -134,7 +139,19 @@ app.get("/api/wallet/:address", async (req, res) => {
   if (!walletHit()) return res.status(429).json({ error: "lots of lookups right now, try again in a minute" });
   try {
     const view = await readWalletView(address);
-    res.json({ ...view, offers: offersFor(view), protectedHere: config.mode === "live" && address.toLowerCase() === arc.address.toLowerCase(), explorer: config.explorer });
+    const guarded = protector.forOwner(address);
+    res.json({
+      ...view,
+      offers: offersFor(view),
+      protectedHere: config.mode === "live" && address.toLowerCase() === arc.address.toLowerCase(),
+      protection: {
+        available: protector.enabled,
+        why: protector.why(),
+        guard: guarded && { address: guarded.guard, capUsdc: guarded.capUsdc, inLoan: guarded.inLoan, since: guarded.since, lastMove: guarded.lastMove, lastError: guarded.lastError },
+      },
+      demo: { pushHealth: config.pushHealth, calmHealth: config.resetHealth },
+      explorer: config.explorer,
+    });
   } catch (e) {
     res.status(502).json({ error: `could not read Arc Testnet: ${String((e as Error).message).split("\n")[0].slice(0, 140)}` });
   }
@@ -142,7 +159,7 @@ app.get("/api/wallet/:address", async (req, res) => {
 
 // ---- What a CONNECTED wallet can do for itself: open a loan, add savings. The server only prepares the
 // transactions (to + data) after checking them against the chain. The visitor's own wallet signs and sends.
-const planFor = makeWalletPlanner(config, readWalletView, { marketId: arc.marketId, vault: arc.vault?.address ?? null });
+const planFor = makeWalletPlanner(config, readWalletView, walletIds, protector);
 app.post("/api/plan/:action", async (req, res) => {
   if (!walletHit()) return res.status(429).json({ error: "lots of requests right now, try again in a minute" });
   try {
@@ -150,6 +167,27 @@ app.post("/api/plan/:action", async (req, res) => {
   } catch (e) {
     if (e instanceof PlanError) return res.status(400).json({ error: e.message });
     res.status(502).json({ error: `could not read Arc Testnet: ${String((e as Error).message).split("\n")[0].slice(0, 140)}` });
+  }
+});
+
+// ---- A wallet that just signed its guard's permissions asks to be watched from now on. No key needed and
+// nothing to trust: the server checks the guard on-chain (our exact contract, our bot key, both permissions)
+// and would find it by itself within half a minute anyway. `refresh` drops a guard whose owner cut it off.
+app.post("/api/protect", async (req, res) => {
+  if (!walletHit()) return res.status(429).json({ error: "lots of requests right now, try again in a minute" });
+  try {
+    const loan = await protector.register(String(req.body?.guard ?? ""));
+    res.json({ ok: true, guard: loan.guard, owner: loan.owner });
+  } catch (e) {
+    res.status(400).json({ error: String((e as Error).message).split("\n")[0].slice(0, 200) });
+  }
+});
+app.post("/api/protect/refresh", async (req, res) => {
+  if (!walletHit()) return res.status(429).json({ error: "lots of requests right now, try again in a minute" });
+  try {
+    res.json({ ok: true, active: await protector.refresh(String(req.body?.guard ?? "")) });
+  } catch (e) {
+    res.status(400).json({ error: String((e as Error).message).split("\n")[0].slice(0, 200) });
   }
 });
 
@@ -241,11 +279,13 @@ app.post("/api/demo/check-key", demoAuth("check-key"), (_req, res) => res.json({
 const server = app.listen(config.port, () => {
   console.log(`Airbag dashboard: http://localhost:${config.port}  (mode: ${config.mode})`);
   bot.start();
+  protector.start();
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const)
   process.on(sig, () => {
     bot.stop();
+    protector.stop();
     store.flush();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 1500).unref();

@@ -23,7 +23,7 @@ const day = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short",
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const card = $("wallet-card"), note = $("wallet-note"), button = $("wallet-connect");
-let address = null, how = "", timer = null, explorer = ARC.blockExplorerUrls[0], busy = false;
+let address = null, how = "", timer = null, explorer = ARC.blockExplorerUrls[0], busy = false, lastView = null;
 
 // Which wallet app. Several extensions can be installed at once (MetaMask, Phantom, ...) and they fight over
 // window.ethereum. With EIP-6963 each one announces itself, so the visitor picks instead of getting whichever won.
@@ -54,6 +54,7 @@ function link(href, text) {
 // ------------------------------------------------------------------ looking
 function render(v) {
   explorer = v.explorer || explorer;
+  lastView = v;
   $("wallet-addr").replaceChildren(`${how === "connected" ? `connected with ${walletName}` : how} · `, link(`${explorer}/address/${v.address}`, short(v.address)));
 
   set("w-usdc", usdc(v.usdc));
@@ -73,10 +74,10 @@ function render(v) {
     set("w-odds-sub", "Nothing at risk.");
   }
   if (!busy)
-    note.textContent = v.protectedHere
-      ? "Airbag is protecting this wallet's loan on this page."
+    note.textContent = v.protectedHere || v.protection?.guard
+      ? "Airbag is protecting this wallet's loan."
       : L
-        ? "Airbag is not protecting this loan yet. Protection is switched on with three signatures to an AirbagGuard contract. That step is not on this page yet."
+        ? how === "connected" ? "Airbag is not protecting this loan yet. You can turn protection on below." : "Airbag is not protecting this loan. Connect this wallet to turn protection on."
         : how === "connected"
           ? v.cirbtc > 0 ? "No loan yet. You can open one below." : "No loan and no cirBTC yet. Get test cirBTC at faucet.circle.com (Arc Testnet) to open a loan."
           : "Read-only. Connect this wallet to open a loan or add savings from here.";
@@ -106,7 +107,8 @@ function show(next, source) {
   $("wallet-do").hidden = true;
   $("wallet-pick").hidden = true;
   $("wallet-steps").replaceChildren();
-  for (const id of ["w-open-collateral", "w-open-borrow", "w-save-amount"]) { $(id).value = ""; delete $(id).dataset.touched; }
+  for (const id of ["w-open-collateral", "w-open-borrow", "w-save-amount", "w-protect-cap"]) { $(id).value = ""; delete $(id).dataset.touched; }
+  lastView = null;
   note.textContent = "Reading Arc Testnet…";
   button.textContent = source === "connected" ? `${walletName} ${short(next)}` : "Connect wallet";
   const viaExtension = source === "connected" && !!eth;
@@ -196,16 +198,32 @@ const ask = (label, request) => async () => {
 $("wallet-add-chain").addEventListener("click", ask("Add Arc Testnet", { method: "wallet_addEthereumChain", params: [ARC] }));
 $("wallet-add-token").addEventListener("click", ask("Add cirBTC", { method: "wallet_watchAsset", params: { type: "ERC20", options: CIRBTC } }));
 
+
 // ------------------------------------------------------------------ doing (connected wallets only)
+const INPUTS = ["w-open-collateral", "w-open-borrow", "w-save-amount", "w-protect-cap"];
 const prefill = (id, value) => { const i = $(id); if (!i.dataset.touched && document.activeElement !== i) i.value = value; };
-for (const id of ["w-open-collateral", "w-open-borrow", "w-save-amount"]) $(id).addEventListener("input", (e) => (e.target.dataset.touched = "1"));
+for (const id of INPUTS) $(id).addEventListener("input", (e) => (e.target.dataset.touched = "1"));
+
+// The page remembers the guard a wallet created, so an interrupted setup can be finished instead of started over.
+const guardKey = (owner) => `airbag-guard:${owner.toLowerCase()}`;
+const recall = (owner) => { try { const g = localStorage.getItem(guardKey(owner)); return g && isAddress(g) ? g : null; } catch { return null; } };
+const remember = (owner, guard) => { try { guard ? localStorage.setItem(guardKey(owner), guard) : localStorage.removeItem(guardKey(owner)); } catch { /* storage blocked */ } };
+const askedToWatch = new Set();
+
+async function post(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+  return json;
+}
 
 function renderActions(v) {
   const connected = how === "connected" && !!eth;
   $("wallet-do").hidden = !connected;
   if (!connected) return;
   set("wallet-signer", `Anything you do here is signed by ${walletName}, account ${short(v.address)}, on Arc Testnet.`);
-  const o = v.offers;
+  const o = v.offers, P = v.protection ?? {}, guard = P.guard;
+
   // one form covers a first loan and adding to an existing one
   const canBorrow = o.maxBorrow >= 0.01 && (v.cirbtc > 0 || !!v.loan);
   const open = $("w-open-form");
@@ -215,9 +233,33 @@ function renderActions(v) {
   prefill("w-open-collateral", v.cirbtc > 0 ? String(+v.cirbtc.toFixed(8)) : "0");
   prefill("w-open-borrow", o.suggestBorrow >= 0.01 ? o.suggestBorrow.toFixed(2) : "");
   set("w-open-hint", `Up to ${o.maxBorrow.toFixed(2)} USDC with all your free cirBTC keeps health at ${o.minHealth} or better.`);
+
   $("w-save-form").hidden = !(o.savingsMax >= 0.01);
   prefill("w-save-amount", Math.min(10, o.savingsMax).toFixed(2));
   set("w-save-hint", `Up to ${o.savingsMax.toFixed(2)} USDC. The rest stays in the wallet for gas.`);
+
+  // protection: off -> the form; on -> what it is doing, the demo buttons, and the off switch
+  const form = $("w-protect-form"), on = $("w-protected");
+  form.hidden = !(v.loan && !guard && !v.protectedHere);
+  on.hidden = !guard;
+  if (!form.hidden) {
+    prefill("w-protect-cap", String(o.suggestCap));
+    const blocked = !P.available ? P.why : v.savings < 0.01 ? "Add savings first. Protection moves your savings into your loan, so there has to be some." : "";
+    if (!busy) form.querySelector("button").disabled = !!blocked;
+    form.querySelector("button").textContent = recall(v.address) ? "Finish turning on protection" : "Turn on protection";
+    set("w-protect-hint", blocked || "Three signatures: create your guard, then let it reach your savings and your loan. It can only move money between the two.");
+  }
+  if (guard) {
+    const text = $("w-protected-text");
+    text.replaceChildren("Airbag watches this loan through your guard ", link(`${explorer}/address/${guard.address}`, short(guard.address)), `. It may move up to ${guard.capUsdc} USDC a day.`);
+    if (guard.inLoan > 0) text.append(` ${usdc(guard.inLoan)} USDC of your savings is inside the loan now and comes back when it is calm.`);
+    if (guard.lastMove) text.append(" Last move: ", link(`${explorer}/tx/${guard.lastMove.tx}`, `${guard.lastMove.kind === "save" ? "saved" : "gave back"} ${usdc(guard.lastMove.usdc)} USDC`), ".");
+    if (guard.lastError) text.append(` Problem: ${guard.lastError}.`);
+  } else if (P.available && v.loan && recall(v.address) && !askedToWatch.has(v.address)) {
+    // a guard made earlier from this browser: ask the server to watch it again (it checks the guard on-chain itself)
+    askedToWatch.add(v.address);
+    post("/api/protect", { guard: recall(v.address) }).then(load).catch(() => {});
+  }
 }
 
 function stepLine(text, cls) {
@@ -227,7 +269,7 @@ function stepLine(text, cls) {
   $("wallet-steps").append(li);
   return li;
 }
-const reason = (e) => String(e?.data?.message ?? e?.message ?? e).split("\n")[0].slice(0, 160);
+const reason = (e) => String(e?.data?.message ?? e?.message ?? e).split("\n")[0].slice(0, 180);
 
 async function ensureArc(wallet) {
   if (String(await wallet.request({ method: "eth_chainId" })).toLowerCase() === ARC.chainId) return;
@@ -247,36 +289,42 @@ async function confirmed(wallet, hash) {
   throw new Error("not confirmed after a while. Check it on the explorer before trying again.");
 }
 
-/** Ask the server for the transactions, then have the chosen wallet sign and send them one by one. */
-async function run(action, body) {
-  const wallet = eth;
-  if (busy || !address || !wallet) return;
+/** Ask the server for one plan, then have the wallet sign and send its steps one by one. Returns the receipts. */
+async function execute(wallet, from, action, body) {
+  const plan = await post(`/api/plan/${action}`, { address: from, ...body });
+  stepLine(plan.summary);
+  const receipts = [];
+  for (let i = 0; i < plan.steps.length; i++) {
+    const s = plan.steps[i], n = `${s.label}.`;
+    const li = stepLine(`${n} Confirm it in your wallet…`);
+    const tx = { from, data: s.data, value: s.value };
+    if (s.to) tx.to = s.to;                              // no "to" = this step creates a contract
+    try { await wallet.request({ method: "eth_estimateGas", params: [tx] }); }
+    catch (e) { throw new Error(`"${s.label}" would fail, so it was not sent: ${reason(e)}`); }
+    const hash = await wallet.request({ method: "eth_sendTransaction", params: [tx] });
+    li.replaceChildren(`${n} Sent, waiting for Arc… `, link(`${explorer}/tx/${hash}`, "transaction ↗"));
+    const receipt = await confirmed(wallet, hash);
+    if (receipt.status !== "0x1") throw new Error(`"${s.label}" was rejected by the contract.`);
+    li.className = "done";
+    li.replaceChildren(`${n} Done. `, link(`${explorer}/tx/${hash}`, "transaction ↗"));
+    receipts.push(receipt);
+  }
+  return receipts;
+}
+
+/** Runs one job with the chosen wallet: one at a time, buttons off meanwhile, a plain line if it stops. */
+async function withWallet(job, done = "All done.") {
+  const wallet = eth, from = address;
+  if (busy || !from || !wallet) return;
   busy = true;
   const buttons = [...$("wallet-do").querySelectorAll("button")];
   buttons.forEach((b) => (b.disabled = true));
   $("wallet-steps").replaceChildren();
-  const from = address;
   try {
     await ensureArc(wallet);
-    const res = await fetch(`/api/plan/${action}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: from, ...body }) });
-    const plan = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(plan.error ?? `HTTP ${res.status}`);
-    stepLine(plan.summary);
-    for (let i = 0; i < plan.steps.length; i++) {
-      const s = plan.steps[i], n = `${i + 1} of ${plan.steps.length}: ${s.label}.`;
-      const li = stepLine(`${n} Confirm it in your wallet…`);
-      const tx = { from, to: s.to, data: s.data, value: s.value };
-      try { await wallet.request({ method: "eth_estimateGas", params: [tx] }); }
-      catch (e) { throw new Error(`"${s.label}" would fail, so it was not sent: ${reason(e)}`); }
-      const hash = await wallet.request({ method: "eth_sendTransaction", params: [tx] });
-      li.replaceChildren(`${n} Sent, waiting for Arc… `, link(`${explorer}/tx/${hash}`, "transaction ↗"));
-      const receipt = await confirmed(wallet, hash);
-      if (receipt.status !== "0x1") throw new Error(`"${s.label}" was rejected by the contract.`);
-      li.className = "done";
-      li.replaceChildren(`${n} Done. `, link(`${explorer}/tx/${hash}`, "transaction ↗"));
-    }
-    stepLine("All done.", "done");
-    for (const id of ["w-open-collateral", "w-open-borrow", "w-save-amount"]) delete $(id).dataset.touched;
+    await job(wallet, from);
+    stepLine(done, "done");
+    for (const id of INPUTS) delete $(id).dataset.touched;
   } catch (e) {
     stepLine(e?.code === 4001 ? "Cancelled in the wallet. Nothing more was sent." : `Stopped: ${reason(e)}`, "failed");
   } finally {
@@ -286,6 +334,8 @@ async function run(action, body) {
     load();
   }
 }
+const run = (action, body, done) => withWallet((wallet, from) => execute(wallet, from, action, body), done);
+
 $("w-open-form").addEventListener("submit", (e) => {
   e.preventDefault();
   run("open-loan", { collateral: $("w-open-collateral").value.trim(), borrow: $("w-open-borrow").value.trim() });
@@ -294,3 +344,34 @@ $("w-save-form").addEventListener("submit", (e) => {
   e.preventDefault();
   run("add-savings", { amount: $("w-save-amount").value.trim() });
 });
+
+// Turning protection on: the wallet creates its own guard, gives it two permissions, and the bot starts watching.
+$("w-protect-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const cap = $("w-protect-cap").value.trim();
+  withWallet(async (wallet, from) => {
+    let guard = recall(from);
+    if (guard) {
+      // an earlier try already created a guard: finish that one instead of creating another
+      try { await execute(wallet, from, "protect-finish", { guard }); }
+      catch (err) { if (/not an AirbagGuard|different|not a contract/i.test(String(err?.message))) { remember(from, null); guard = null; } else throw err; }
+    }
+    if (!guard) {
+      const [created] = await execute(wallet, from, "protect", { cap });
+      guard = created?.contractAddress;
+      if (!guard || !isAddress(guard)) throw new Error("the wallet did not report the new contract's address");
+      remember(from, guard);
+      await execute(wallet, from, "protect-finish", { guard });
+    }
+    await post("/api/protect", { guard });
+  }, "Protection is on. The bot is watching this loan now.");
+});
+$("w-unprotect").addEventListener("click", () =>
+  withWallet(async (wallet, from) => {
+    const guard = lastView?.protection?.guard?.address ?? recall(from);
+    await execute(wallet, from, "unprotect", {});
+    remember(from, null);
+    if (guard) await post("/api/protect/refresh", { guard }).catch(() => {});
+  }, "Protection is off. The bot can no longer touch this wallet's savings or loan."));
+$("w-push").addEventListener("click", () => run("push", {}, "Pushed. Now keep your hands off and watch the bot."));
+$("w-calm").addEventListener("click", () => run("calm", {}, "Calmer. The bot gives your savings back by itself when it is safe to."));

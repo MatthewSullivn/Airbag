@@ -77,6 +77,8 @@ demo buttons ───────┘        │        │         └─ Circl
 | `src/public-demo.mjs` | When the demo buttons are open to everyone: hosted simulator with `PUBLIC_DEMO=true` only, never live. |
 | `src/wallet-view.ts`, `src/wallet-math.mjs`, `public/wallet.js` | Connect wallet: a view of any wallet (USDC, cirBTC, savings, loan, odds) through `GET /api/wallet/:address`. |
 | `src/wallet-plan.ts` | What a connected wallet can do for itself: open a loan, add savings. It builds the transactions (`POST /api/plan/...`) after checking them against the chain. The visitor's wallet signs; the server never does. |
+| `src/protector.ts`, `src/guard-code.mjs` | Protects every wallet that turned protection on from the page (`PROTECT=true`, live only). Finds guards made for our bot key and their history from Arc's explorer, runs `decide()` for each, and acts only through that wallet's guard. One server per bot key. |
+| `contracts/AirbagGuard.artifact.json` | The guard's ABI and bytecode, committed so hosts without Foundry can deploy and recognise it. Regenerate with `npm run guard:artifact` whenever the contract changes. |
 | `src/guard-plan.mjs` | Guard mode's pure checks: which key setups may run, and clamping a move to the guard's on-chain cap. `LiveArc` uses them when `USE_GUARD=true`. |
 | `render.yaml`, `docs/HOSTING.md` | The always-on public demo (the simulator on Render). |
 | `contracts/` | `AirbagGuard`: a contract so the bot key can only move the owner's savings into the owner's own loan and back. Foundry. See `contracts/README.md`. |
@@ -181,6 +183,7 @@ Read these before touching `src/arc.ts`.
 - [x] **Run AirbagGuard live on Arc Testnet.** Done Nov 18, 2026 on a second test wallet: guard `0x895fa892dc4ff752ec9114760201f4751c106bf3`, links in README "Live proof".
 - [x] **`src/arc.ts` can call the guard.** `USE_GUARD=true` sends saves and give-backs through it with `GUARD_BOT_KEY`. Tested live Nov 18, 2026.
 - [x] **A hosted live bot in guard mode.** https://airbag-live.onrender.com runs `npm start` with `USE_GUARD=true` on a second test wallet (`0x3886…aC2e`) and holds no wallet key. Its Push and Reset come from the owner's machine (`npm run demo:push`, `npm run demo:reset`). Never start a second bot on that wallet.
+- [ ] **Click through protection for a connected wallet** on a server with `PROTECT=true`, using a second wallet: open a loan, add savings, turn on protection, push, watch the save, calm, turn it off. Then add the links to README "Live proof".
 - [ ] **Switch the first bot wallet to guard mode too.** Deploy a guard for it (`npm run guard:deploy`), then where it runs set `USE_GUARD=true`, `GUARD_ADDRESS` and `GUARD_BOT_KEY`, and remove `PRIVATE_KEY`.
 - [ ] **Optional:**
   - a Swap Kit fallback when savings run out

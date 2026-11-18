@@ -91,6 +91,19 @@
           <button type="submit">Add savings</button>
           <span class="muted small" id="w-save-hint"></span>
         </form>
+        <form id="w-protect-form" class="wallet-form" hidden>
+          <strong>Protection</strong>
+          <label>let the bot move up to <input id="w-protect-cap" inputmode="decimal" autocomplete="off"> USDC a day</label>
+          <button type="submit">Turn on protection</button>
+          <span class="muted small" id="w-protect-hint"></span>
+        </form>
+        <div id="w-protected" class="wallet-form" hidden>
+          <strong>Protected</strong>
+          <span id="w-protected-text"></span>
+          <button type="button" id="w-push" class="danger">Push it to the edge</button>
+          <button type="button" id="w-calm">Calm it down</button>
+          <button type="button" id="w-unprotect" class="ghost">Turn protection off</button>
+        </div>
         <ol class="wallet-steps" id="wallet-steps" aria-live="polite"></ol>
       </div>
       <div class="wallet-actions">
