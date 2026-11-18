@@ -127,12 +127,12 @@ export function Wordmark({ className }: { className?: string }) {
   );
 }
 
-/** A page section on the landing page: a small coloured word, one big line, and one thing to look at. */
-export function Section({ id, eyebrow, title, lead, children, className }: { id?: string; eyebrow: string; title: string; lead?: React.ReactNode; children?: React.ReactNode; className?: string }) {
+/** A page section on the landing page: one big line, a sentence or two, and one thing to look at. */
+export function Section({ id, eyebrow, title, lead, children, className }: { id?: string; eyebrow?: string; title: string; lead?: React.ReactNode; children?: React.ReactNode; className?: string }) {
   return (
     <section id={id} className={cn("scroll-mt-8 py-16 sm:py-24", className)}>
-      <p className="eyebrow">{eyebrow}</p>
-      <h2 className="display mt-4 max-w-[18ch] text-[clamp(2.2rem,5.4vw,4rem)] text-ink">{title}</h2>
+      {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
+      <h2 className="display max-w-[18ch] text-[clamp(2.2rem,5.4vw,4rem)] text-ink">{title}</h2>
       {lead && <p className="mt-5 max-w-[46ch] text-[1.15rem] leading-relaxed text-ink-2">{lead}</p>}
       {children && <div className="mt-10 sm:mt-12">{children}</div>}
     </section>

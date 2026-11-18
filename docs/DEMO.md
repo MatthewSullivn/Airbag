@@ -1,45 +1,52 @@
 # Demo playbook
 
-The video is judged for the Gemini and QuickNode bounties (they don't see a live demo), so it matters as much as the code. Finalists also give a 5 min pitch + 2 min Q&A in person on Saturday Nov 21.
+The video is judged for the Gemini and QuickNode bounties (they don't see a live demo), so it matters as much as the code. Finalists also give a 4 min pitch + 2 min Q&A in person on Saturday Nov 21.
+
+The page has two parts. `/` is the landing page: it tells the story in five screens. `/app/` is the app, with four screens: **Loan**, **Market**, **On-chain**, **Try it**.
+
+## Which link
+
+- **https://airbagged.me** is the live bot: a real loan on Arc Testnet. Record the video here.
+- **The simulator** (Ahmad's Render link) is for judges without a wallet: *Push a loan yourself* on the first screen, then *Push it to the edge*.
 
 ## Pre-demo checklist (30 minutes before)
 
-1. **Sync the computer's clock** (Windows: Settings → Time & language → Date & time → Sync now). A clock a few minutes off breaks Borrow Kit writes; the app corrects for it, but don't rely on that on stage.
-2. **Run `npm run loan:show`** and check:
-   - the loan is calm: odds under 2.5%, health about 1.3 or more at the live price
-   - savings hold at least 2 USDC
-   - the wallet holds at least 2 USDC (for gas and the Reset button)
-   - if not, use Reset and let the bot give savings back, or `npm run savings:deposit -- 2`
-3. **Start exactly one live bot:** `npm start`. Run `npm run tunnel` only if judges need the public link or the QuickNode Stream should deliver.
-4. **Open the dashboard,** press **d**, unlock with `WEBHOOK_SECRET`, then close the panel. The key is remembered for that browser tab. Zoom the browser to about 125% so the big number reads from the back of the room.
-5. **Open an explorer tab** on the loan's first borrow transaction (README "Live proof").
-6. **Have the backup recording of a live save ready to play**, in case the network or Circle's service is slow.
+1. **Open https://airbagged.me once and wait for it to load.** The free server sleeps after 15 quiet minutes and takes about a minute to wake. Keep a tab open on it.
+2. **MetaMask on the "Test 2" account, on Arc Testnet.** Lock Phantom. Never sign for this project with a real wallet.
+3. **Open the app, go to Try it, press Connect wallet.** It should show step 3 done ("Protection is on") and step 4 ready.
+4. **The loan must be calm before you start.** On the Loan screen: "Safe", and bitcoin can fall 25% or more. If not, press *Calm it down* on Try it and wait until Airbag has given the savings back.
+5. **Savings: at least 3 USDC** (shown on Try it). Add some in step 2 if needed.
+6. **Zoom the browser to 110% or 125%** so the big number reads from the back of the room. In the app, the keys **1 2 3 4** switch between Loan, Market, On-chain and Try it.
+7. **Have the recorded save ready** (landing page, "The fix"): it is the backup if the network is slow.
 
 ## The 2–3 minute video
 
-Record it Thursday evening, not Friday. Talk slowly, with no music over the talking, and zoom in on the number.
+Record it Thursday evening, not Friday. Talk slowly, with no music over the talking.
 
-| Time | Show | Say |
+| Time | Show (exact clicks) | Say |
 |---|---|---|
-| 0:00–0:20 | The crash replay chart | "On Feb 6, 2026 bitcoin dipped to $60,000. A loan that had borrowed 60% against one bitcoin was liquidated and kept a tenth of it. One bad day." |
-| 0:20–0:45 | The dashboard, green | "Airbag shows the real odds you lose your bitcoin, from Gemini's prediction market, and fixes the loan by itself. Spare USDC waits in a savings vault on Arc, earning interest. When the odds pass your limit, the bot moves it into the loan. When things calm down, it moves it back." |
-| 0:45–1:45 | **One take, no cuts.** Press d → *Push it to the edge* | The number jumps to about 42%, red. "Hands off." In a few seconds the log says *"Odds hit 42%… Moved 0.78 USDC from savings into the loan"* and the number goes green. Open the withdraw and repay transactions on the explorer. |
-| 1:45–2:15 | README / dashboard sections | **Arc + Circle Borrow Kit and Earn Kit:** gas is paid in USDC; a whole save cost about 1.5 cents and landed 4 seconds after the push. **Gemini:** the ladder becomes the odds (doubled for any-time dips, "estimated" below the lowest bet, the worse of two dates). **QuickNode:** a Stream filtered to our lending market and wallet wakes the bot, as does Borrow Kit's webhook. |
-| 2:15–2:40 | README "What existed before" | "Auto-protection exists on Ethereum, triggered by ratios. Airbag is triggered by a live market's odds and is the first for Arc's bitcoin loans. Next: Circle Wallets instead of a server key, a mainnet price feed, and a Swap Kit fallback." |
+| 0:00–0:20 | The landing page, top. Do nothing: the big number is live. | "Borrow dollars against your bitcoin and you can lose it in one bad day. Airbag shows one number, the chance you lose your bitcoin, and fixes the loan by itself." |
+| 0:20–0:40 | Scroll to **The problem**. | "February 6, 2026: bitcoin dipped to $60,000. A loan that had borrowed 60% against one bitcoin was sold off and kept a tenth of it. The same loan with Airbag kept the whole bitcoin." |
+| 0:40–1:00 | Scroll to **The fix**. The replay plays by itself. | "This is a real save, recorded on Arc. The loan is pushed to the edge. Three seconds later Airbag has moved the owner's savings in. The fee was one cent, paid in USDC." |
+| 1:00–1:50 | **One take, no cuts.** *Open the app* → **Try it** → *Push it to the edge* → confirm in MetaMask. The page switches to the Loan screen by itself: the number goes red, then green again. | "Now live, with my own wallet. I push my loan to the edge. Hands off." Wait. "Airbag just moved my savings into my loan, through my own guard contract. It never held my key." Click the transaction link under *What Airbag did*. |
+| 1:50–2:15 | **Market** screen. Hover the curve. Scroll to *The odds, over time* and press *The market*, then *This loan*. | "The number comes from Gemini's prediction market. This is the market's curve for November 30, and my line sits here. Below the lowest bet the curve is estimated, and the page says so. This is Gemini's own history for one bet, hour by hour. And this is my loan's number, with a dot where Airbag acted." |
+| 2:15–2:35 | **On-chain** screen. Click the guard's address. | "Everything is on Arc. The savings are in Circle's Earn Kit, the loan in Borrow Kit, and our AirbagGuard contract sits between them. The bot's key can only press save and give back. A save cost one cent, paid in USDC. A QuickNode Stream wakes the bot the moment the loan moves." |
+| 2:35–2:50 | Back to the landing page, **The proof**. | "Three seconds. One cent. Zero of your keys. Next: mainnet." |
 
-## The 5-minute live pitch (finalists)
+After the take, press *Calm it down* on Try it, so the loan is ready for the next run.
 
-1. **Problem, 30 s.** The replay chart: the left-alone line gets crossed on Feb 6.
-2. **The number, 30 s.** "X% chance you lose your bitcoin by Nov 30. Source: Gemini, live." Point at the limit.
-3. **Proof it is real, 15 s.** The loan's transaction on the explorer.
-4. **The save, 60 s.** Push → red → hands off → green. Click the two transactions.
-5. **How the odds work, 45 s.** Ladder → chance below the line → doubled → estimated tail. The note under the big number says which kind it is.
-6. **Replay results, 45 s.**
-   - The 60%, 65% and 70% loans were liquidated when left alone, and kept their bitcoin with Airbag.
+## The 4-minute live pitch (finalists)
+
+1. **The problem, 30 s.** Landing page, *The problem*: the left-alone loan is sold off on Feb 6.
+2. **The number, 30 s.** The app, Loan screen: "X% chance of losing the bitcoin by Nov 30. Live, from Gemini." Point at "Airbag steps in at 5%".
+3. **The save, 75 s.** Try it → *Push it to the edge* → red → hands off → green. Click the transaction.
+4. **How the odds work, 40 s.** Market screen: the curve, the line, doubled for any-time dips, estimated below the lowest bet.
+5. **It is real, 30 s.** On-chain screen: the addresses, the fee, the Stream.
+6. **Replay results and what is next, 35 s.**
+   - The 60%, 65% and 70% loans were sold off when left alone, and kept their bitcoin with Airbag.
    - At 60%, on average 58% of the savings stayed in the pot.
-7. **New and next, 30 s.** One line each.
 
-**If the save is slow,** keep talking about the odds. If nothing has happened after 30 s, play the backup recording.
+**If the save is slow,** keep talking about the odds. If nothing has happened after 30 s, show the recorded save on the landing page.
 
 ## Questions judges will ask
 
@@ -50,16 +57,17 @@ Use these numbers, not the early drafts. Two answers in our first plan did not s
   - Nobody knows what health 1.31 means; everyone understands "12% chance by Nov 30".
   - The odds also react to how nervous the market is. With Nov 17's ladders, the odds trigger fires around health 1.19, before Borrow Kit's own WARN band. On a calmer day it would fire later.
 - **"Why not just borrow less?"** Then that money is locked in the loan all the time. With Airbag it sits in savings earning interest. ⚠️ In our replay at 60% borrowed, **58%** of the savings stayed in the pot on average (not the 86% in our first draft). In calm stretches all of it did.
-- **"Why Arc?"** Fast finality and fees paid in USDC. A save is two transactions: they landed 4 s after the push and cost 0.0154 USDC. ⚠️ Don't claim a once-a-day bot gets liquidated: in our replay it survived February too, because the odds were already over the limit the evening before the drop.
+- **"Why Arc?"** Fast finality and fees paid in USDC. A save through AirbagGuard is one transaction: it landed 3 s after the push and cost 0.0097 USDC. ⚠️ Don't claim a once-a-day bot gets liquidated: in our replay it survived February too, because the odds were already over the limit the evening before the drop.
 - **"Why Gemini? Isn't that a stretch?"** It's a bitcoin loan, and Gemini's ladders price exactly "will BTC be under my line on this date".
 - **"What if Gemini's market is thin or wrong?"**
   - It is thin: about $97k traded on the Nov 30 ladder.
   - That is why the bot also acts on health alone (under 1.10), uses the worse of two ladders, and labels estimated odds.
-- **"Isn't the testnet price fake?"** Arc Testnet's lending oracle is fixed at $75,000. Airbag values the collateral at Gemini's live BTC price, as a mainnet feed would, and shows both numbers.
+- **"Isn't the testnet price fake?"** Arc Testnet's lending oracle is fixed at $75,000. Airbag values the collateral at Gemini's live BTC price, as a mainnet feed would.
 - **"What if savings run out?"**
   - It stops and says so.
   - At 60% borrowed in the replay, the savings were fully used at the worst point and the loan still survived.
   - Next step: sell a slice of collateral with Swap Kit.
-- **"Who holds the keys?"** In the demo, our server holds a testnet-only key. We also wrote `AirbagGuard`: a contract where the bot's own key can only move the owner's savings into the owner's own loan and back, with a daily cap and a health floor on-chain, and the owner can pause it or cut it off. It runs on Arc Testnet, and with `USE_GUARD=true` the bot signs through it, so the server no longer needs the wallet's key (README "Live proof"). Our hosted bot at airbag-live.onrender.com runs this way. Any visitor's wallet can get its own guard from the page (Connect wallet, then Turn on protection). We tested that live with a third wallet at airbagged.me, the same server on its own domain.
+- **"Who holds the keys?"** On the hosted bot, nobody but the owner. `AirbagGuard` is a contract where the bot's own key can only move the owner's savings into the owner's own loan and back, with a daily cap and a health floor on-chain, and the owner can pause it or cut it off. Our hosted bot at airbagged.me runs this way and holds no wallet key. Any visitor's wallet gets its own guard from the Try it screen. We tested that live with a third wallet (README "Live proof"). The first bot wallet we built with still signs with its own testnet-only key on a laptop.
 - **"What if the bot is offline?"** Then nothing is protected. The webhook and the Stream wake it faster, but production needs always-on hosting.
 - **"Does it make money?"** No. It keeps your bitcoin. If bitcoin keeps falling after a save, being liquidated would have left more cash.
+- **"Why does the page say 'you lose it below' instead of 'liquidation price'?"** Same number, plain words. Health and the other DeFi terms are in the table views and the README.

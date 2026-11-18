@@ -9,7 +9,8 @@ const read = (k: string) => { try { return sessionStorage.getItem(k) ?? ""; } ca
 const write = (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch { /* storage blocked */ } };
 
 export function useDemoDrawer(status: Status | null) {
-  const [open, setOpen] = useState(false);
+  // /app/?demo opens it straight away: the landing page's "Push it yourself" button on the simulator
+  const [open, setOpen] = useState(() => new URLSearchParams(location.search).has("demo"));
   // the hosted simulator opens it once per visit, so a judge sees the button to press
   const greeted = useRef(false);
   useEffect(() => {
@@ -33,7 +34,7 @@ export function useDemoDrawer(status: Status | null) {
   return { open, setOpen };
 }
 
-export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; open: boolean; onClose(): void; onActs(): void }) {
+export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; open: boolean; onClose(): void; onActs(kind: "push" | "reset"): void }) {
   const [key, setKey] = useState(() => read("airbag-demo-key"));
   const [typed, setTyped] = useState(key);
   const [unlocked, setUnlocked] = useState(false);
@@ -48,7 +49,7 @@ export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; 
       write("airbag-demo-key", k);
       setKey(k);
       setUnlocked(true);
-      setOut(status.publicDemo && !k ? "" : "Unlocked.");
+      setOut("");
     } catch (e) {
       setUnlocked(false);
       setOut(`Locked: ${(e as Error).message}`);
@@ -62,7 +63,7 @@ export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; 
   const act = async (label: string, path: string, body: unknown) => {
     setBusy(label);
     setOut(`${label}…`);
-    if (/push|reset/.test(path)) onActs();   // these act on the bot's own loan, so show that one
+    if (/push|reset/.test(path)) onActs(/push/.test(path) ? "push" : "reset");   // these act on the bot's own loan, so show that one
     try {
       const j = await postJson<{ result?: string }>(path, body, key);
       setOut(`${label}: ${j.result ?? "done"}`);
@@ -74,41 +75,35 @@ export function DemoDrawer({ status, open, onClose, onActs }: { status: Status; 
   };
 
   if (!open) return null;
+  // A slim bar along the bottom edge: it must not sit on the numbers it changes.
   return (
-    <aside aria-labelledby="demo-title" className="fixed bottom-4 right-4 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-3xl border border-panel-line bg-panel p-5 text-on-panel shadow-2xl">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 id="demo-title" className="label text-on-panel-faint">Demo controls{status.mode === "live" ? " · the bot's own loan" : ""}</h2>
-        <button type="button" onClick={onClose} aria-label="Close demo controls" className="rounded-full p-1 text-on-panel-faint hover:text-on-panel"><X className="size-4" /></button>
-      </div>
-      {status.publicDemo && (
-        <p className="mb-3 text-[13.5px] leading-snug text-on-panel-2">
-          This is a simulated loan with live odds from Gemini. Press <strong className="font-semibold text-on-panel">Push it to the edge</strong>, then hands off, and watch the bot save it.
-        </p>
-      )}
-      {!unlocked ? (
-        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); unlock(typed.trim()); }}>
-          <label htmlFor="demo-key" className="sr-only">Demo key</label>
-          <input id="demo-key" type="password" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="demo key" className="min-w-0 flex-1 rounded-full border border-panel-line bg-panel-2 px-4 py-2 text-on-panel placeholder:text-on-panel-faint/60" />
-          <Button type="submit" size="sm">Unlock</Button>
-        </form>
-      ) : (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="danger" disabled={!!busy} onClick={() => act("Push it to the edge", "/api/demo/push", {})}>Push it to the edge</Button>
-            <Button disabled={!!busy} onClick={() => act("Reset", "/api/demo/reset", {})}>Reset</Button>
-            {!status.publicDemo && (
-              <Button variant="ghost" disabled={!!busy} onClick={() => act("Pause / resume", "/api/demo/pause", { paused: !status.paused })}>{status.paused ? "Resume bot" : "Pause bot"}</Button>
-            )}
-          </div>
-          <form className="flex items-center gap-2 text-[13.5px] text-on-panel-2" onSubmit={(e) => { e.preventDefault(); act("Set limit", "/api/demo/limit", { limit: Number(limit) / 100 }); }}>
-            <label htmlFor="demo-limit">Limit</label>
-            <input id="demo-limit" type="number" min={0.1} max={50} step={0.1} inputMode="decimal" value={limit} onFocus={() => (limitFocused.current = true)} onBlur={() => (limitFocused.current = false)} onChange={(e) => setLimit(e.target.value)} className="w-20 rounded-full border border-panel-line bg-panel-2 px-3 py-1.5 text-right text-on-panel" />
-            %
-            <Button type="submit" size="sm" disabled={!!busy}>Set</Button>
+    <aside aria-labelledby="demo-title" className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-[54rem] rounded-[26px] border border-panel-line bg-panel px-4 py-3 text-on-panel shadow-2xl sm:px-5">
+      <button type="button" onClick={onClose} aria-label="Close demo controls" className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-on-panel-faint hover:text-on-panel"><X className="size-4" /></button>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pr-8">
+        <h2 id="demo-title" className="label text-on-panel-faint">Demo{status.mode === "live" ? " · the bot's own loan" : ""}</h2>
+        {!unlocked ? (
+          <form className="flex min-w-0 flex-1 gap-2" onSubmit={(e) => { e.preventDefault(); unlock(typed.trim()); }}>
+            <label htmlFor="demo-key" className="sr-only">Demo key</label>
+            <input id="demo-key" type="password" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="demo key" className="min-w-0 flex-1 rounded-full border border-panel-line bg-panel-2 px-4 py-2 text-on-panel placeholder:text-on-panel-faint/60" />
+            <Button type="submit" size="sm">Unlock</Button>
           </form>
-        </div>
-      )}
-      <p role="status" className="mt-3 min-h-5 text-[13px] text-on-panel-2">{out}</p>
+        ) : (
+          <>
+            <Button variant="danger" size="sm" disabled={!!busy} onClick={() => act("Push it to the edge", "/api/demo/push", {})}>Push it to the edge</Button>
+            <Button size="sm" disabled={!!busy} onClick={() => act("Reset", "/api/demo/reset", {})}>Reset</Button>
+            {!status.publicDemo && (
+              <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => act("Pause / resume", "/api/demo/pause", { paused: !status.paused })}>{status.paused ? "Resume bot" : "Pause bot"}</Button>
+            )}
+            <form className="flex items-center gap-1.5 text-[13.5px] text-on-panel-2" onSubmit={(e) => { e.preventDefault(); act("Set limit", "/api/demo/limit", { limit: Number(limit) / 100 }); }}>
+              <label htmlFor="demo-limit">Limit</label>
+              <input id="demo-limit" type="number" min={0.1} max={50} step={0.1} inputMode="decimal" value={limit} onFocus={() => (limitFocused.current = true)} onBlur={() => (limitFocused.current = false)} onChange={(e) => setLimit(e.target.value)} className="w-16 rounded-full border border-panel-line bg-panel-2 px-3 py-1.5 text-right text-on-panel" />
+              %
+              <Button type="submit" size="sm" disabled={!!busy}>Set</Button>
+            </form>
+          </>
+        )}
+      </div>
+      <p role="status" className="mt-2 line-clamp-2 text-[13px] leading-snug text-on-panel-2 empty:hidden">{out || (status.publicDemo ? "A simulated loan with live odds. Push it, then hands off: Airbag saves it by itself." : "")}</p>
     </aside>
   );
 }

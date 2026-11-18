@@ -4,7 +4,7 @@
 
 Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's Borrow Kit). It reads the odds of bitcoin falling under the loan's liquidation line from Gemini's prediction market. When those odds pass your limit, it moves USDC from a savings vault (Circle's Earn Kit) into the loan. When the market calms down, it moves the money back. Nobody presses anything.
 
-**Try it:** [airbag-demo.onrender.com](https://airbag-demo.onrender.com) is an always-on simulator with a simulated loan and live Gemini odds. Press *Try the demo*, then *Push it to the edge*, and watch the bot save the loan. No wallet is needed. The first visit after a quiet spell takes about a minute to load.
+**Try it:** [airbag-demo.onrender.com](https://airbag-demo.onrender.com) is an always-on simulator with a simulated loan and live Gemini odds. Press *Push a loan yourself*, then *Push it to the edge*, and watch the bot save the loan. No wallet is needed. The first visit after a quiet spell takes about a minute to load.
 
 **Live on Arc Testnet (Nov 17, 2026):** we pushed a real loan into danger and Airbag saved it with no human input. The push landed at 21:53:55 UTC. The bot read the odds at 42% (limit 5%), withdrew 0.78 USDC from savings and repaid the loan. The repay landed at 21:53:59, and the odds were back to 0.8%. Two transactions, 0.0154 USDC of gas. See [Live proof](#live-proof).
 
@@ -228,7 +228,7 @@ Only ever run one live bot per wallet. Two bots would both repay.
 **What it does not say.** In this crash, an Airbag that checked only once a day did just as well as one reacting in real time: the odds were already over the limit at the Feb 4 close, a day before the big drop. The speed of reacting would matter for a one-day crash from a calm close, which this year did not contain. We do not claim more than that.
 
 **Method and limits.**
-- **Odds.** Gemini keeps no history of its prediction-market prices, so past volatility stands in for the odds: P(dies within 14 days) = 2 × Φ(ln(line / price) / (σ √14)), with σ from the previous 30 daily returns.
+- **Odds.** We have no Gemini prediction-market prices for February (its candles only cover the bets open now, from their first trade), so past volatility stands in for the odds: P(dies within 14 days) = 2 × Φ(ln(line / price) / (σ √14)), with σ from the previous 30 daily returns.
 - **Real time vs once a day.** "Real time" walks each day open → high → low → close in 144 small steps. That is the best case; real life is between it and once a day.
 - **Not modelled.** Daily prices only. No fees, interest or vault yield. When the line is touched, the whole loan is liquidated with Morpho's 4.4% incentive.
 - **Fixed inputs.** Limit 5%, savings 20% of the loan.
@@ -288,7 +288,9 @@ Server endpoints:
 | Route | What it does |
 |---|---|
 | `GET /` | landing page. `/app/` is the app (Loan, Market, On-chain, Try it). `/classic/` is the old page. |
-| `GET /api/ladders` | read-only: Gemini's price ladders as they are, for the market picture |
+| `GET /api/ladders` | read-only: Gemini's price ladders as they are, and each bet's price to buy "No", for the market picture and the hedge quote |
+| `GET /api/market-history?ticker=` | read-only: Gemini's hourly candles for each bet of one of our ladders (the last traded price), for the market-over-time chart |
+| `GET /api/gas` | read-only: Arc's gas price right now on testnet and on mainnet, for the mainnet cost estimate |
 | `GET /api/status` | JSON: loan, odds, savings, limit, log, odds samples |
 | `GET /api/replay` | crash replay results |
 | `GET /api/wallet/:address` | read-only: any wallet's USDC, cirBTC, savings, loan and odds (the dashboard's Connect wallet) |
@@ -300,17 +302,19 @@ Server endpoints:
 
 POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no secret set, they only accept requests from localhost.
 
-**Demo controls.** Press `d` on the dashboard and enter `WEBHOOK_SECRET`.
+**The page.** `/` is the landing page: what Airbag is, the February crash, a real save replayed from its recorded transactions, Gemini's market as a picture, and the proof. `/app/` is the app, with four screens: **Loan** (the chance of losing the bitcoin, and bitcoin's price against the price where it is lost), **Market** (Gemini's ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, a hedge quote), **On-chain** (a picture of how the money moves between the contracts, what the QuickNode Stream saw, what a move costs) and **Try it** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
+
+**Demo controls.** In the app, press `d` and enter `WEBHOOK_SECRET`.
 - **Push it to the edge** borrows up to Borrow Kit's maximum. The USDC stays in the wallet, as if spent.
 - **Reset** repays from the wallet back to health 1.5. The bot then gives the savings back by itself.
 
-**Connect wallet.** The button at the top shows a visitor's own wallet on Arc Testnet: its USDC and cirBTC, its savings, its loan in the same market, and the odds for that loan's line.
+**Connect wallet** (the app's *Try it* screen). Four steps, one on screen at a time: open a loan, add savings, turn on protection, push it. It shows a visitor's own wallet on Arc Testnet: its USDC and cirBTC, its savings and its loan in the same market.
 - Connecting shares the address and nothing else. Without a wallet extension, paste any address instead (read-only).
 - With several wallet extensions installed (MetaMask, Phantom, ...), the page asks which one to use and only ever talks to that one.
 - **A connected wallet can act for itself:** *Open a loan* (lock cirBTC and borrow USDC, straight on the lending contract) and *Add savings* (deposit USDC into the Earn vault). The server prepares each transaction after checking it against the chain (`POST /api/plan/...`); the visitor's own wallet shows it, signs it and sends it. The server never sees a key.
 - A new loan must start at health 1.25 or better at the live price, the level the bot repays to.
 - **Turn on protection** (on a server run with `PROTECT=true`): three signatures. The wallet creates its own `AirbagGuard`, naming our bot key as the only caller, then lets the guard reach its savings and its loan. From then on the bot protects that loan with the same rule, through that guard. The wallet stays the guard's owner and can turn protection off again (two signatures).
-- **The page follows the connected wallet.** When that wallet has a loan, the big number, the four cards, the log and the odds chart show that loan. A switch above the number goes back to the bot's own loan. The chart starts when the wallet connects (the server keeps no history for other wallets).
+- **The app follows the connected wallet.** When that wallet has a loan, every screen shows that loan, with a switch back to the bot's own. Its history starts when the wallet connects (the server keeps no history for other wallets). After *Push it to the edge* the app jumps to the Loan screen, so the number turning red and the save are on screen without a click.
 - **Push it to the edge** and **Calm it down** are the demo for a connected wallet: borrow more until the loan is risky, then watch the bot save it.
 - The server keeps no list of these wallets. It finds the guards made for its bot key, and how much of each owner's savings is inside their loan, from the guards' own events on Arc ([`src/protector.ts`](src/protector.ts)). A restart loses nothing.
 - **Try it with a wallet at https://airbagged.me.** That is the hosted live bot (the same server as airbag-live.onrender.com). MetaMask showed its "malicious site" warning when a wallet connected on the `onrender.com` address: it flags that whole suffix, not our page. So the live bot has its own domain.

@@ -43,7 +43,8 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 - **Actions.** Circle's App Kit on Arc Testnet: `earn.withdraw` → `borrow.repay` to save the loan; `borrow.borrow` → `earn.deposit` to give it back.
   - The bot reads the loan straight from the Morpho contract and the vault on-chain, because the kits' read APIs lag after a write.
 - **Alarms.** A 5-second timer, Borrow Kit's health-band webhook, and a QuickNode Stream filtered to our Morpho market and wallet.
-- **Dashboard.** The odds, the liquidation line, health, the savings pot, a plain-English log with explorer links, odds over time, and a crash replay.
+- **The page.** A landing page that tells it in five screens and replays a real save from its recorded transactions. An app with four screens: the loan (one number, and bitcoin's price against the price where the bitcoin is lost), the market (Gemini's ladder with the loan's line on it, the odds over time), on-chain (the contracts, what a move costs, the Stream's events) and your own wallet in four steps.
+- **A hedge quote.** The same Gemini market sells "No" on its bets, which pays if bitcoin ends below a price. The page quotes, from live prices, what covering the loan's sell-off penalty would cost. A quote only: Airbag places no order.
 - **Live on Arc Testnet.**
   - We pushed a real loan to 42% odds.
   - The bot moved 0.78 USDC from savings into the loan, and it was safe again 4 seconds later on-chain, for 0.0154 USDC of gas.
@@ -60,7 +61,7 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 ## What would you build next?
 
 - **Non-custodial.** We wrote `AirbagGuard` (`contracts/`): the bot's own key can only move the owner's savings into the owner's own loan and back, with a daily cap and a health floor on-chain. It runs on Arc Testnet and the bot can sign through it (README "Live proof"). One guard per user works from the page too (Connect wallet). Next is moving our first bot wallet to it.
-- **Mainnet**, with a real price feed (Arc Testnet's lending oracle is fixed at $75,000).
+- **Mainnet**, with a real price feed (Arc Testnet's lending oracle is fixed at $75,000). We checked the cost: Arc mainnet charges the same gas price as testnet today, so turning protection on would cost about 0.035 USDC and each save about 0.0097 USDC. The page reads mainnet's gas price live to keep that estimate honest.
 - **When savings run out:** sell a small slice of collateral with Swap Kit.
 - **Alerts** on Telegram/X or by voice, and many loans per user.
 - **Always-on hosting.**

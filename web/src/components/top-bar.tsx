@@ -10,7 +10,7 @@ export function ModeBadge({ status }: { status: Status | null }) {
   return (
     <span className={cn("label inline-flex items-center gap-2 rounded-full border px-3 py-1.5", live ? "border-ink/25 text-ink" : "border-line text-ink-2")}>
       <span aria-hidden="true" className={cn("size-2 rounded-full", live ? "bg-good" : "bg-faint")} />
-      {live ? "Live · Arc Testnet" : "Simulator · live Gemini odds"}
+      {live ? "Live · Arc Testnet" : <>Simulator<span className="hidden sm:inline"> · live Gemini odds</span></>}
       {status.dryRun ? " · dry run" : ""}
     </span>
   );

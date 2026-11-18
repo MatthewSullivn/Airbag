@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, relative, resolve } from "node:path";
 
 export const webDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-// ../src/brain.mjs is bundled into the page too (the ladder picture uses the bot's own maths)
-const ROOT_FILES = ["index.html", "app/index.html", "package.json", "vite.config.ts", "tsconfig.json", "../src/brain.mjs"];
+// ../src/brain.mjs, hedge.mjs and market-history.mjs are bundled into the page too (it uses the bot's own maths)
+const ROOT_FILES = ["index.html", "app/index.html", "package.json", "vite.config.ts", "tsconfig.json", "../src/brain.mjs", "../src/hedge.mjs", "../src/market-history.mjs"];
 
 function walk(dir, out = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {

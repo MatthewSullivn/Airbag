@@ -13,6 +13,8 @@ import { Store, type StreamEvent } from "./state.js";
 import { Bot, ladderStatus } from "./bot.js";
 import { RULE, health as healthOf } from "./brain.mjs";
 import { describeReceipt, isTxHash } from "./stream-verify.mjs";
+import { betsFromEvent, type BetPrice } from "./hedge.mjs";
+import { pointsFromCandles, type BetHistory } from "./market-history.mjs";
 import { makeRateLimiter, publicAllows, publicDemoOn } from "./public-demo.mjs";
 import { makeWalletReader } from "./wallet-view.js";
 import { makeWalletPlanner, offersFor, PlanError } from "./wallet-plan.js";
@@ -128,14 +130,95 @@ app.get("/healthz", (_req, res) => res.json({ ok: true, ticks: bot.ticks }));
 
 // ---- Gemini's ladders as they are (each strike and the chance BTC ends above it), so the page can draw the
 // market's own curve with the loan's line on it. Read-only, and the ladders are cached for about 20 s.
+// It also passes on each bet's price to BUY "No" right now (a "No" pays 1 dollar if bitcoin ends below that
+// price). The page uses it to quote what a hedge would cost. A quote only: nothing here places an order.
+// And the market's own page on gemini.com, so the page can link to it: /predictions/<ticker>/<slug>.
+interface EventExtras { bets: BetPrice[]; url: string | null }
+const betCache = new Map<string, { at: number } & EventExtras>();
+async function extrasOf(ticker: string): Promise<EventExtras> {
+  const hit = betCache.get(ticker);
+  if (hit && Date.now() - hit.at < 30_000) return hit;
+  try {
+    const r = await fetch(`https://api.gemini.com/v1/prediction-markets/events/${encodeURIComponent(ticker)}`, { signal: AbortSignal.timeout(8000), headers: { accept: "application/json" } });
+    if (!r.ok) throw new Error(`Gemini HTTP ${r.status}`);
+    const event = (await r.json()) as { slug?: unknown };
+    const slug = typeof event.slug === "string" && /^[a-z0-9-]{1,120}$/.test(event.slug) ? event.slug : null;
+    const next = { at: Date.now(), bets: betsFromEvent(event), url: slug ? `https://www.gemini.com/predictions/${encodeURIComponent(ticker)}/${slug}` : null };
+    betCache.set(ticker, next);
+    return next;
+  } catch {
+    return hit ?? { bets: [], url: null };
+  }
+}
 app.get("/api/ladders", async (_req, res) => {
   const [snap, spot] = await Promise.all([gemini.get(), gemini.spot()]);
   res.json({
     at: snap.fetchedAt,
     spot: spot.price,
     error: snap.error,
-    events: snap.events.map((e) => ({ ticker: e.ticker, title: e.title, expiryDate: e.expiryDate, volume: e.volume, ladder: e.ladder })),
+    events: await Promise.all(snap.events.map(async (e) => {
+      const extras = await extrasOf(e.ticker);
+      return { ticker: e.ticker, title: e.title, expiryDate: e.expiryDate, volume: e.volume, ladder: e.ladder, bets: extras.bets, url: extras.url };
+    })),
   });
+});
+
+// ---- The market's own history: Gemini's hourly candles for each bet of one of OUR ladders (the last traded
+// price of "bitcoin ends at or above X", hour by hour). Read-only public market data, cached for ten minutes.
+// Only the ladders the bot is reading are answered, so nothing else can be fetched through this route.
+const historyCache = new Map<string, { at: number; body: unknown }>();
+app.get("/api/market-history", async (req, res) => {
+  const snap = await gemini.get();
+  const want = typeof req.query.ticker === "string" ? req.query.ticker : snap.events[0]?.ticker;
+  const event = snap.events.find((e) => e.ticker === want);
+  if (!event) return res.status(404).json({ error: "not one of the ladders the bot reads" });
+  const hit = historyCache.get(event.ticker);
+  if (hit && Date.now() - hit.at < 10 * 60_000) return res.json(hit.body);
+  const bets = (await extrasOf(event.ticker)).bets;
+  const all = await Promise.all(bets.map(async (b): Promise<BetHistory | null> => {
+    if (!b.symbol) return null;
+    try {
+      const r = await fetch(`https://api.gemini.com/v2/candles/${encodeURIComponent(b.symbol)}/1hr`, { signal: AbortSignal.timeout(8000), headers: { accept: "application/json" } });
+      if (!r.ok) return null;
+      const points = pointsFromCandles(await r.json());
+      return points.length > 1 ? { strike: b.strike, symbol: b.symbol, points } : null;
+    } catch {
+      return null;
+    }
+  }));
+  const series = all.filter((s): s is BetHistory => s != null);
+  if (!series.length && hit) return res.json(hit.body);                 // Gemini did not answer: keep showing what we had
+  const body = { at: Date.now(), ticker: event.ticker, title: event.title, expiryDate: event.expiryDate, frame: "1hr", series };
+  // an empty answer is only kept for a minute, so the next visitor tries again soon
+  historyCache.set(event.ticker, { at: series.length ? Date.now() : Date.now() - 9 * 60_000, body });
+  res.json(body);
+});
+
+// ---- What a move costs: Arc's gas price right now, on testnet and on mainnet. Read-only (two eth_gasPrice
+// calls, no key, nothing sent), cached for five minutes. The page multiplies it by the gas our recorded
+// transactions used, to say what the same moves would cost on mainnet. Mainnet is only ever READ here.
+const ARC_MAINNET_RPC = "https://rpc.mainnet.arc.io";   // chain id 5042
+let gasCache: { at: number; body: unknown } | null = null;
+async function gasPriceOf(rpc: string): Promise<{ chainId: number; gasPriceWei: string } | null> {
+  try {
+    const call = async (method: string) => {
+      const r = await fetch(rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: [] }), signal: AbortSignal.timeout(8000) });
+      const j = (await r.json()) as { result?: string };
+      if (!j.result) throw new Error("no result");
+      return j.result;
+    };
+    const [chainId, price] = await Promise.all([call("eth_chainId"), call("eth_gasPrice")]);
+    return { chainId: Number(BigInt(chainId)), gasPriceWei: BigInt(price).toString() };
+  } catch {
+    return null;
+  }
+}
+app.get("/api/gas", async (_req, res) => {
+  if (!gasCache || Date.now() - gasCache.at > 5 * 60_000) {
+    const [testnet, mainnet] = await Promise.all([gasPriceOf(config.rpcUrl), gasPriceOf(ARC_MAINNET_RPC)]);
+    if (testnet || mainnet || !gasCache) gasCache = { at: Date.now(), body: { at: Date.now(), testnet, mainnet } };
+  }
+  res.json(gasCache!.body);
 });
 
 // ---- "Connect wallet": a read-only look at any wallet on Arc Testnet (balances, its loan, its odds).

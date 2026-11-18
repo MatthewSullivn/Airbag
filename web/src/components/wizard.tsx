@@ -6,6 +6,7 @@ import { ArrowUpRight, Check, Loader, Wallet, X } from "lucide-react";
 import type { Status, WalletView } from "@/lib/api";
 import { btc, short, usd, usdc } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { LIVE_URL } from "@/data/proof";
 import { recall } from "@/wallet/core";
 import type { WalletApi } from "@/wallet/use-wallet";
 import { Button, Card, ExplorerLink, Panel } from "./bits";
@@ -52,8 +53,8 @@ export function Wizard({ wallet, status }: { wallet: WalletApi; status: Status }
           <>
             <Progress done={[false, false, false, false]} current={-1} />
             <div className="mx-auto max-w-xl py-12 text-center sm:py-16">
-              <h2 className="display text-[clamp(2rem,4.6vw,3.2rem)]">Four steps. A few minutes.</h2>
-              <p className="mt-4 text-[1.1rem] leading-relaxed text-on-panel-2">Test money only. You approve every step in your own wallet, and this page never sees a key.</p>
+              <h2 className="display text-[clamp(2rem,4.6vw,3.2rem)]">Four steps, a few minutes.</h2>
+              <p className="mt-4 text-[1.1rem] leading-relaxed text-on-panel-2">Test money only. You approve every step in your own wallet. This page never sees your key.</p>
               <Button variant="brand" size="lg" className="mt-8" onClick={wallet.connect}><Wallet aria-hidden="true" className="size-5" /> Connect wallet</Button>
               {wallet.choices && (
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-on-panel-2">
@@ -62,6 +63,12 @@ export function Wizard({ wallet, status }: { wallet: WalletApi; status: Status }
                 </div>
               )}
               {wallet.note && <p role="status" className="mt-5 text-[15px] text-on-panel-2">{wallet.note}</p>}
+              {status.mode !== "live" && (
+                <p className="mt-6 text-[15px] text-on-panel-faint">
+                  With your wallet, steps 1 and 2 are real transactions on Arc Testnet, even here on the simulator. Steps 3 and 4 need the live site:{" "}
+                  <a href={`${LIVE_URL}/app/#try`} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">airbagged.me</a>.
+                </p>
+              )}
             </div>
           </>
         ) : v ? (
@@ -257,7 +264,7 @@ function Steps({ wallet, v, status, explorer }: { wallet: WalletApi; v: WalletVi
           Wallet does not know Arc yet?
           <button type="button" onClick={wallet.addArc} className="underline underline-offset-[3px] hover:text-on-panel-2">Add Arc Testnet</button>
           <button type="button" onClick={wallet.addCirbtc} className="underline underline-offset-[3px] hover:text-on-panel-2">Add cirBTC</button>
-          {status.mode !== "live" && <span>This page runs the simulator, so step 3 only works on the live site.</span>}
+          {status.mode !== "live" && <span>This page is the simulator. Steps 3 and 4 need the live site: <a href={`${LIVE_URL}/app/#try`} className="underline underline-offset-[3px] hover:text-on-panel-2">airbagged.me</a>.</span>}
         </p>
       )}
       {wallet.note && <p role="status" className="mt-4 text-[15px] text-on-panel-2">{wallet.note}</p>}

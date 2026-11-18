@@ -35,10 +35,18 @@ export interface XYSeries {
   /** Write the last value next to the end of the line. */
   endLabel?: string;
 }
-export interface XYRef { y: number; label: string; color: string }
-export interface XYVLine { x: number; label: string; color: string }
-export interface XYBand { x0?: number; x1?: number; y0?: number; y1?: number; color: string; label?: string }
-export interface XYMarker { x: number; y: number; color: string; shape?: "dot" | "cross"; label?: string }
+export interface XYRef { y: number; label: string; color: string; /** Which end of the line the words sit at. Default: the right end. */ labelAt?: "start" | "end" }
+export interface XYVLine { x: number; label: string; color: string; dashed?: boolean }
+export interface XYBand {
+  x0?: number; x1?: number; y0?: number; y1?: number; color: string; label?: string;
+  /** Hide any area fill underneath, so the band reads as one clean zone. The lines still show on top. */
+  cover?: boolean;
+}
+export interface XYMarker {
+  x: number; y: number; color: string; shape?: "dot" | "cross" | "tick"; label?: string;
+  /** On a narrow chart, name this mark under the chart instead of beside it (where it would sit on the data). */
+  legend?: boolean;
+}
 export interface XYTip { title: string; rows: { label: string; value: string; color: string }[]; note?: string }
 
 export interface XYChartProps {
@@ -128,6 +136,9 @@ export function XYChart({
   // on a narrow screen the time or price labels would run into each other: show every second or third one
   const xLabelW = Math.max(...xTicks.map((t) => xFormat(t).length), 1) * 7.4 + 14;
   const everyX = Math.max(1, Math.ceil((xTicks.length * xLabelW) / plotW));
+  // on a phone there is no room for words inside the plot: they move under the chart
+  const narrow = width > 0 && width < 560;
+  const halo = { paintOrder: "stroke" as const, stroke: theme.bg, strokeWidth: 4, strokeLinejoin: "round" as const };
 
   const paths = useMemo(
     () =>
@@ -177,6 +188,30 @@ export function XYChart({
   };
 
   const t = (d: number, extra: object = {}) => (still ? { duration: 0 } : { duration: d, ease: EASE, ...extra });
+  const band = (b: XYBand, i: number) => {
+    const bx0 = X(b.x0 ?? x0), bx1 = X(b.x1 ?? x1), by0 = Y(b.y1 ?? y1), by1 = Y(b.y0 ?? y0);
+    const box = { x: Math.min(bx0, bx1), y: Math.min(by0, by1), width: Math.abs(bx1 - bx0), height: Math.abs(by1 - by0) };
+    return (
+      <g key={`band-${i}`} clipPath={`url(#${uid}-plot)`}>
+        {b.cover && <rect {...box} fill={theme.bg} />}
+        <rect {...box} fill={b.color} opacity={0.1} />
+        <rect {...box} fill={`url(#${uid}-hatch-${i})`} opacity={0.5} />
+        {b.label && (
+          <text x={box.x + 8} y={box.y + 15} fontSize={11} fill={theme.fg} opacity={0.85}>
+            {b.label}
+          </text>
+        )}
+      </g>
+    );
+  };
+  // what moves under the chart on a narrow screen
+  const below = narrow
+    ? [
+        ...vlines.map((v) => ({ kind: "vline" as const, label: v.label, color: v.color })),
+        ...markers.filter((m) => m.legend && m.label).map((m) => ({ kind: "dot" as const, label: m.label as string, color: m.color })),
+      ]
+    : [];
+  const showSeries = series.length > 1 && !hideLegend;
   const first = paths[0];
 
   return (
@@ -227,20 +262,7 @@ export function XYChart({
               </text>
             ))}
 
-            {bands.map((b, i) => {
-              const bx0 = X(b.x0 ?? x0), bx1 = X(b.x1 ?? x1), by0 = Y(b.y1 ?? y1), by1 = Y(b.y0 ?? y0);
-              return (
-                <g key={i} clipPath={`url(#${uid}-plot)`}>
-                  <rect x={Math.min(bx0, bx1)} y={Math.min(by0, by1)} width={Math.abs(bx1 - bx0)} height={Math.abs(by1 - by0)} fill={b.color} opacity={0.1} />
-                  <rect x={Math.min(bx0, bx1)} y={Math.min(by0, by1)} width={Math.abs(bx1 - bx0)} height={Math.abs(by1 - by0)} fill={`url(#${uid}-hatch-${i})`} opacity={0.5} />
-                  {b.label && (
-                    <text x={Math.min(bx0, bx1) + 8} y={Math.min(by0, by1) + 15} fontSize={11} fill={theme.fg} opacity={0.85}>
-                      {b.label}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
+            {bands.map((b, i) => (b.cover ? null : band(b, i)))}
 
             <g clipPath={`url(#${uid}-reveal)`}>
               {paths.map((p, i) =>
@@ -251,6 +273,7 @@ export function XYChart({
                   </g>
                 ) : null,
               )}
+              {bands.map((b, i) => (b.cover ? band(b, i) : null))}
               {paths.map((p) => (
                 <path key={p.s.key} d={p.line} fill="none" stroke={p.s.color} strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={p.s.dashed ? "5 5" : undefined} />
               ))}
@@ -259,7 +282,7 @@ export function XYChart({
             {refs.map((r) => (
               <g key={r.label}>
                 <line x1={padL} x2={width - padRight} y1={Y(r.y)} y2={Y(r.y)} stroke={r.color} strokeWidth={1.25} strokeDasharray="4 4" />
-                <text x={width - padRight} y={Y(r.y) - 6} textAnchor="end" fontSize={12.5} fill={theme.fg} opacity={0.9}>
+                <text x={r.labelAt === "start" ? padL + 6 : width - padRight} y={Y(r.y) - 6} textAnchor={r.labelAt === "start" ? "start" : "end"} fontSize={12.5} fill={theme.fg} {...halo}>
                   {r.label}
                 </text>
               </g>
@@ -269,10 +292,12 @@ export function XYChart({
               const left = vx > padL + plotW * 0.6;
               return (
                 <g key={v.label}>
-                  <line x1={vx} x2={vx} y1={padT - 4} y2={height} stroke={v.color} strokeWidth={1.5} />
-                  <text x={left ? vx - 8 : vx + 8} y={padT + plotH * 0.42} textAnchor={left ? "end" : "start"} fontSize={13} fontWeight={600} fill={theme.fg}>
-                    {v.label}
-                  </text>
+                  <line x1={vx} x2={vx} y1={padT - 4} y2={height} stroke={v.color} strokeWidth={1.5} strokeDasharray={v.dashed ? "3 4" : undefined} />
+                  {!narrow && (
+                    <text x={left ? vx - 8 : vx + 8} y={padT + plotH * 0.42} textAnchor={left ? "end" : "start"} fontSize={13} fontWeight={600} fill={theme.fg} {...halo}>
+                      {v.label}
+                    </text>
+                  )}
                 </g>
               );
             })}
@@ -284,11 +309,13 @@ export function XYChart({
                     <circle r={9} fill={theme.bg} />
                     <path d="M-5,-5L5,5M5,-5L-5,5" stroke={m.color} strokeWidth={2.5} strokeLinecap="round" />
                   </>
+                ) : m.shape === "tick" ? (
+                  <circle r={3} fill={m.color} stroke={theme.bg} strokeWidth={1.5} />
                 ) : (
                   <circle r={5} fill={m.color} stroke={theme.bg} strokeWidth={2} />
                 )}
-                {m.label && (
-                  <text x={10} y={4} fontSize={13} fill={theme.fg}>
+                {m.label && !(narrow && m.legend) && (
+                  <text x={10} y={4} fontSize={13} fill={theme.fg} {...halo}>
                     {m.label}
                   </text>
                 )}
@@ -354,14 +381,22 @@ export function XYChart({
         </AnimatePresence>
       </div>
 
-      {series.length > 1 && !hideLegend && (
+      {(showSeries || below.length > 0) && (
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[14px] text-on-panel-2">
-          {series.map((s) => (
+          {showSeries && series.map((s) => (
             <span key={s.key} className="flex items-center gap-1.5">
               <svg width="14" height="8" aria-hidden="true">
                 <line x1="1" y1="4" x2="13" y2="4" stroke={s.color} strokeWidth="2.25" strokeLinecap="round" strokeDasharray={s.dashed ? "3 3" : undefined} />
               </svg>
               {s.label}
+            </span>
+          ))}
+          {below.map((b) => (
+            <span key={b.label} className="flex items-center gap-1.5">
+              <svg width="10" height="12" aria-hidden="true">
+                {b.kind === "vline" ? <line x1="5" y1="1" x2="5" y2="11" stroke={b.color} strokeWidth="2" strokeLinecap="round" /> : <circle cx="5" cy="6" r="4" fill={b.color} />}
+              </svg>
+              {b.label}
             </span>
           ))}
         </div>

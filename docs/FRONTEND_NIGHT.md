@@ -42,31 +42,42 @@ He saw my first build of the dashboard and said it looked terrible: AI slop, far
 ## How the new page is put together
 
 - `web/src/wallet/core.js`: the signing logic, moved from the classic page with the same requests in the same order. `use-wallet.ts` is the React side.
-- `web/src/charts/xy-chart.tsx`: one chart for every line picture (built on tweenly's chart kit).
-- `web/src/components/`: `odds-card` (the big number + odds over time), `line-card` (bitcoin against the line, savings reach), `ladder-card` (Gemini's curve with the line on it, uses the bot's own maths through `@brain` = `src/brain.mjs`), `tiles`, `feed`, `wallet-card` (the four-step path), `proof-card`, `demo-drawer`, `top-bar`, `site-footer`.
-- `web/src/data/proof.ts`: the recorded real runs from README "Live proof".
-- Server: one read-only addition, `GET /api/ladders` (Gemini's ladder points).
+- `web/src/charts/xy-chart.tsx`: one chart for every line picture (built on tweenly's chart kit). On a narrow screen its in-plot labels move under the chart.
+- `web/src/components/`: `number-card` (the one number), `price-card` (bitcoin against the price where it is lost), `loan-parts` (four facts, the log), `ladder-card` (Gemini's curve with the line on it, the ×2 row), `market-parts` (the odds over time: Gemini's own history, and this loan's), `hedge-card`, `chain-parts` (the money map, the Stream's rows, the costs), `save-replay` (the recorded save), `crash-card` (February), `wizard` (the four steps), `demo-drawer` (a bar at the bottom), `top-bar`, `site-footer`.
+- `web/src/data/proof.ts`: the recorded real runs (README "Live proof"), the gas each move used, the four Stream deliveries of Nov 17.
+- Pure helpers shared with the server and the tests: `src/brain.mjs` (@brain), `src/hedge.mjs` (@hedge), `src/market-history.mjs` (@history).
+- Server, read-only additions: `GET /api/ladders` (ladder points, bet prices, the market's link on gemini.com), `GET /api/market-history` (Gemini's hourly candles per bet), `GET /api/gas` (Arc testnet and mainnet gas price).
 
 ## Done
 
-- Warm-up: worktree, branch pushed (equal to main at d1d42d4), npm ci, simulator, both browsers.
-- Research on reference sites (notes below).
-- `web/` scaffold: Vite 8, React 19, Tailwind 4, Motion. Classic page moved to `public/classic/`.
-- First dense dashboard: thrown away after Matthew's reaction.
-- Landing `/`: hero with the live number, the problem (February crash), the fix (replay of the real save), how it knows (Gemini's ladder), the proof (three numbers), the way in.
-- App `/app/`: four screens, Loan, Market, On-chain, Try it (`#market`, `#chain`, `#try` in the address).
-- Checked: light and dark, 1440 wide and phone width, the red "at risk" state by pushing the simulated loan, the wallet flow against the old page with a fake wallet.
-- `test/web-build.test.mjs`: fails if `web/` changed without a rebuild. AGENTS.md and README updated.
-- Commit 1.
+- Commit 1 (7fa23f4): the landing page and the four-screen app. Deploy proof passed for it.
+- After commit 1: mainnet cost estimate, hedge quote, keys 1 to 4, sim and live link to each other, docs/DEMO.md rewritten.
+- **First cold review** (a fresh agent as the six readers, on the build of 07:09). Scores for the five criteria, page alone: Technical 8, Product & UX 7, Innovation 7, Impact 6, Demo 7. How well each reader was served, out of 10: organiser 7, Arc 7, Gemini 6.5, QuickNode 4, mentor 6, beginner 7 on the landing page and 4 in the app. Its main points: sponsors not on the first screen, the main button scrolled to a cut-off replay, two different percentages, no odds over time that the market moves, the number not marked as estimated, QuickNode shown as a paragraph, toy-looking amounts, six identical cards, phone label collisions, "real" said on simulated screens.
+- Fixed after that review (commit 2):
+  - Landing: Arc and Gemini named above the headline, the four sponsors as a strip under the hero, the three "who it is for" cards gone, section labels gone, the problem written to "you". On the simulator the second button is "Push a loan yourself" (`/app/?demo` opens the controls).
+  - Replay: "Watch a real save" lands on the card and all of it fits on screen. It shows the same two prices as the Loan screen instead of a second percentage, one plain sentence per step (with the recorded 41.9%), a labelled stopwatch, UTC on the times, and the wallet's own guard in the details.
+  - **Gemini keeps hourly candles per bet** (`GET /v2/candles/GEMI-BTC2611302200-HI65000/1hr`): the team's notes said it had no history. The Market screen now draws the market's own odds over time (the bet nearest bitcoin's price, switch between four), next to this loan's own number with Airbag's moves. Lesson 9 in AGENTS.md is corrected.
+  - Market: the title, traded volume and a checked link to the market on gemini.com (`/predictions/<ticker>/<slug>`). The sentence became a row: market's chance, ×2, the number. "estimated" is on the big number and explained under the curve. The loss zone is clean. Table rows add up.
+  - Loan: dollars with the token small underneath, savings rate from Earn Kit, room to fall in dollars (so the chance is the only percentage). The badge says "Pushing the loan…" at once, holds "At risk" until the number is down, then "Saved by Airbag" for half a minute.
+  - On-chain: one picture of how the money moves (bot's key presses the guard, the guard moves USDC between savings and loan), every box a link. The four Stream deliveries of Nov 17 as rows with their transactions (found on Arc's explorer from the block numbers). Costs as a card.
+  - Demo controls: a slim bar at the bottom instead of a box over the tiles. The page scrolls to the number when a button is pressed.
+  - Footer: no "old page" link, no "press d" (both still work: `/classic/`, the d key). On the simulator it says what is simulated.
+  - February chart: says what the save took ($10,541 of savings, all of it) and that February's odds are modelled.
+  - Phones: the app header is 80 px shorter, tiles and the two prices line up, chart labels sit under the chart.
+- Checked after these: every screen at 1912 wide in Chrome, at 375 in the built-in browser, the hero in dark, the push in the simulator (pushing, at risk, saved), no console errors, 58 tests, both typechecks.
 
 ## Next
 
-1. Screens to look at again with fresh eyes: the landing hero on a wide screen, the replay on a phone, the whose-loan line in the app.
-2. Demo path: rewrite `docs/DEMO.md` for the new page (exact clicks, what to say).
-3. Fresh-clone deploy proof (`NODE_ENV=production npm ci && npm run sim` in a temp folder).
-4. Judge review by a fresh agent, fix, repeat once.
-5. Stretch: mainnet cost estimate, hedge quote.
-6. Morning report at the top of this file.
+1. Deploy proof for commit 2 (fresh clone, `npm ci`, `npm run sim` on another port).
+2. New screenshots for the README (the ones there show the old page) and for Matthew.
+3. Second cold review, fix what it finds, last commit.
+4. Morning report at the top of this file.
+
+## For the team (the page cannot fix these)
+
+- Both hosted sites sleep after 15 quiet minutes and take about a minute to wake. Set an uptime ping on `/healthz` before judging.
+- Point the QuickNode Stream at `https://airbagged.me/api/stream`, so the On-chain screen shows live events instead of the recorded line.
+- docs/SUBMISSION.md still gives the simulator as the demo link and says the live bot needs a laptop. The live bot is hosted at airbagged.me. Which link is the main one is the team's call.
 
 ## Research notes
 

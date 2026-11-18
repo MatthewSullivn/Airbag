@@ -24,10 +24,11 @@ export function PriceCard({ status, reading, samples, className }: { status: Sta
     const yTicks: number[] = [];
     for (let v = y0; v <= y1; v += step) yTicks.push(v);
     const xTicks = timeTicks(xs[0], xs[xs.length - 1]);
+    const short = xs[xs.length - 1] - xs[0] < 5 * 60_000;
     // the lowest the line can go if every dollar of savings went into the loan
     const savings = r.savings?.balance ?? 0;
     const reach = Math.max(0, (r.loan.debt - savings) / (r.loan.collateral * status.lltv));
-    return { pts, xs, price, line, y0, y1, yTicks, xTicks, savings, reach };
+    return { pts, xs, price, line, y0, y1, yTicks, xTicks, short, savings, reach };
   }, [r, samples, status.lltv]);
 
   if (!r || !chart) {
@@ -38,24 +39,24 @@ export function PriceCard({ status, reading, samples, className }: { status: Sta
       </Panel>
     );
   }
-  const room = (r.priceUsed - r.line) / r.priceUsed;
+  const room = Math.max(0, r.priceUsed - r.line);
   const danger = r.health < status.rule.actBelowHealth || (r.decision.odds != null && r.decision.odds > status.limit);
   const lineNow = chart.line[chart.line.length - 1];
 
   return (
     <Panel className={className} aria-label="Bitcoin's price and the price where the bitcoin is lost">
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-4 sm:gap-6">
         <div>
-          <p className="flex items-center gap-2 text-[16px] font-medium text-on-panel-2">
-            <span aria-hidden="true" className="h-0.5 w-4 rounded" style={{ background: SERIES.s2 }} /> Bitcoin now
+          <p className="flex min-h-[2.6em] items-start gap-2 text-[15px] font-medium leading-snug text-on-panel-2 sm:min-h-0 sm:items-center sm:text-[16px]">
+            <span aria-hidden="true" className="mt-[0.6em] h-0.5 w-4 shrink-0 rounded sm:mt-0" style={{ background: SERIES.s2 }} /> Bitcoin now
           </p>
-          <p className="figure mt-3 text-[3.2rem] text-on-panel sm:text-[4.2rem]"><Count value={r.priceUsed} format={usd} /></p>
+          <p className="figure mt-2 text-[2.6rem] text-on-panel sm:mt-3 sm:text-[4.2rem]"><Count value={r.priceUsed} format={usd} /></p>
         </div>
         <div>
-          <p className="flex items-center gap-2 text-[16px] font-medium text-on-panel-2">
-            <span aria-hidden="true" className="h-0.5 w-4 rounded" style={{ background: SERIES.s1 }} /> You lose it below
+          <p className="flex min-h-[2.6em] items-start gap-2 text-[15px] font-medium leading-snug text-on-panel-2 sm:min-h-0 sm:items-center sm:text-[16px]">
+            <span aria-hidden="true" className="mt-[0.6em] h-0.5 w-4 shrink-0 rounded sm:mt-0" style={{ background: SERIES.s1 }} /> You lose it below
           </p>
-          <p className="figure mt-3 text-[3.2rem] text-on-panel sm:text-[4.2rem]"><Count value={r.line} format={usd} /></p>
+          <p className="figure mt-2 text-[2.6rem] text-on-panel sm:mt-3 sm:text-[4.2rem]"><Count value={r.line} format={usd} /></p>
         </div>
       </div>
 
@@ -70,7 +71,7 @@ export function PriceCard({ status, reading, samples, className }: { status: Sta
           yTicks={chart.yTicks}
           xTicks={chart.xTicks}
           yFormat={usdK}
-          xFormat={hhmm}
+          xFormat={chart.short ? clock : hhmm}
           tip={(i) => ({
             title: clock(chart.pts[i].t),
             rows: [
@@ -87,7 +88,7 @@ export function PriceCard({ status, reading, samples, className }: { status: Sta
 
       <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-panel-line pt-4 text-[16px] text-on-panel">
         <StatusPill tone={danger ? "critical" : "good"} small>{danger ? "Too close" : "Room to fall"}</StatusPill>
-        Bitcoin can fall <strong className="font-semibold">{(room * 100).toFixed(1)}%</strong> before you lose it.
+        <span>Bitcoin can fall <strong className="font-semibold">{usd(room)}</strong> before you lose it.</span>
       </p>
     </Panel>
   );

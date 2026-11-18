@@ -64,9 +64,11 @@ demo buttons ───────┘        │        │         └─ Circl
 |---|---|
 | `src/brain.mjs` | Pure logic, no dependencies: ladder → odds, estimated tail, worse-of-ladders, `decide()`. Types in `brain.d.mts`: keep the two in sync. |
 | `src/gemini.ts` | Ladders (cached 20 s), discovering new BTC ladders when ours expire, live BTC price. |
+| `src/hedge.mjs` | Pure logic for the hedge QUOTE on the Market screen: Gemini's price to buy "No" on a bet, and Morpho's sell-off penalty. Read-only: nothing places an order. Types in `hedge.d.mts`. |
+| `src/market-history.mjs` | Pure logic for the market-over-time chart: Gemini's hourly candles for a bet → points, and which bets are worth drawing. Types in `market-history.d.mts`. |
 | `src/arc.ts` | `LiveArc` (Circle App Kit + viem reads) and `SimArc` (in-memory twin). Every money move goes through here. |
 | `src/bot.ts` | The loop: one run at a time, 8 s cooldown after acting, daily cap, dry run, health-only fallback. Also the demo push/reset. |
-| `src/server.ts` | Express: dashboard, `/api/status`, `/api/replay`, `/api/borrow-webhook`, `/api/stream`, `/api/demo/*` (key-protected). |
+| `src/server.ts` | Express: serves the page, `/api/status`, `/api/replay`, `/api/ladders`, `/api/market-history`, `/api/gas`, `/api/borrow-webhook`, `/api/stream`, `/api/demo/*` (key-protected). `/api/gas` asks Arc MAINNET for its gas price: a read, nothing else ever touches mainnet. |
 | `src/state.ts` | `data/state.<mode>.json`: log, odds samples, `inLoan`, money moved (for the cap). |
 | `src/clock.ts` | Corrects a fast or slow local clock against Arc block time. |
 | `src/config.ts` | All `.env` settings (documented in `.env.example`). |
@@ -147,7 +149,8 @@ Read these before touching `src/arc.ts`.
 9. **Gemini API quirks.**
    - Contracts are unsorted; use `strike: { type, value }`.
    - The event listing is paged (`offset`).
-   - There is no history of odds, so we save our own samples every 15 s.
+   - The prediction-markets endpoints have no history of odds, so we save our own samples every 15 s.
+   - But every bet has hourly candles on the normal market-data API: `GET /v2/candles/<instrumentSymbol>/1hr` (for example `GEMI-BTC2611302200-HI65000`). They start at the bet's first trade and hold the last TRADED price, not the bid/ask middle the bot uses. The Market screen draws them (`/api/market-history`). Found Nov 18, 2026.
 10. **Tunnel quirks.**
     - A new `trycloudflare.com` link can take about a minute to resolve.
     - It changes on every restart: re-run `npm run tunnel` and update the QuickNode destination.
@@ -199,7 +202,7 @@ Read these before touching `src/arc.ts`.
 - [ ] **Switch the first bot wallet to guard mode too.** Deploy a guard for it (`npm run guard:deploy`), then where it runs set `USE_GUARD=true`, `GUARD_ADDRESS` and `GUARD_BOT_KEY`, and remove `PRIVATE_KEY`.
 - [ ] **Optional:**
   - a Swap Kit fallback when savings run out
-  - longer odds history on the chart
+  - longer history of our own number on the chart (the market's own history is there now, from Gemini's candles)
 
 ## Troubleshooting
 

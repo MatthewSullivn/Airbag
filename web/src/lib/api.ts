@@ -88,8 +88,12 @@ export interface WalletView {
   explorer: string;
 }
 export interface LadderPoint { strike: number; pAbove: number }
-export interface LadderEvent { ticker: string; title: string; expiryDate: string; volume: number | null; ladder: LadderPoint[] }
+/** One bet on Gemini and what it costs to buy each side right now. A "No" pays 1 dollar if bitcoin ends below the strike. */
+export interface BetPrice { strike: number; buyYes: number | null; buyNo: number | null; symbol: string | null }
+export interface LadderEvent { ticker: string; title: string; expiryDate: string; volume: number | null; ladder: LadderPoint[]; bets?: BetPrice[]; url?: string | null }
 export interface Ladders { at: number; spot: number | null; error: string | null; events: LadderEvent[] }
+/** Gemini's own hourly history for each bet of one ladder: [time, chance it ends at or above the price (last traded), contracts traded]. */
+export interface MarketHistory { at: number; ticker: string; title: string; expiryDate: string; frame: string; series: { strike: number; symbol: string; points: [number, number, number][] }[] }
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
@@ -128,8 +132,12 @@ export function usePoll<T>(url: string | null, everyMs: number) {
   return { data, error };
 }
 
+export interface GasPrices { at: number; testnet: { chainId: number; gasPriceWei: string } | null; mainnet: { chainId: number; gasPriceWei: string } | null }
+export const useGasPrices = () => usePoll<GasPrices>("/api/gas", 5 * 60_000);
+
 export const useStatus = () => usePoll<Status>("/api/status", 1500);
 export const useLadders = () => usePoll<Ladders>("/api/ladders", 20_000);
+export const useMarketHistory = (ticker: string | null | undefined) => usePoll<MarketHistory>(ticker ? `/api/market-history?ticker=${encodeURIComponent(ticker)}` : null, 10 * 60_000);
 
 export interface CrashReplay {
   params: { start: string; limit: number; savingsPct: number; liquidationIncentive: number; volWindowDays: number; horizonDays: number };
