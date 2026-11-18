@@ -4,7 +4,7 @@ Branch `frontend-test`, worktree `C:\Users\matth\Desktop\ubc\.claude\worktrees\f
 
 ## Morning report (Nov 18, 2026, about 09:15)
 
-1. **Open it.** Nothing is on `main`. Branch `frontend-test`, 5 commits. `git fetch`, `git checkout frontend-test`, `npm install`, `npm run sim`, then http://localhost:3000 (the landing page) and `/app/`. My copy is the worktree `.claude/worktrees/frontend-test`.
+1. **Open it.** Nothing is on `main`. Branch `frontend-test`, 6 commits. `git fetch`, `git checkout frontend-test`, `npm install`, `npm run sim`, then http://localhost:3000 (the landing page) and `/app/`. My copy is the worktree `.claude/worktrees/frontend-test`.
 2. **What changed.** `/` is a landing page: the headline with the live number, the February crash, a real save replayed from its transactions, Gemini's odds hour by hour, three real saves as receipts. `/app/` has four screens: Loan, Market, On-chain, Try it. The old page is at `/classic/`.
 3. **New facts.** Gemini does keep hourly history per bet (our notes said it had none): it is on the Market screen and the landing page. Arc mainnet's gas price equals testnet's, so the mainnet costs would be the same today (read live). A hedge quote from Gemini's own prices, also scaled to a $50,000 loan.
 4. **21st.dev pieces.** tweenly: chart kit, segmented control, fade-in. Magic UI: animated beam (light on the wires of the On-chain picture), border beam (red round the card while a loan is at risk), dot pattern (first screen).
@@ -78,9 +78,9 @@ He saw my first build of the dashboard and said it looked terrible: AI slop, far
 
 ## Where it stands (Nov 18, about 09:20)
 
-- Five commits on `frontend-test`, all pushed. Never `main`.
-- The last commit holds: the three Magic UI pieces and tweenly's FadeIn, the fixes from the final review (the alarm holds 3 s and the number and badge change together, honest February cards, Gemini's history first and on the landing page, receipts instead of the three-number row, Gemini and QuickNode in the On-chain picture, the replay fits a phone, the demo controls sit in the page), the six README pictures, and `?still` now stops every transition.
-- The same content passed the whole proof from a fresh local clone (as ec49697): `npm ci` like Render, 59 tests, every page, file and API answered, then `npm run web:install` and `npm run web:build` left no changed file. After the push the proof runs again from GitHub (scratchpad `full-proof.sh <dir> <port>`).
+- Six commits on `frontend-test`, all pushed. Never `main`. The sixth only trims the first screen to about 60 words (no small chart there, a shorter sentence).
+- The fifth commit holds: the three Magic UI pieces and tweenly's FadeIn, the fixes from the final review (the alarm holds 3 s and the number and badge change together, honest February cards, Gemini's history first and on the landing page, receipts instead of the three-number row, Gemini and QuickNode in the On-chain picture, the replay fits a phone, the demo controls sit in the page), the six README pictures, and `?still` now stops every transition.
+- The same content passed the whole proof from a fresh local clone (as ec49697): `npm ci` like Render, 59 tests, every page, file and API answered, then `npm run web:install` and `npm run web:build` left no changed file. After the push the same proof passed again from GitHub for 22fa951 (scratchpad `full-proof.sh <dir> <port>`), and it is run once more for the sixth commit.
 - Checked by eye on the last build: all screens at 1912 wide, the phone replay (773 px tall on an 812 px screen), the push (pushing, 40% at risk held, saved in 0.4 s), no console errors, the new page with the live site's real status (read-only).
 - Tools left running: the simulator preview `frontend-sim` on port 3000. One Chrome tab on localhost. Close both when done.
 

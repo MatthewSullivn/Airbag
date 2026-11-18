@@ -54,7 +54,7 @@ export function Landing() {
             <p className="eyebrow">Runs on Arc · Odds from Gemini</p>
             <h1 className="display mt-5 text-[clamp(3rem,8vw,5.6rem)] text-ink">An airbag for your bitcoin loan.</h1>
             <p className="mt-6 max-w-[34ch] text-[1.3rem] leading-snug text-ink-2">
-              When the odds of a crash get too high, it moves your own savings into the loan. So you keep your bitcoin.
+              When a crash looks likely, it moves your own savings into the loan. So you keep your bitcoin.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <ButtonLink href="#save" variant="brand" size="lg">Watch a real save <ArrowDown aria-hidden="true" className="size-5" /></ButtonLink>
@@ -72,6 +72,7 @@ export function Landing() {
               </div>
               <NumberCard
                 beam
+                spark={false}
                 className="relative"
                 status={status}
                 reading={status.reading}
@@ -79,7 +80,7 @@ export function Landing() {
                 justNow={recentMove(status.log.filter((e) => !e.who), status.now)}
                 footer={live
                   ? <>A real loan on Arc Testnet, right now.</>
-                  : <>A simulated loan, with the market's real odds. <a href={LIVE_URL} className={LINK}>See the real one</a>.</>}
+                  : <>A simulated loan, real odds. <a href={LIVE_URL} className={LINK}>See the real one</a>.</>}
               />
             </div>
           ) : (

@@ -46,7 +46,7 @@ export function recentMove(log: LogEntry[], now: number): string | null {
   return took ? `Saved by Airbag in ${took[1]} s` : "Saved by Airbag";
 }
 
-export function NumberCard({ status, reading, samples, footer, pending, justNow, beam, className }: {
+export function NumberCard({ status, reading, samples, footer, pending, justNow, beam, spark = true, className }: {
   status: Status;
   reading: Reading | null;
   samples: Sample[];
@@ -58,6 +58,8 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
   justNow?: string | null;
   /** A slow beam of light round the card while it is calm (the first screen uses it). */
   beam?: boolean;
+  /** The small chart of the last hour under the number. The first screen leaves it out: one number, nothing else. */
+  spark?: boolean;
   className?: string;
 }) {
   const limit = status.limit;
@@ -102,7 +104,7 @@ export function NumberCard({ status, reading, samples, footer, pending, justNow,
 
       <div className="mt-auto pt-8">
       {/* a flat line near zero says nothing, so the small chart only shows once the number has moved */}
-      {history.length > 2 && Math.max(...history) - Math.min(...history) >= limit * 0.02 && (
+      {spark && history.length > 2 && Math.max(...history) - Math.min(...history) >= limit * 0.02 && (
         <div className="mb-5">
           <Spark values={history} color={SERIES.s1} floor={0} ceiling={limit} height={64} label={`The chance over the last hour. Now ${pct(live)}. Airbag steps in at ${pct(limit)}.`} />
           <p className="mt-1 text-right text-[12.5px] text-on-panel-faint">the last hour</p>

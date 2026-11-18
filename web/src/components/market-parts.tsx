@@ -80,7 +80,7 @@ function MarketOverTime({ history, spot, own }: { history: MarketHistory; spot: 
         ariaLabel={`Gemini's market, hour by hour since ${dayOnly(chart.xs[0])}: the chance bitcoin ends below ${usd(bet.strike)} on ${date} moved between ${pct(chart.low)} and ${pct(chart.high)}. Now ${pct(chart.last)}.`}
         table={{ head: ["Hour", `Ends below ${usd(bet.strike)}`, "Contracts traded"], rows: bet.points.slice().reverse().map((p) => [dayHour(p[0]), pct(1 - p[1]), p[2] > 0 ? String(+p[2].toFixed(2)) : "–"]) }}
       />
-      {own && own.odds != null && own.line < bet.strike && (
+      {own && own.odds != null && own.line < bet.strike * 0.95 && own.odds < chart.last * 0.5 && (
         <p className="mt-4 border-t border-panel-line pt-4 text-[15px] leading-snug text-on-panel-2">
           The loan on this page is only lost far lower, below <strong className="font-semibold text-on-panel">{usd(own.line)}</strong>. That is why its chance is <strong className="font-semibold text-on-panel">{pct(own.odds)}</strong>, not {pct(chart.last)}.
         </p>
