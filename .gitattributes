@@ -4,3 +4,8 @@ public/assets/** -text linguist-generated=true
 public/build.json -text linguist-generated=true
 public/index.html -text linguist-generated=true
 public/app/index.html -text linguist-generated=true
+
+# The two page templates are copied into the built pages as they are, line endings included. Keep them LF on
+# every machine, or a rebuild on Windows would show the built pages as changed.
+web/index.html text eol=lf
+web/app/index.html text eol=lf

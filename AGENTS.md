@@ -176,6 +176,8 @@ Read these before touching `src/arc.ts`.
 - **Never decide on stale data.** Read the chain first. Keep the one-run-at-a-time rule, the cooldown and the daily cap.
 - **The page** (`web/`).
   - After changing anything in `web/`: `npm run web:build`, then commit `public/` too. `npm test` fails if the build is older than the source. The first time: `npm run web:install`.
+  - Use `npm run web:install` (a plain `npm install`). `npm ci` inside `web/` refuses the lockfile: an npm bug with the optional WASM builds of Tailwind and Rolldown.
+  - Never name a folder under `web/src` `data`: the repo ignores every `data/` folder, so its files would build here and never reach GitHub (it happened; a test now catches it).
   - The built files are committed on purpose. Render runs `npm ci` and serves `public/` as it is, so the server needs nothing from `web/`. Keep it that way: no frontend package in the root `package.json`.
   - `web/src/wallet/core.js` is the signing logic. It was proven on-chain and cannot be re-tested without a person signing. Do not rewrite it.
   - Never put server text into the page as HTML (no `dangerouslySetInnerHTML`).
