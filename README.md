@@ -304,6 +304,7 @@ POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no se
 
 **Connect wallet.** The button at the top shows a visitor's own wallet on Arc Testnet: its USDC and cirBTC, its savings, its loan in the same market, and the odds for that loan's line.
 - Connecting shares the address and nothing else. Without a wallet extension, paste any address instead (read-only).
+- With several wallet extensions installed (MetaMask, Phantom, ...), the page asks which one to use and only ever talks to that one.
 - **A connected wallet can act for itself:** *Open a loan* (lock cirBTC and borrow USDC, straight on the lending contract) and *Add savings* (deposit USDC into the Earn vault). The server prepares each transaction after checking it against the chain (`POST /api/plan/...`); the visitor's own wallet shows it, signs it and sends it. The server never sees a key.
 - A new loan must start at health 1.25 or better at the live price, the level the bot repays to.
 - It does not switch protection on for that wallet yet. That takes an AirbagGuard for the wallet, which is not on the page yet.

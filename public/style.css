@@ -243,6 +243,8 @@ button.ghost { background: transparent; border: 0; padding: 4px 8px; color: var(
 .connect { font-size: 12.5px; padding: 4px 12px; border-radius: 999px; }
 .wallet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 22px; }
 .wallet-note { margin: 12px 0 0; color: var(--ink-2); font-size: 13px; min-height: 1em; }
+.wallet-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; font-size: 13.5px; }
+.wallet-do p { margin: 0; }
 .wallet-do { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--grid); }
 .wallet-form { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13.5px; }
 .wallet-form strong { flex: 0 0 110px; }

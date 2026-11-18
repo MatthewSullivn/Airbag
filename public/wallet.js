@@ -25,6 +25,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const card = $("wallet-card"), note = $("wallet-note"), button = $("wallet-connect");
 let address = null, how = "", timer = null, explorer = ARC.blockExplorerUrls[0], busy = false;
 
+// Which wallet app. Several extensions can be installed at once (MetaMask, Phantom, ...) and they fight over
+// window.ethereum. With EIP-6963 each one announces itself, so the visitor picks instead of getting whichever won.
+// `eth` is the wallet the visitor chose; nothing below touches window.ethereum directly.
+const found = new Map();
+window.addEventListener("eip6963:announceProvider", (e) => {
+  const d = e.detail;
+  if (d?.provider && d?.info?.uuid) found.set(d.info.uuid, { name: String(d.info.name ?? "Wallet").slice(0, 40), provider: d.provider });
+});
+const askWallets = () => window.dispatchEvent(new Event("eip6963:requestProvider"));
+askWallets();
+let eth = null, walletName = "";
+
 const set = (id, text) => ($(id).textContent = text);
 function blank() {
   for (const id of ["w-usdc", "w-cirbtc", "w-loan", "w-odds"]) set(id, "–");
@@ -42,7 +54,7 @@ function link(href, text) {
 // ------------------------------------------------------------------ looking
 function render(v) {
   explorer = v.explorer || explorer;
-  $("wallet-addr").replaceChildren(`${how} · `, link(`${explorer}/address/${v.address}`, short(v.address)));
+  $("wallet-addr").replaceChildren(`${how === "connected" ? `connected with ${walletName}` : how} · `, link(`${explorer}/address/${v.address}`, short(v.address)));
 
   set("w-usdc", usdc(v.usdc));
   set("w-usdc-sub", v.savings > 0 ? `plus ${usdc(v.savings)} USDC in the savings vault` : "in the wallet");
@@ -90,13 +102,14 @@ function show(next, source) {
   how = source;
   card.hidden = false;
   blank();
-  $("wallet-addr").textContent = `${source} · ${short(next)}`;
+  $("wallet-addr").textContent = `${source === "connected" ? `connected with ${walletName}` : source} · ${short(next)}`;
   $("wallet-do").hidden = true;
+  $("wallet-pick").hidden = true;
   $("wallet-steps").replaceChildren();
   for (const id of ["w-open-collateral", "w-open-borrow", "w-save-amount"]) { $(id).value = ""; delete $(id).dataset.touched; }
   note.textContent = "Reading Arc Testnet…";
-  button.textContent = source === "connected" ? `Wallet ${short(next)}` : "Connect wallet";
-  const viaExtension = source === "connected" && !!window.ethereum;
+  button.textContent = source === "connected" ? `${walletName} ${short(next)}` : "Connect wallet";
+  const viaExtension = source === "connected" && !!eth;
   $("wallet-add-chain").hidden = !viaExtension;
   $("wallet-add-token").hidden = !viaExtension;
   clearInterval(timer);
@@ -104,34 +117,66 @@ function show(next, source) {
   load();
 }
 
+const onAccounts = (accounts) => {
+  if (how !== "connected") return;
+  if (accounts?.[0] && isAddress(accounts[0])) show(accounts[0], "connected");
+  else hide();
+};
+function forget() {
+  eth?.removeListener?.("accountsChanged", onAccounts);
+  eth = null;
+  walletName = "";
+}
 function hide() {
   card.hidden = true;
   address = null;
   clearInterval(timer);
+  forget();
   button.textContent = "Connect wallet";
 }
 
+/** Connect ONE wallet app, the one the visitor picked. Asks it for its address and nothing else. */
+async function connect(provider, name) {
+  $("wallet-pick").hidden = true;
+  card.hidden = false;
+  try {
+    const accounts = await provider.request({ method: "eth_requestAccounts" });
+    if (!accounts?.[0] || !isAddress(accounts[0])) throw new Error("the wallet returned no account");
+    forget();
+    eth = provider;
+    walletName = name;
+    eth.on?.("accountsChanged", onAccounts);
+    show(accounts[0], "connected");
+  } catch (e) {
+    note.textContent = e?.code === 4001 ? "Connection cancelled." : `Could not connect: ${e?.message ?? e}`;
+  }
+}
+
 button.addEventListener("click", async () => {
-  const eth = window.ethereum;
-  if (!eth) {
-    card.hidden = false;
-    if (!address) { blank(); $("wallet-addr").textContent = ""; }
+  askWallets();
+  await sleep(80);                                   // wallets answer the request with their announcements
+  const list = [...found.values()];
+  if (list.length === 1) return connect(list[0].provider, list[0].name);
+  if (!list.length && window.ethereum) return connect(window.ethereum, "your wallet");   // an older wallet that does not announce itself
+  card.hidden = false;
+  if (!address) { blank(); $("wallet-addr").textContent = ""; }
+  if (!list.length) {
     note.textContent = "No wallet extension found in this browser. Paste an address below instead.";
     $("wallet-input").focus();
     return;
   }
-  try {
-    const accounts = await eth.request({ method: "eth_requestAccounts" });
-    if (accounts?.[0] && isAddress(accounts[0])) show(accounts[0], "connected");
-  } catch (e) {
-    card.hidden = false;
-    note.textContent = e?.code === 4001 ? "Connection cancelled." : `Could not connect: ${e?.message ?? e}`;
+  // several wallets installed: the visitor chooses, so a wallet they did not mean to use is never asked
+  const pick = $("wallet-pick");
+  pick.replaceChildren("Which wallet? ");
+  for (const w of list) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = w.name;
+    b.addEventListener("click", () => connect(w.provider, w.name));
+    pick.append(b);
   }
-});
-window.ethereum?.on?.("accountsChanged", (accounts) => {
-  if (how !== "connected") return;
-  if (accounts?.[0] && isAddress(accounts[0])) show(accounts[0], "connected");
-  else hide();
+  pick.hidden = false;
+  note.textContent = "Several wallet extensions are installed. Pick the one to connect.";
 });
 
 $("wallet-form").addEventListener("submit", (e) => {
@@ -144,7 +189,8 @@ $("wallet-close").addEventListener("click", hide);
 
 // Two helpers for wallets that do not know Arc yet. Each opens the wallet's own confirmation window.
 const ask = (label, request) => async () => {
-  try { await window.ethereum.request(request); note.textContent = `${label}: done.`; }
+  if (!eth) return;
+  try { await eth.request(request); note.textContent = `${label}: done.`; }
   catch (e) { note.textContent = e?.code === 4001 ? `${label}: cancelled.` : `${label} failed: ${e?.message ?? e}`; }
 };
 $("wallet-add-chain").addEventListener("click", ask("Add Arc Testnet", { method: "wallet_addEthereumChain", params: [ARC] }));
@@ -155,9 +201,10 @@ const prefill = (id, value) => { const i = $(id); if (!i.dataset.touched && docu
 for (const id of ["w-open-collateral", "w-open-borrow", "w-save-amount"]) $(id).addEventListener("input", (e) => (e.target.dataset.touched = "1"));
 
 function renderActions(v) {
-  const connected = how === "connected" && !!window.ethereum;
+  const connected = how === "connected" && !!eth;
   $("wallet-do").hidden = !connected;
   if (!connected) return;
+  set("wallet-signer", `Anything you do here is signed by ${walletName}, account ${short(v.address)}, on Arc Testnet.`);
   const o = v.offers;
   // one form covers a first loan and adding to an existing one
   const canBorrow = o.maxBorrow >= 0.01 && (v.cirbtc > 0 || !!v.loan);
@@ -182,35 +229,35 @@ function stepLine(text, cls) {
 }
 const reason = (e) => String(e?.data?.message ?? e?.message ?? e).split("\n")[0].slice(0, 160);
 
-async function ensureArc(eth) {
-  if (String(await eth.request({ method: "eth_chainId" })).toLowerCase() === ARC.chainId) return;
+async function ensureArc(wallet) {
+  if (String(await wallet.request({ method: "eth_chainId" })).toLowerCase() === ARC.chainId) return;
   try {
-    await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: ARC.chainId }] });
+    await wallet.request({ method: "wallet_switchEthereumChain", params: [{ chainId: ARC.chainId }] });
   } catch (e) {
     if (e?.code === 4001) throw e;
-    await eth.request({ method: "wallet_addEthereumChain", params: [ARC] });   // the wallet did not know Arc yet
+    await wallet.request({ method: "wallet_addEthereumChain", params: [ARC] });   // the wallet did not know Arc yet
   }
 }
-async function confirmed(eth, hash) {
+async function confirmed(wallet, hash) {
   for (let i = 0; i < 150; i++) {
-    const receipt = await eth.request({ method: "eth_getTransactionReceipt", params: [hash] });
+    const receipt = await wallet.request({ method: "eth_getTransactionReceipt", params: [hash] });
     if (receipt) return receipt;
     await sleep(700);
   }
   throw new Error("not confirmed after a while. Check it on the explorer before trying again.");
 }
 
-/** Ask the server for the transactions, then have the wallet sign and send them one by one. */
+/** Ask the server for the transactions, then have the chosen wallet sign and send them one by one. */
 async function run(action, body) {
-  const eth = window.ethereum;
-  if (busy || !address || !eth) return;
+  const wallet = eth;
+  if (busy || !address || !wallet) return;
   busy = true;
   const buttons = [...$("wallet-do").querySelectorAll("button")];
   buttons.forEach((b) => (b.disabled = true));
   $("wallet-steps").replaceChildren();
   const from = address;
   try {
-    await ensureArc(eth);
+    await ensureArc(wallet);
     const res = await fetch(`/api/plan/${action}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: from, ...body }) });
     const plan = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(plan.error ?? `HTTP ${res.status}`);
@@ -219,11 +266,11 @@ async function run(action, body) {
       const s = plan.steps[i], n = `${i + 1} of ${plan.steps.length}: ${s.label}.`;
       const li = stepLine(`${n} Confirm it in your wallet…`);
       const tx = { from, to: s.to, data: s.data, value: s.value };
-      try { await eth.request({ method: "eth_estimateGas", params: [tx] }); }
+      try { await wallet.request({ method: "eth_estimateGas", params: [tx] }); }
       catch (e) { throw new Error(`"${s.label}" would fail, so it was not sent: ${reason(e)}`); }
-      const hash = await eth.request({ method: "eth_sendTransaction", params: [tx] });
+      const hash = await wallet.request({ method: "eth_sendTransaction", params: [tx] });
       li.replaceChildren(`${n} Sent, waiting for Arc… `, link(`${explorer}/tx/${hash}`, "transaction ↗"));
-      const receipt = await confirmed(eth, hash);
+      const receipt = await confirmed(wallet, hash);
       if (receipt.status !== "0x1") throw new Error(`"${s.label}" was rejected by the contract.`);
       li.className = "done";
       li.replaceChildren(`${n} Done. `, link(`${explorer}/tx/${hash}`, "transaction ↗"));
