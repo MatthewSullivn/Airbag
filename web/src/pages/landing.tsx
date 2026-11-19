@@ -158,7 +158,6 @@ export function Landing() {
                     actions={botActions}
                     pending={pressed.pending}
                     split="md"
-                    priceOnPhone={false}
                     footer={<a href="#gemini" className="underline decoration-on-panel-faint/60 underline-offset-[3px] hover:decoration-on-panel">Where does this number come from?</a>}
                   />
                 </>

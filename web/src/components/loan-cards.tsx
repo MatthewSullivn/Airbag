@@ -9,7 +9,7 @@ import { PriceCard } from "./price-card";
 
 const HOUR = 3_600_000;
 
-export function LoanCards({ status, reading, samples, actions, pending, footer, split = "lg", priceOnPhone = true }: {
+export function LoanCards({ status, reading, samples, actions, pending, footer, split = "lg" }: {
   status: Status;
   reading: Reading | null;
   samples: Sample[];
@@ -21,8 +21,6 @@ export function LoanCards({ status, reading, samples, actions, pending, footer, 
   footer?: React.ReactNode;
   /** From which width the two cards sit side by side. */
   split?: "md" | "lg";
-  /** The first screen's frame leaves the second card out on a phone, to stay short. */
-  priceOnPhone?: boolean;
 }) {
   const view = useLoanView(status, reading, actions);
 
@@ -44,7 +42,7 @@ export function LoanCards({ status, reading, samples, actions, pending, footer, 
   return (
     <div className={cn("grid gap-3", split === "md" ? "md:grid-cols-2" : "lg:grid-cols-2")}>
       <NumberCard status={status} reading={reading} samples={lastHour} view={view} pending={pending} justNow={recentMove(actions, status.now)} footer={footer} />
-      <PriceCard status={status} reading={reading} samples={samples} view={view} className={priceOnPhone ? undefined : "hidden md:flex"} />
+      <PriceCard status={status} reading={reading} samples={samples} view={view} />
     </div>
   );
 }

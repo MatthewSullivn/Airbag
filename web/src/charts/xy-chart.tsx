@@ -145,6 +145,12 @@ export function XYChart({
   const everyX = Math.max(1, Math.ceil((xTicks.length * xLabelW) / plotW));
   // on a phone there is no room for words inside the plot: they move under the chart
   const narrow = width > 0 && width < 560;
+  // the floor's words (about 6 px a letter) on a plot narrower than they are would be cut off at its edge:
+  // there they go on two lines
+  const floorLabel = floor?.label ?? "";
+  const floorWords = floorLabel.split(" ");
+  const floorBreak = floorLabel.length * 6 + 20 > plotW ? Math.ceil(floorWords.length / 2) : floorWords.length;
+  const floorLines = [floorWords.slice(0, floorBreak).join(" "), floorWords.slice(floorBreak).join(" ")].filter(Boolean);
   const halo = { paintOrder: "stroke" as const, stroke: theme.bg, strokeWidth: 4, strokeLinejoin: "round" as const };
 
   const paths = useMemo(
@@ -285,7 +291,7 @@ export function XYChart({
                   <line x1={padL} x2={padL + plotW} y1={0} y2={0} stroke={floor.color} strokeWidth={2.25} />
                   {floor.label && (
                     <text x={padL + 10} y={19} fontSize={12.5} fill={theme.fg} {...halo}>
-                      {floor.label}
+                      {floorLines.map((words, i) => <tspan key={i} x={padL + 10} dy={i ? 15 : 0}>{words}</tspan>)}
                     </text>
                   )}
                 </motion.g>

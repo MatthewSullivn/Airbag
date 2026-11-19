@@ -57,18 +57,19 @@ export function PriceCard({ reading, samples, view, className }: {
 
   return (
     <Panel className={className} aria-label="Bitcoin's price and the price where the bitcoin is lost">
-      <div className="grid grid-cols-2 gap-4 sm:gap-6">
+      {/* on a phone the two prices share a narrow row: they shrink with the card (cqw), so they never run into each other */}
+      <div className="@container grid grid-cols-2 gap-4 sm:gap-6">
         <div>
           <p className="flex min-h-[2.6em] items-start gap-2 text-[15px] font-medium leading-snug text-on-panel-2 sm:min-h-0 sm:items-center sm:text-[16px]">
             <span aria-hidden="true" className="mt-[0.6em] h-0.5 w-4 shrink-0 rounded sm:mt-0" style={{ background: SERIES.s2 }} /> Bitcoin now
           </p>
-          <p className="figure mt-2 text-[2.6rem] text-on-panel sm:mt-3 sm:text-[4.2rem]"><Count value={r.priceUsed} format={usd} /></p>
+          <p className="figure mt-2 text-[length:min(2.6rem,15.5cqw)] text-on-panel sm:mt-3 sm:text-[4.2rem]"><Count value={r.priceUsed} format={usd} /></p>
         </div>
         <div>
           <p className="flex min-h-[2.6em] items-start gap-2 text-[15px] font-medium leading-snug text-on-panel-2 sm:min-h-0 sm:items-center sm:text-[16px]">
             <span aria-hidden="true" className="mt-[0.6em] h-0.5 w-4 shrink-0 rounded sm:mt-0" style={{ background: SERIES.s1 }} /> You lose it below
           </p>
-          <p className={cn("figure mt-2 text-[2.6rem] sm:mt-3 sm:text-[4.2rem]", danger ? "text-[#ff6b5e]" : "text-on-panel")}><Count value={line} format={usd} /></p>
+          <p className={cn("figure mt-2 text-[length:min(2.6rem,15.5cqw)] sm:mt-3 sm:text-[4.2rem]", danger ? "text-[#ff6b5e]" : "text-on-panel")}><Count value={line} format={usd} /></p>
         </div>
       </div>
 
