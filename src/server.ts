@@ -117,6 +117,7 @@ app.get("/api/status", (_req, res) => {
     log: store.recentLog(60),
     samples: store.samplesSince(hourAgo),
     stream: store.recentStream(15),
+    streamOthers,
   });
 });
 
@@ -329,13 +330,15 @@ app.post("/api/borrow-webhook", auth, (req, res) => {
 // (header or ?key=) deliveries are trusted as before, which is also how the simulator is fed.
 const arcClient = createPublicClient({ chain: arcTestnet, transport: http(config.rpcUrl) });
 const recentUnkeyed: number[] = [];
+/** Deliveries about other people's loans in our market since this server started: counted, never acted on. */
+const streamOthers = { count: 0, lastAt: null as number | null, since: Date.now() };
 async function verifiedEvents(matches: any[]): Promise<StreamEvent[]> {
   const hashes = [...new Set(matches.map((m) => m?.tx ?? m?.transactionHash).filter(isTxHash))].slice(0, 10) as `0x${string}`[];
   const out: StreamEvent[] = [];
   for (const hash of hashes) {
     try {
       const receipt = await arcClient.getTransactionReceipt({ hash });
-      const d = describeReceipt(receipt, { wallet: arc.address, marketId: arc.marketId ?? "" });
+      const d = describeReceipt(receipt, { wallet: arc.address, marketId: arc.marketId ?? "", connected: protector.owners() });
       if (d) out.push({ t: Date.now(), block: Number(receipt.blockNumber), tx: hash, kind: d.kind, detail: d.detail });
     } catch { /* unknown transaction: dropped */ }
   }
@@ -364,13 +367,20 @@ app.post("/api/stream", async (req, res) => {
     events = await verifiedEvents(matches);
     if (!events.length) return res.json({ ok: true, received: 0, note: "nothing in this delivery touches our market or wallet" });
   }
+  // Other people's loans in the same market are none of the bot's business. On Arc Testnet they are busy (a
+  // delivery every few seconds on Nov 19, 2026): waking and logging for each one pushed the bot's own moves
+  // out of its log, and their rows pushed ours out of the page's list. So they are only counted.
+  const others = events.filter((e) => e.kind.startsWith("market: "));
+  if (others.length) { streamOthers.count += others.length; streamOthers.lastAt = Date.now(); }
+  events = events.filter((e) => !e.kind.startsWith("market: "));
+  if (!events.length && others.length) return res.json({ ok: true, received: 0, others: others.length });
   if (events.length) store.addStream(events);
   const liquidated = events.find((e) => /OUR LOAN LIQUIDATED/.test(e.kind));
   if (liquidated) store.log("error", `QuickNode Stream saw our loan being liquidated in block ${liquidated.block ?? "?"}.`, liquidated.tx && config.mode === "live" ? [{ label: "liquidation", hash: liquidated.tx, url: `${config.explorer}/tx/${liquidated.tx}` }] : undefined);
   const kinds = [...new Set(events.map((e) => e.kind))].join(", ");
   bot.wake("QuickNode Stream", events.length ? `${events.length} match${events.length > 1 ? "es" : ""}: ${kinds}, block ${events[0].block ?? "?"}` : undefined);
-  // the loans of connected wallets live in the same market: look at them now too, not at the next timer tick
-  if (events.length) protector.wake();
+  // a connected wallet's loan moved: look at the protected loans now, not at the next timer tick
+  if (events.some((e) => e.kind.startsWith("connected wallet: "))) protector.wake();
   res.json({ ok: true, received: events.length });
 });
 

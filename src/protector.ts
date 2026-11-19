@@ -134,6 +134,10 @@ export class Protector {
     for (const l of this.loans.values()) if (l.owner.toLowerCase() === owner.toLowerCase() && (!best || l.since > best.since)) best = l;
     return best;
   }
+  /** The wallets whose loans are being watched (lower case). */
+  owners(): string[] {
+    return [...this.loans.values()].map((l) => l.owner.toLowerCase());
+  }
   summary() {
     return { enabled: this.enabled, why: this.why(), botAddress: this.botAddress, botGasUsdc: this.botGasUsdc, loans: [...this.loans.values()].map((l) => ({ guard: l.guard, owner: l.owner, inLoan: l.inLoan, lastMove: l.lastMove, lastError: l.lastError })) };
   }

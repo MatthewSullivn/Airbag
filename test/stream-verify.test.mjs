@@ -23,6 +23,26 @@ test("someone else's activity in our market is labelled as market activity", () 
   assert.equal(describeReceipt(receipt, ids).kind, "market: repay");
 });
 
+test("a connected wallet's push and Airbag's save for it are told apart from strangers", () => {
+  const BORROW = "0x570954540bed6b1304a87dfe815a5eda4a648f7097a16240dcd85c9b5fd42a43";
+  const OWNER = "0x5364A92e3e1a18190dFeC35ba03a74e8fd31Fb53", GUARD = "0xc7ae194fc194f54f999df6cb44c3199264d768f7";
+  const watching = { ...ids, connected: [OWNER] };
+  // the push of Nov 19 (tx 0x1ebff1e8…): Borrow(id, onBehalf, receiver)
+  const push = { from: OWNER.toLowerCase(), to: MORPHO, logs: [{ address: MORPHO, topics: [BORROW, MARKET, pad(OWNER), pad(OWNER)] }] };
+  assert.equal(describeReceipt(push, watching).kind, "connected wallet: borrow");
+  // the save through its guard (tx 0xe902da78…): Repay(id, caller = the guard, onBehalf = the owner)
+  const save = { from: OTHER, to: GUARD, logs: [{ address: MORPHO, topics: [REPAY, MARKET, pad(GUARD), pad(OWNER)] }] };
+  assert.equal(describeReceipt(save, watching).kind, "connected wallet: repay");
+  // the same transactions, when nobody connected is being watched, are just the market's
+  assert.equal(describeReceipt(push, ids).kind, "market: borrow");
+  // a stranger stays a stranger
+  const stranger = { from: OTHER, to: MORPHO, logs: [{ address: MORPHO, topics: [BORROW, MARKET, pad(OTHER), pad(OTHER)] }] };
+  assert.equal(describeReceipt(stranger, watching).kind, "market: borrow");
+  // and our own loan keeps its label even if its wallet is also on the list
+  const ours = { from: WALLET, to: MORPHO, logs: [{ address: MORPHO, topics: [REPAY, MARKET, pad(WALLET), pad(WALLET)] }] };
+  assert.equal(describeReceipt(ours, { ...ids, connected: [WALLET] }).kind, "our loan: repay");
+});
+
 test("a liquidation of our loan is flagged; a fake label can't create one", () => {
   const ours = { from: OTHER, to: MORPHO, logs: [{ address: MORPHO, topics: [LIQUIDATE, MARKET, pad(OTHER), pad(WALLET)] }] };
   assert.equal(describeReceipt(ours, ids).kind, "our loan: OUR LOAN LIQUIDATED");

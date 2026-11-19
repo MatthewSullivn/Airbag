@@ -71,6 +71,8 @@ export interface Status {
   log: LogEntry[];
   samples: Sample[];
   stream: StreamEvent[];
+  /** Stream deliveries about other people's loans in the same market since the server started: counted, never acted on. */
+  streamOthers?: { count: number; lastAt: number | null; since: number };
 }
 export interface WalletView {
   address: string;

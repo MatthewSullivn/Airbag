@@ -22,15 +22,18 @@ export const isTxHash = (x) => typeof x === "string" && /^0x[0-9a-fA-F]{64}$/.te
  * What a receipt means for us, or null when it has nothing to do with our market or wallet.
  * receipt = { from, to, logs: [{ address, topics }] } (viem or raw JSON-RPC shape)
  */
-export function describeReceipt(receipt, { wallet, marketId }) {
+export function describeReceipt(receipt, { wallet, marketId, connected = [] }) {
   if (!receipt) return null;
   const w = lower(wallet), walletTopic = "0x000000000000000000000000" + w.slice(2), m = lower(marketId);
+  // the wallets that turned protection on from the page: their loans are in the same market
+  const connectedTopics = connected.map((a) => "0x000000000000000000000000" + lower(a).slice(2));
   for (const log of receipt.logs || []) {
     const t = (log.topics || []).map(lower);
     const name = MORPHO[t[0]];
     if (name && t[1] === m) {
       const ours = t.indexOf(walletTopic) > 0;
-      const kind = ours ? (name === "liquidation" ? "our loan: OUR LOAN LIQUIDATED" : `our loan: ${name}`) : `market: ${name}`;
+      const theirs = !ours && connectedTopics.some((topic) => t.indexOf(topic) > 0);
+      const kind = ours ? (name === "liquidation" ? "our loan: OUR LOAN LIQUIDATED" : `our loan: ${name}`) : theirs ? `connected wallet: ${name}` : `market: ${name}`;
       return { kind, detail: `Morpho ${lower(log.address).slice(0, 10)}` };
     }
   }

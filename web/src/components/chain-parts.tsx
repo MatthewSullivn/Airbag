@@ -150,28 +150,55 @@ export function Costs({ gas }: { gas: GasPrices | null }) {
   );
 }
 
+// The server's labels for a delivery, in plain words. "our loan" is the loan this server's own bot guards.
+const WHOSE: Record<string, string> = { "our loan": "The loan Airbag guards", "connected wallet": "A connected wallet's loan" };
+const DID: Record<string, string> = {
+  borrow: "borrowed more",
+  repay: "paid back",
+  "collateral in": "bitcoin added",
+  "collateral out": "bitcoin taken out",
+  liquidation: "sold off",
+  "OUR LOAN LIQUIDATED": "sold off",
+};
+function plain(kind: string): string {
+  const m = kind.match(/^(our loan|connected wallet): (.+)$/);
+  if (m) return `${WHOSE[m[1]]}: ${DID[m[2]] ?? m[2]}`;
+  if (kind === "bot wallet transaction") return "The bot's wallet sent a transaction";
+  if (kind === "savings deposit") return "Savings went in";
+  if (kind === "savings withdraw") return "Savings came out";
+  return kind;
+}
+
 /** On-chain events a QuickNode Stream pushed to the bot. Each one was checked against Arc before it was kept. */
 export function StreamList({ status }: { status: Status }) {
-  const live = status.stream.length > 0;
+  // other people's loans in the same market are not listed: the bot ignores them, and they would bury our rows
+  const rows = status.stream.filter((e) => !e.kind.startsWith("market: "));
+  const live = rows.length > 0;
+  const others = status.streamOthers && status.streamOthers.count > 0 ? status.streamOthers : null;
+  // proof that the Stream is connected right now, even when none of the guarded loans has moved
+  const connected = others && (
+    <p className="mt-3 flex items-start gap-2.5 text-[15px] leading-snug text-ink-2">
+      <span aria-hidden="true" className="mt-[0.45em] size-2 shrink-0 rounded-full bg-good" />
+      <span>
+        <span className="font-semibold text-ink">The Stream is connected.</span> Since {clock(others.since)} it has reported {others.count.toLocaleString("en-US")} {others.count === 1 ? "move" : "moves"} of other people's loans in this market. Airbag ignores those.
+      </span>
+    </p>
+  );
   return (
     <Card className="flex flex-col">
       <h2 className="text-[1.35rem] font-semibold tracking-tight text-ink">Seen on Arc, as it happened</h2>
-      <p className="mt-1 text-[15px] text-ink-2">A QuickNode Stream tells the bot the moment the loan or the wallet moves.</p>
+      <p className="mt-1 text-[15px] text-ink-2">A QuickNode Stream tells the bot the moment a loan it guards moves.</p>
+      {connected}
       {live ? (
         <ol className="mt-3 max-h-[22rem] overflow-y-auto">
-          {status.stream.map((e, i) => (
-            <li key={`${e.t}-${i}`} className="grid grid-cols-[5rem_1fr] gap-3 border-t border-line py-3.5 first:border-t-0">
-              <time dateTime={new Date(e.t).toISOString()} className="mono pt-0.5 text-faint">{clock(e.t)}</time>
-              <p className="min-w-0 leading-snug text-ink-2">
-                <span className="font-medium text-ink">{e.kind}</span>
-                {e.block != null ? `, block ${e.block}` : ""}
-                {e.detail ? `. ${e.detail}` : ""}
-                {e.tx && status.explorer ? (
-                  <a href={`${status.explorer}/tx/${e.tx}`} target="_blank" rel="noopener" className="ml-2 inline-flex items-center gap-0.5 underline decoration-current/30 underline-offset-[3px] hover:decoration-current">
-                    see it<ArrowUpRight aria-hidden="true" className="size-3.5" />
-                  </a>
-                ) : null}
+          {rows.map((e, i) => (
+            <li key={`${e.t}-${i}`} className="grid grid-cols-[5rem_1fr_auto] items-baseline gap-3 border-t border-line py-3.5 first:border-t-0">
+              <time dateTime={new Date(e.t).toISOString()} className="mono text-faint">{clock(e.t)}</time>
+              <p className="min-w-0 leading-snug">
+                <span className="font-medium text-ink">{plain(e.kind)}</span>
+                {e.block != null && <span className="block text-[14px] text-faint">block {e.block.toLocaleString("en-US")}</span>}
               </p>
+              {e.tx && status.explorer ? <span className="text-[14.5px] text-ink-2"><ExplorerLink explorer={status.explorer} kind="tx" id={e.tx}>see it</ExplorerLink></span> : <span />}
             </li>
           ))}
         </ol>
