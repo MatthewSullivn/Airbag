@@ -2,24 +2,21 @@
 
 **Every loan app shows a ratio nobody understands. Airbag shows the real odds you lose your bitcoin, from a live market, and fixes the loan by itself.**
 
-- You borrow dollars against bitcoin on [Arc](https://arc.network), with [Circle](https://www.circle.com)'s Borrow Kit.
-- Airbag reads the odds of a crash from [Gemini's prediction markets](https://www.gemini.com/predictions).
-- When the odds pass your limit, it pays the loan down with your own savings (Circle's Earn Kit). When it is calm, it gives the money back.
-- Nobody presses anything. Gemini's live feed and a [QuickNode](https://www.quicknode.com/streams) Stream wake it.
+Airbag protects a bitcoin-backed loan on [Arc](https://arc.network). It reads the odds of a crash from [Gemini's prediction markets](https://www.gemini.com/predictions). When the odds pass your limit, it pays the loan down with your own savings. When the market is calm again, it gives the money back. Nobody presses anything.
 
-**Try it: [airbagged.me](https://airbagged.me).** A real loan on Arc Testnet, guarded right now. Nothing on it is simulated. The first visit after a quiet spell takes about a minute to load.
+**Live demo:** [airbagged.me](https://airbagged.me). A real loan on Arc Testnet, guarded right now. Nothing on it is simulated. The first visit after a quiet spell takes about a minute to load.
 
-## Judging a prize? Start here
+## Built with
 
-| Prize | What Airbag does with it | See it live | Read it |
-|---|---|---|---|
-| **[Gemini](https://www.gemini.com/predictions) Prediction Markets** | Reads Gemini's odds live, over REST and its WebSocket feed. Acts on them by itself. Places the hedge through Gemini's order API, on Gemini's test site. Checked 47 settled markets against what happened. | [the Gemini part](https://airbagged.me/#gemini) | [what the bounty asks for, and what is here](#what-airbag-does-with-geminis-prediction-markets) · [all of §2](#2-the-odds-gemini) |
-| **[Arc](https://arc.network) and Circle** | A real cirBTC loan (Borrow Kit) and its savings (Earn Kit) on Arc Testnet. Our own contract, AirbagGuard, so the bot never holds a wallet key. Fees in USDC: about one cent a save. | [the Arc part](https://airbagged.me/#arc) | [contracts and kit calls](#3-how-arc-and-circles-kits-are-used) · [every transaction](#live-proof) |
-| **[QuickNode](https://www.quicknode.com/streams) Streams** | A Stream filtered to our lending market tells the bot the moment a loan moves. On Nov 19 a save was on-chain 3 seconds after the push. | [seen on Arc](https://airbagged.me/#arc) | [the filter and the setup](#6-quicknode-stream) |
+- **[Gemini Prediction Markets](https://www.gemini.com/predictions).** The odds come from Gemini, read over REST and its live WebSocket feed. The hedge is placed through Gemini's order API, on Gemini's test site. 47 settled markets were checked against what happened. See [The odds (Gemini)](#2-the-odds-gemini).
+- **[Arc](https://arc.network) with [Circle](https://www.circle.com)'s Borrow Kit and Earn Kit.** A real cirBTC loan and its savings on Arc Testnet, with fees paid in USDC. Our own contract, AirbagGuard, means the bot never holds a wallet key. See [How Arc and Circle's kits are used](#3-how-arc-and-circles-kits-are-used).
+- **[QuickNode Streams](https://www.quicknode.com/streams).** A Stream tells the bot the moment a loan moves on Arc. See [QuickNode Stream](#6-quicknode-stream).
 
-**It has already saved real loans.** First on Nov 17, 2026: pushed into danger at 21:53:55 UTC, odds 42% against a 5% limit, saved by the bot alone at 21:53:59. Two transactions, 0.0154 USDC of gas. All of them are under [Live proof](#live-proof).
+It has already saved real loans. The first was on Nov 17, 2026: pushed into danger at 21:53:55 UTC, odds 42% against a 5% limit, saved by the bot alone at 21:53:59. Two transactions, 0.0154 USDC of gas. Every save is under [Live proof](#live-proof).
 
-### See it work
+## Screenshots
+
+### The save
 
 | The real loan, live | A real loan pushed to the edge | The same loan, saved 3 seconds later |
 |---|---|---|
