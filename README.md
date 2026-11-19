@@ -39,6 +39,7 @@ It has already saved real loans. The first was on Nov 17, 2026: pushed into dang
 | ![The landing page's Arc part: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) | ![The My loan screen with a connected wallet's real loan: the chance, the price against the price where the bitcoin is lost, the money on Arc, and how the number is made](docs/page-11-my-loan.jpg) |
 
 All of these show real things: the loan the hosted bot guards on Arc Testnet, a connected wallet's real loan, Gemini's live market and its settled markets, and the page's replay of the save of Nov 18, 2026, drawn from its recorded transactions. The page as it looked during the first live saves is under [Live proof](#live-proof).
+
 ---
 
 ## 1. How it works
