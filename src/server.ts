@@ -369,6 +369,8 @@ app.post("/api/stream", async (req, res) => {
   if (liquidated) store.log("error", `QuickNode Stream saw our loan being liquidated in block ${liquidated.block ?? "?"}.`, liquidated.tx && config.mode === "live" ? [{ label: "liquidation", hash: liquidated.tx, url: `${config.explorer}/tx/${liquidated.tx}` }] : undefined);
   const kinds = [...new Set(events.map((e) => e.kind))].join(", ");
   bot.wake("QuickNode Stream", events.length ? `${events.length} match${events.length > 1 ? "es" : ""}: ${kinds}, block ${events[0].block ?? "?"}` : undefined);
+  // the loans of connected wallets live in the same market: look at them now too, not at the next timer tick
+  if (events.length) protector.wake();
   res.json({ ok: true, received: events.length });
 });
 

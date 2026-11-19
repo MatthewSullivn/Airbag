@@ -166,7 +166,7 @@ Borrow Kit lends at most up to health ≈ 1.236 at the $75k price (about 70% LTV
 - **Destination:** a webhook to `https://<server>/api/stream`. The URL holds no secret.
   - The route can't move money, and the server doesn't trust what a delivery says. It fetches every reported transaction from Arc and keeps only those that really touch our market or wallet ([`src/stream-verify.mjs`](src/stream-verify.mjs)).
   - It also computes the label itself, so a fake delivery can't invent a liquidation. Deliveries carrying `WEBHOOK_SECRET` are trusted as-is.
-- **Why.** The server stores the matches (shown under "Arc activity" on the dashboard) and wakes the bot, which re-reads the loan at once instead of waiting for the next timer tick.
+- **Why.** The server stores the matches (the page shows them under "Seen on Arc, as it happened") and wakes the bot, which re-reads the loan at once instead of waiting for the next timer tick. A delivery also wakes the check of connected wallets' loans, which live in the same market (added Nov 19, 2026; not seen live yet). Without the Stream, timers do the same job a few seconds later: every 5 s for the bot's own loan, every 10 s for connected wallets.
 
 **Our Stream (live since Nov 17, 2026):**
 - `airbag-arc-testnet`: Arc Testnet, Block with Receipts in batches of 5, starting at the latest block.

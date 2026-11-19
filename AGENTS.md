@@ -81,6 +81,7 @@ demo buttons ───────┘        │        │         └─ Circl
 | `src/wallet-view.ts`, `src/wallet-math.mjs`, `web/src/wallet/core.js` | Connect wallet: a view of any wallet (USDC, cirBTC, savings, loan, odds) through `GET /api/wallet/:address`. |
 | `src/wallet-plan.ts` | What a connected wallet can do for itself: open a loan, add savings. It builds the transactions (`POST /api/plan/...`) after checking them against the chain. The visitor's wallet signs; the server never does. |
 | `src/protector.ts`, `src/guard-code.mjs` | Protects every wallet that turned protection on from the page (`PROTECT=true`, live only). Finds guards made for our bot key and their history from Arc's explorer, runs `decide()` for each, and acts only through that wallet's guard. One server per bot key. |
+| `src/one-at-a-time.mjs` | Makes sure the check of connected wallets' loans never runs twice at once, whether the timer or a QuickNode Stream delivery starts it. A delivery that arrives during a check is followed by one more check. |
 | `contracts/AirbagGuard.artifact.json` | The guard's ABI and bytecode, committed so hosts without Foundry can deploy and recognise it. Regenerate with `npm run guard:artifact` whenever the contract changes. |
 | `src/guard-plan.mjs` | Guard mode's pure checks: which key setups may run, and clamping a move to the guard's on-chain cap. `LiveArc` uses them when `USE_GUARD=true`. |
 | `render.yaml`, `docs/HOSTING.md` | The simulator hosted on Render. A tool for working on the page: the submission points only at the real loan on https://airbagged.me. |
@@ -189,6 +190,7 @@ Read these before touching `src/arc.ts`.
 
 ## What's left
 
+- [ ] **See a Stream delivery wake the check for a connected wallet, live.** Since Nov 19, 2026 `/api/stream` also calls `protector.wake()`. Tested with unit tests only. To see it: Stream pointed at `https://airbagged.me/api/stream`, then one push from a connected wallet. The save should follow within a few seconds, and the page's bot line should say "woken by QuickNode Stream".
 - [ ] **Keep the QuickNode Stream pointed at the live link.**
   - The Stream `airbag-arc-testnet` is created and verified.
   - Every time the tunnel restarts, paste the new `…/api/stream` URL that `npm run tunnel` prints into the Stream's destination (QuickNode → Streams → airbag-arc-testnet → Settings).

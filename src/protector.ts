@@ -11,6 +11,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { arcTestnet } from "viem/chains";
 import { decide, RULE } from "./brain.mjs";
 import { insideLoan, sameContract, type ImmutableRefs } from "./guard-code.mjs";
+import { oneAtATime } from "./one-at-a-time.mjs";
 import { isAddress } from "./wallet-math.mjs";
 import { resolveIds, type WalletView } from "./wallet-view.js";
 import type { Config } from "./config.js";
@@ -86,7 +87,11 @@ export class Protector {
   private marketId: `0x${string}`;
   private vault: Address;
   private fromBlock: number;
-  private running = false;
+  /**
+   * One look at every protected loan. Never two at once: both could decide to move the same money. A look that
+   * fails (Arc or its explorer not answering) is reported and the next one runs as usual.
+   */
+  private look = oneAtATime(() => this.tick().catch((e) => console.warn(`[protector] a check failed: ${firstLine(e)}`)));
   private lastDiscover = 0;
   private timer: NodeJS.Timeout | null = null;
 
@@ -209,35 +214,38 @@ export class Protector {
   start() {
     if (!this.enabled) return;
     this.store.log("info", `Protecting connected wallets is on. Bot key ${this.botAddress}.`);
-    this.timer = setInterval(() => void this.tick(), Math.max(5, this.cfg.tickSeconds * 2) * 1000);
-    void this.tick();
+    this.timer = setInterval(() => void this.look(), Math.max(5, this.cfg.tickSeconds * 2) * 1000);
+    void this.look();
+  }
+  /**
+   * Something just happened in our lending market: a QuickNode Stream delivery, already checked against Arc by
+   * the server. Look at every protected loan now instead of waiting for the next timer tick. If a look is under
+   * way, one more follows it, because that one may have read the chain before the change landed.
+   */
+  wake() {
+    if (this.enabled) void this.look(true);
   }
   stop() {
     if (this.timer) clearInterval(this.timer);
   }
 
+  /** Started only through `look`, which makes sure one runs at a time. */
   private async tick() {
-    if (this.running) return;
-    this.running = true;
-    try {
-      if (Date.now() - this.lastDiscover > DISCOVER_EVERY_MS) {
-        this.lastDiscover = Date.now();
-        await this.discover().catch((e) => console.warn(`[protector] could not search for guards: ${firstLine(e)}`));
-        this.botGasUsdc = Number(formatUnits(await this.client.getBalance({ address: this.botAddress! }), 18));
-        if (this.botGasUsdc < 0.05) console.warn(`[protector] the bot key is nearly out of gas (${this.botGasUsdc} USDC). Send USDC to ${this.botAddress}.`);
+    if (Date.now() - this.lastDiscover > DISCOVER_EVERY_MS) {
+      this.lastDiscover = Date.now();
+      await this.discover().catch((e) => console.warn(`[protector] could not search for guards: ${firstLine(e)}`));
+      this.botGasUsdc = Number(formatUnits(await this.client.getBalance({ address: this.botAddress! }), 18));
+      if (this.botGasUsdc < 0.05) console.warn(`[protector] the bot key is nearly out of gas (${this.botGasUsdc} USDC). Send USDC to ${this.botAddress}.`);
+    }
+    for (const loan of [...this.loans.values()]) {
+      try {
+        await this.check(loan);
+        loan.lastError = null;
+      } catch (e) {
+        const message = firstLine(e);
+        if (loan.lastError !== message) this.store.log("error", `Protected wallet ${short(loan.owner)}: ${message}`, undefined, loan.owner);
+        loan.lastError = message;
       }
-      for (const loan of [...this.loans.values()]) {
-        try {
-          await this.check(loan);
-          loan.lastError = null;
-        } catch (e) {
-          const message = firstLine(e);
-          if (loan.lastError !== message) this.store.log("error", `Protected wallet ${short(loan.owner)}: ${message}`, undefined, loan.owner);
-          loan.lastError = message;
-        }
-      }
-    } finally {
-      this.running = false;
     }
   }
 
