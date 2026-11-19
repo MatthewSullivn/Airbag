@@ -4,19 +4,19 @@
 
 Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's Borrow Kit). It reads the odds of bitcoin falling under the loan's liquidation line from Gemini's prediction market. When those odds pass your limit, it moves USDC from a savings vault (Circle's Earn Kit) into the loan. When the market calms down, it moves the money back. Nobody presses anything.
 
-**Try it:** [airbag-demo.onrender.com](https://airbag-demo.onrender.com) is an always-on simulator with a simulated loan and live Gemini odds. Press *Push it to the edge* on the first screen and watch the bot save the loan. No wallet is needed. The first visit after a quiet spell takes about a minute to load.
+**Try it:** [airbagged.me](https://airbagged.me) is the live bot: a real cirBTC loan on Arc Testnet that Airbag is guarding right now. The first screen shows its live number. *Watch a real save* replays a save from its recorded transactions. *My loan* lets any wallet open a loan and turn protection on. Nothing on it is simulated. The first visit after a quiet spell takes about a minute to load.
 
 **Live on Arc Testnet (Nov 17, 2026):** we pushed a real loan into danger and Airbag saved it with no human input. The push landed at 21:53:55 UTC. The bot read the odds at 42% (limit 5%), withdrew 0.78 USDC from savings and repaid the loan. The repay landed at 21:53:59, and the odds were back to 0.8%. Two transactions, 0.0154 USDC of gas. See [Live proof](#live-proof).
 
-| The first screen | A loan pushed to the edge | The same loan, saved seconds later |
+| The real loan, live | A real loan pushed to the edge | The same loan, saved 3 seconds later |
 |---|---|---|
-| ![The landing page: the headline, and the live loan in a frame with its push button](docs/page-1-first-screen.jpg) | ![The live loan on the first screen, pushed to the edge: 42% chance, at risk, the price where the bitcoin is lost right under bitcoin's price](docs/page-2-at-risk.jpg) | ![The same loan seconds later: 0.4%, saved by Airbag in 0.4 s, the room is back](docs/page-3-saved.jpg) |
+| ![The frame on the first screen: the real loan on Arc Testnet, its chance of losing the bitcoin and the room bitcoin has to fall, live](docs/page-1-first-screen.jpg) | ![The page's replay of the save of Nov 18, 2026, at the moment after the push: at risk, a 41.9% chance of losing the bitcoin](docs/page-2-at-risk.jpg) | ![The same replay three seconds later: Airbag has moved the owner's savings into the loan, and it is safe](docs/page-3-saved.jpg) |
 
 | Gemini's bets, and how they become the number | The market's own odds, hour by hour | How the money moves on Arc |
 |---|---|---|
 | ![The landing page's Gemini part: a card with Gemini's live bets on bitcoin's price, and the three steps from those prices to the loan's number](docs/page-4-market.jpg) | ![The landing page: Gemini's hourly history for one bet, and a hedge quote](docs/page-5-odds-over-time.jpg) | ![The landing page's Arc part: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) |
 
-These six are the simulator: a simulated loan with live Gemini odds. The real saves are under [Live proof](#live-proof), with the page as it looked then.
+All six show real things: the loan the hosted bot guards on Arc Testnet, Gemini's live market, and the page's replay of the save of Nov 18, 2026, drawn from its recorded transactions. The page as it looked during the first live saves is under [Live proof](#live-proof).
 
 ---
 
@@ -327,7 +327,7 @@ POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no se
 
 All settings are in [`.env.example`](.env.example).
 
-**Public demo (anyone can press the buttons).** `PUBLIC_DEMO=true npm run sim` lets visitors push the simulated loan to the edge without a key, with the buttons at the top of the *Live demo* screen (Pause stays key-only, one shared rate limit). It is ignored in live mode. Hosting it: [`docs/HOSTING.md`](docs/HOSTING.md).
+**The simulator (a tool for working on the page).** `npm run sim` runs the same page and the same bot against a simulated loan, so the page can be worked on without a wallet. With `PUBLIC_DEMO=true` its Push and Reset buttons work without a key (Pause stays key-only, one shared rate limit); that flag is ignored in live mode. It is not part of the submission: everything we point judges to is the real loan. Hosting it: [`docs/HOSTING.md`](docs/HOSTING.md).
 
 **AirbagGuard** (`contracts/`): a contract that lets the bot's key move the owner's savings into the owner's own loan and back, and nothing else, with a daily cap and a health floor on-chain. See [`contracts/README.md`](contracts/README.md).
 - **Run the bot through it:** after `npm run guard:deploy`, set `USE_GUARD=true`. Each save and each give-back is then one transaction on the guard, signed by `GUARD_BOT_KEY`.
@@ -376,5 +376,5 @@ The first save (Nov 17), on the page as it looked that day:
 | Borrow Kit webhook | ✅ registered for our loan. Circle's Borrow Service called it through the tunnel and woke the bot (log: "Woke up: Borrow Kit webhook"). |
 | QuickNode Stream deliveries | ✅ The `airbag-arc-testnet` Stream delivered our live round trip (4 transactions, blocks 72754872–72754893); each delivery was verified on-chain and woke the bot. |
 | Protection for any connected wallet (its own guard, our bot key) | ✅ Live (Nov 18, 2026, links above). A third wallet clicked through the page at https://airbagged.me: it opened a loan, added savings, turned on protection and pushed its loan. The hosted bot saved it through that wallet's own guard 3 s later, and gave the savings back after the wallet calmed the loan. Checked earlier without sending: the bot found an existing guard by itself and rebuilt its history (3.67 USDC inside the loan), and wrong or foreign contracts are refused. ⏳ "Turn protection off" has not been pressed live yet. |
-| Server that stays on without a laptop | ✅ The simulator is live on Render at https://airbag-demo.onrender.com (`render.yaml`, `docs/HOSTING.md`), with demo buttons anyone can press. Checked from outside on Nov 18, 2026: a loan pushed from the public page was saved by the bot. The live bot for the second wallet is hosted as well (https://airbagged.me, see AirbagGuard below). ⏳ The first bot wallet's live bot still runs on a laptop with a tunnel. |
+| Server that stays on without a laptop | ✅ The live bot for the second wallet is hosted on Render at https://airbagged.me and holds no wallet key (see AirbagGuard below). ⏳ The first bot wallet's live bot still runs on a laptop with a tunnel. |
 | AirbagGuard contract (the bot key can only move the owner's savings into the owner's own loan and back) | ✅ Live on Arc Testnet at [`0x895f…6bf3`](https://explorer.testnet.arc.io/address/0x895fa892dc4ff752ec9114760201f4751c106bf3) (Nov 18, 2026): its bot key ran a save and a give-back, and a stranger was refused. 16 Foundry tests pass (incl. fuzz). With `USE_GUARD=true` the bot's own save and give-back go through it, tested live (links above). The hosted bot at https://airbag-live.onrender.com runs this way, without the wallet's key. ⏳ The first bot wallet (`0xF6B5…3F0C`) still signs with its own key. See [`contracts/README.md`](contracts/README.md). |

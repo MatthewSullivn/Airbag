@@ -5,8 +5,6 @@
 export const EXPLORER = "https://explorer.testnet.arc.io";
 /** Where the live bot is hosted (a real loan on Arc Testnet). The simulator points visitors here for the parts it cannot do. */
 export const LIVE_URL = "https://airbagged.me";
-/** The always-on simulator: a simulated loan anyone can push, with the market's real odds. */
-export const SIM_URL = "https://airbag-demo.onrender.com";
 
 /** Public addresses the project uses on Arc Testnet (AGENTS.md "Key facts"). */
 export const ADDRESSES = {

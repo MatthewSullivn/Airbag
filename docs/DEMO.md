@@ -7,7 +7,7 @@ The page has two parts. `/` is the landing page, a walk-through: what it does, w
 ## Which link
 
 - **https://airbagged.me** is the live bot: a real loan on Arc Testnet. Record the video here.
-- **The simulator** (Ahmad's Render link) is for judges without a wallet: *Push it to the edge* is on the first screen. Its simulated savings last about a dozen pushes, then it needs a restart.
+- **It is the only link we give judges.** Our mentor's advice: nothing simulated in the submission. The simulator (`npm run sim`, and Ahmad's hosted copy) is a tool for working on the page. Don't show it or link it.
 
 ## Pre-demo checklist (30 minutes before)
 

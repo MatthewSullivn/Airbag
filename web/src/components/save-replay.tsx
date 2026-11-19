@@ -38,6 +38,9 @@ const usePhone = () => useSyncExternalStore(
   () => matchMedia(PHONE).matches,
   () => false,
 );
+// ?replay=2 in the address holds the replay at that step (1 to 4) instead of playing it: for pictures, and for
+// talking over one moment of it.
+const HOLD = typeof location !== "undefined" ? Number(new URLSearchParams(location.search).get("replay")) || 0 : 0;
 const CHIPS = ["Owner borrows more", "Airbag saves it", "Owner pays some back", "Airbag returns savings"];
 const STORY = ["A calm loan.", "At risk.", "Saved in 3 seconds.", "The owner pays some back.", "Airbag returns the savings."];
 
@@ -68,7 +71,9 @@ export function SaveReplay({ id }: { id?: string }) {
   useEffect(() => {
     if (!inView || started.current) return;
     started.current = true;
-    if (reduced) setP(LENGTH);
+    // a moment into the step: 1.5 s after the push, so "1.5 s at risk" shows; just after the others
+    if (HOLD >= 1 && HOLD <= run.steps.length) setP(playAt(run.steps[HOLD - 1].at + (HOLD === 1 ? 1.5 : 0.2)));
+    else if (reduced) setP(LENGTH);
     else play();
   }, [inView, reduced, play]);
   useEffect(() => () => cancelAnimationFrame(raf.current), []);

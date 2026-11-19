@@ -13,7 +13,7 @@ Submit at `ubc-hackathon-2026.devpost.com` before **Friday Nov 20, 12:00 PM CST*
 | Chain award | Best use of Arc |
 | Bounties (opt in to each) | Gemini Prediction Markets; QuickNode Streams |
 | GitHub | https://github.com/MatthewSullivn/ubc |
-| Demo | https://airbag-demo.onrender.com (always on, simulated loan with live Gemini odds, judges can press "Push it to the edge" themselves. It sleeps when nobody visits, so the first load can take about a minute. The live bot's tunnel link only works while the laptop runs.) |
+| Demo | https://airbagged.me (the live bot: a real cirBTC loan on Arc Testnet, guarded right now. The page shows its live number, replays a real save from its recorded transactions, and lets any wallet open a loan and turn protection on. Nothing on it is simulated. It sleeps when nobody visits, so the first load can take about a minute.) |
 | Video (2–3 min) | *(YouTube or Google Drive link; open it in a private window to check judges can view it)* |
 
 ## What did you build?
@@ -73,7 +73,7 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 - Morpho Blue (underneath Borrow Kit), via viem reads
 - Gemini Prediction Markets API (event ladders, active-event discovery), plus Gemini market data (BTC price, daily candles)
 - QuickNode Streams (Arc Testnet, Block with Receipts, JS filter, webhook)
-- Node.js, TypeScript, Express, plain HTML/SVG
+- Node.js, TypeScript, Express; React, Vite and Tailwind for the page
 - Cloudflare quick tunnel
 - AI: Claude Code as a pair programmer
 
@@ -90,5 +90,5 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 - [ ] Track-specific items:
   - contract addresses ✅ (README §3)
   - economic design and risk assumptions ✅ (README §4–5)
-  - QuickNode Stream configuration ✅ (README §6). **The Stream itself still needs to be created and verified.**
+  - QuickNode Stream configuration ✅ (README §6). The Stream is created and verified (README "What is verified"). **Point it at `https://airbagged.me/api/stream` before judging.**
 - [ ] Everyone who can attends the closing ceremony in person (Sat Nov 21). That is required to receive prizes.

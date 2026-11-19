@@ -11,6 +11,7 @@ Matthew found the first version too plain, the fonts too basic and the app too c
 - **Fonts:** Bricolage Grotesque, Geist and Instrument Serif (was Barlow).
 - **The five 21st.dev components Matthew picked** (shiny button, metallic button, spotlight card, bounce cards, scroll frame) are written by hand to look and move like them. 21st.dev's registry allowed two downloads a day, and Aceternity's licence does not clearly allow its source in a public repo. See `web/THIRD-PARTY.md`.
 - **A push can be seen.** The price picture is bitcoin's price above a shaded floor ("you lose it down here"): on a push the floor rises under the price and the room shrinks. The chance chart ends at this very moment and turns red. The first screen's frame says what it is and has the push button (simulator only).
+- **The simulator is out of what judges see** (Turk: nothing simulated in the submission). The README, `docs/SUBMISSION.md` and `docs/DEMO.md` point only at https://airbagged.me, the real page no longer links to the simulator, and the README pictures show the real loan and the replay of a real save. Still to do by hand: the Demo link on Devpost.
 - **The alarm rings even when the bot is faster than the page:** the card then shows the odds from the bot's own log line for three seconds.
 - Checked: desktop, phone width, dark, the push on the simulator (red for 3 s, then "Saved by Airbag"), 59 tests, no console errors. Not checked: anything that needs a wallet signature.
 

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
 import { postJson, useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
 import { usePressed } from "@/lib/use-pressed";
-import { ADDRESSES, EXPLORER, LIVE_URL, SAVES, SIM_URL, VISITOR_RUN } from "@/recorded/proof";
+import { ADDRESSES, EXPLORER, LIVE_URL, SAVES, VISITOR_RUN } from "@/recorded/proof";
 import { pct } from "@/lib/format";
 import { ExplorerLink, Section, Wordmark } from "@/components/bits";
 import { Costs, MoneyMap, StreamList } from "@/components/chain-parts";
@@ -18,6 +18,7 @@ import { LoanCards } from "@/components/loan-cards";
 import { SaveReplay } from "@/components/save-replay";
 import { BounceCard } from "@/components/ui/bounce-card";
 import { TiltFrame } from "@/components/ui/tilt-frame";
+import { BotBadge } from "@/components/top-bar";
 import { MetalLink, ShinyButton, ShinyLink } from "@/components/ui/cta";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { FadeIn } from "@/components/ui/fade-in";
@@ -27,7 +28,7 @@ const LINK = "underline decoration-current/30 underline-offset-[3px] hover:decor
 const NAV = [["How it works", "#how"], ["Gemini", "#gemini"], ["Arc", "#arc"], ["My loan", "/app/#mine"]] as const;
 
 export function Landing() {
-  const { data: status } = useStatus();
+  const { data: status, error } = useStatus();
   const { data: ladders } = useLadders();
   const { data: replay } = useCrashReplay();
   const { data: gas } = useGasPrices();
@@ -143,7 +144,8 @@ export function Landing() {
                       </span>
                     </p>
                     {live ? (
-                      <MetalLink href="/app/" small>Open the live demo</MetalLink>
+                      // on the real loan there is nothing for a visitor to press: show that the bot is at work
+                      <BotBadge status={status} error={error} />
                     ) : (
                       <ShinyButton small onClick={push} disabled={pushing || !!pressed.pending || atRisk || spent}>Push it to the edge</ShinyButton>
                     )}
@@ -308,7 +310,7 @@ export function Landing() {
             <p className="relative mt-6 text-[15px] text-on-panel-faint">
               Arc Testnet only. No real money.{" "}
               {status && (live
-                ? <>No wallet? <a href={SIM_URL} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">Push a simulated loan yourself</a>.</>
+                ? <>No wallet? <a href="#save" className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">Watch a real save, replayed</a>.</>
                 : <>This is the simulator. <a href={LIVE_URL} className="text-on-panel-2 underline underline-offset-[3px] hover:text-on-panel">See the real loan</a>.</>)}
             </p>
           </section>
