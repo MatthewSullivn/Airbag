@@ -190,6 +190,7 @@ Read these before touching `src/arc.ts`.
 
 ## What's left
 
+- [ ] **The hosted bot does not find guards by itself after a restart.** Seen Nov 19, 2026 on https://airbagged.me: 12 minutes after a restart `protector.loans` was still empty, although the explorer's `getLogs` answered the same search from another machine in under 2 s (both guards). A wallet is watched again when its owner opens the page (`use-wallet.ts` posts the remembered guard to `/api/protect`). Every push to `main` and every wake-up from sleep is a restart. First step: read the service's log for `[protector] could not search for guards`. A sturdier search would read the `BotChanged` logs from Arc's RPC instead of the explorer.
 - [ ] **See a Stream delivery wake the check for a connected wallet, live.** Since Nov 19, 2026 `/api/stream` also calls `protector.wake()`. Tested with unit tests only. To see it: Stream pointed at `https://airbagged.me/api/stream`, then one push from a connected wallet. The save should follow within a few seconds, and the page's bot line should say "woken by QuickNode Stream".
 - [ ] **Keep the QuickNode Stream pointed at the live link.**
   - The Stream `airbag-arc-testnet` is created and verified.
