@@ -73,6 +73,7 @@ Use these numbers, not the early drafts. Two answers in our first plan did not s
   - The odds also react to how nervous the market is. With Nov 17's ladders, the odds trigger fires around health 1.19, before Borrow Kit's own WARN band. On a calmer day it would fire later.
 - **"Why not just borrow less?"** Then that money is locked in the loan all the time. With Airbag it sits in savings earning interest. ⚠️ In our replay at 60% borrowed, **58%** of the savings stayed in the pot on average (not the 86% in our first draft). In calm stretches all of it did.
 - **"Why Arc?"** Fast finality and fees paid in USDC. A save through AirbagGuard is one transaction: it landed 3 s after the push and cost 0.0097 USDC. ⚠️ Don't claim a once-a-day bot gets liquidated: in our replay it survived February too, because the odds were already over the limit the evening before the drop.
+- **"What is in it for Gemini?"** New customers. Every borrower is a natural buyer of "No": they want to be paid if bitcoin ends low, and Airbag writes that order for them, sized to their loan. And two things borrowers would ask Gemini for: lower strikes, and a "touch" bet (did bitcoin ever trade below X), which would be the exact hedge for a loan.
 - **"Why Gemini? Isn't that a stretch?"** It's a bitcoin loan, and Gemini's ladders price exactly "will BTC be under my line on this date".
 - **"What if Gemini's market is thin or wrong?"**
   - It is thin: about $97k traded on the Nov 30 ladder.

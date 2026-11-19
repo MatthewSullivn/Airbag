@@ -16,7 +16,15 @@ Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's
 |---|---|---|
 | ![The landing page's Gemini part: a card with Gemini's live bets on bitcoin's price, and the three steps from those prices to the loan's number](docs/page-4-market.jpg) | ![The landing page: Gemini's hourly history for one bet, and a hedge quote](docs/page-5-odds-over-time.jpg) | ![The landing page's Arc part: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) |
 
-All six show real things: the loan the hosted bot guards on Arc Testnet, Gemini's live market, and the page's replay of the save of Nov 18, 2026, drawn from its recorded transactions. The page as it looked during the first live saves is under [Live proof](#live-proof).
+| The number being made, live, and the money on Arc | Push it on paper: what the bot's rule would do | Gemini's odds, checked against what happened |
+|---|---|---|
+| ![The Live demo screen on airbagged.me: two of Gemini's live bets with bid and ask, the chance bitcoin ends below the loan's price, that chance doubled against the 5% limit, and under it the loan's money on Arc with the block number](docs/page-7-number-being-made.jpg) | ![The what-if card: the real loan pushed to the edge on paper reads 42%, and Airbag would pay down 3.88 USDC](docs/page-8-what-if.jpg) | ![A chart of what Gemini's market said against how often it happened, for 256 settled bets, and the finding that a dip was 1.5 times as likely as ending below](docs/page-9-odds-checked.jpg) |
+
+| The hedge, as an order | One loan on one screen |
+|---|---|
+| ![The hedge ticket: buy 4,385 No on Bitcoin 57,500 dollars or above on Nov 30, the live price, the cost and the payout, and the note that Airbag places it for real on Gemini's test site](docs/page-10-hedge-ticket.jpg) | ![The My loan screen with a connected wallet's real loan: the chance, the price against the price where the bitcoin is lost, the money on Arc, and how the number is made](docs/page-11-my-loan.jpg) |
+
+All of these show real things: the loan the hosted bot guards on Arc Testnet, a connected wallet's real loan, Gemini's live market and its settled markets, and the page's replay of the save of Nov 18, 2026, drawn from its recorded transactions. The last five were taken on Nov 19, 2026. The page as it looked during the first live saves is under [Live proof](#live-proof).
 
 ---
 
@@ -142,6 +150,14 @@ The landing page's Gemini part draws the table as a chart.
 | Trading tools, bots or agents that act on prediction market data | The bot. Gemini's live feed wakes it, it reads the ladders, and when the odds pass the limit it moves testnet money on Arc with no human. With a test key it also places the hedge through Gemini's order API, on Gemini's test site (below). |
 | Prediction market data brought into other apps (onchain) | Gemini's odds are the trigger for transactions on Arc. Every save under [Live proof](#live-proof) was caused by them, and the bot's log line records the odds it acted on. |
 | Helping people discover and understand markets | The landing page explains the market in three steps from its live prices and links to it on gemini.com. *How this number is made, right now* shows a bet's price turning into one plain number. |
+
+### What this could mean for Gemini
+
+These are our own thoughts, not something we measured.
+
+- **Borrowers are natural buyers of "No".** Anyone with a bitcoin-backed loan wants to be paid if bitcoin ends low. Airbag turns each loan it protects into an order for Gemini's market, sized to that loan (the ticket below). That is a kind of customer a prediction market does not have today.
+- **Lower strikes.** A healthy loan's line sits below the lowest bet Gemini lists (today $57,500), so Airbag has to estimate the odds there. Bets further down would let a loan be priced, and hedged, directly.
+- **A "touch" bet.** A loan dies if bitcoin trades below its line at any moment, but Gemini's bets settle on the price at the end. A bet on "did bitcoin trade below X before the date" would be the exact hedge for a loan, and its price would be the loan's danger with no doubling. In the settled markets we checked, a touch was 1.5 times as likely as an end below.
 
 ### The hedge ticket
 
