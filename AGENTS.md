@@ -76,7 +76,7 @@ demo buttons ───────┘        │        │         └─ Circl
 | `src/state.ts` | `data/state.<mode>.json`: log, odds samples, `inLoan`, money moved (for the cap). |
 | `src/clock.ts` | Corrects a fast or slow local clock against Arc block time. |
 | `src/config.ts` | All `.env` settings (documented in `.env.example`). |
-| `web/` | The page's source: React + Vite + Tailwind, with its own `package.json`. `/` is the landing page (a walk-through that also explains the Gemini odds and the Arc contracts in depth), `/app/` is the app (two screens: Live demo, My loan). Both app screens show a loan as two charts, `ArcNow` (the money on Arc, with Arc's block counted live from its public RPC) and `LiveOdds` (how the number is made right now from Gemini's live feed, `web/src/lib/gemini-feed.ts`). Charts are built on tweenly's chart kit (MIT, see `web/THIRD-PARTY.md`). |
+| `web/` | The page's source: React + Vite + Tailwind, with its own `package.json`. `/` is the landing page (a walk-through that also explains the Gemini odds and the Arc contracts in depth), `/app/` is the app (two screens: Live demo, My loan). Both app screens show a loan as two charts, `ArcNow` (the money on Arc, with Arc's block counted live from its public RPC) and `LiveOdds` (how the number is made right now from Gemini's live feed, `web/src/lib/gemini-feed.ts`). On the live site the Live demo's loan cannot be pushed from the page (the server holds no owner key), so it has a bar saying so and `WhatIf`: a push on paper and a limit slider that run `decide()` on the page and change nothing. Charts are built on tweenly's chart kit (MIT, see `web/THIRD-PARTY.md`). |
 | `public/` | What the server serves. `index.html`, `app/`, `assets/` and `build.json` are BUILT from `web/`: never edit them by hand. `classic/` is the old plain page, kept as a fallback at `/classic/`. |
 | `scripts/` | Wallet, open loan, round trip, deposit, odds, webhook, tunnel. |
 | `replay/` | The Feb 2026 crash replay, using the same `decide()`. |
@@ -227,6 +227,7 @@ Read these before touching `src/arc.ts`.
 - [ ] **Press "Turn protection off" live** with that wallet (two signatures), then turn it on again. The page should reuse the same guard instead of creating a new one. Neither has been pressed live yet.
 - [ ] **Switch the first bot wallet to guard mode too.** Deploy a guard for it (`npm run guard:deploy`), then where it runs set `USE_GUARD=true`, `GUARD_ADDRESS` and `GUARD_BOT_KEY`, and remove `PRIVATE_KEY`.
 - [ ] **Optional:**
+  - a limit per connected wallet (today `USER_LIMIT` is one limit for every loan the server protects; the page's what-if only previews other limits)
   - a Swap Kit fallback when savings run out
   - longer history of our own number on the chart (the market's own history is there now, from Gemini's candles)
 

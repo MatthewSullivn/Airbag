@@ -10,7 +10,7 @@ import { short } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useWallet } from "@/wallet/use-wallet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { MetalButton } from "@/components/ui/cta";
+import { MetalButton, MetalLink, ShinyButton } from "@/components/ui/cta";
 import { ArcNotes, ArcNow } from "@/components/arc-now";
 import { Wordmark } from "@/components/bits";
 import { DemoDrawer, useDemoDrawer } from "@/components/demo-drawer";
@@ -19,6 +19,7 @@ import { Moves } from "@/components/loan-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { BotBadge, ModeBadge } from "@/components/top-bar";
 import { WalletLookup, Wizard } from "@/components/wizard";
+import { WhatIf } from "@/components/what-if";
 
 const SCREENS = [
   { value: "demo", label: "Live demo" },
@@ -170,6 +171,21 @@ export function Dashboard() {
                     scrollTo({ top: 0, behavior: "smooth" });
                   }}
                 />
+                {/* The live loan is real: pushing it needs its owner's key, which this server does not hold. So the
+                    page says so, and offers the three ways to see Airbag act. (The team's own controls: press d.) */}
+                {live && !demo.open && (
+                  <aside aria-label="See it act" className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[22px] border border-panel-line bg-panel px-5 py-3.5 text-on-panel shadow-xl">
+                    <p className="min-w-0 flex-1 basis-72 text-[14.5px] leading-snug text-on-panel-2">
+                      <span className="label mr-2.5 text-on-panel-faint">See it act</span>
+                      This loan is real, so nobody can push it from this page.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <ShinyButton small onClick={() => document.getElementById("what-if")?.scrollIntoView({ behavior: "smooth", block: "center" })}>Push it on paper</ShinyButton>
+                      <MetalLink small href="/#save">Watch a real save</MetalLink>
+                      <MetalButton small onClick={() => go("mine")}>Push your own loan</MetalButton>
+                    </div>
+                  </aside>
+                )}
                 <LoanCards
                   status={status}
                   reading={status.reading}
@@ -185,11 +201,14 @@ export function Dashboard() {
                   guard={status.custody?.guard ? { address: status.custody.guard, capUsdc: status.custody.guardDailyCapUsdc } : null}
                   stream={status.stream.filter((e) => e.kind.startsWith("our loan: "))}
                 />
+                {live && <WhatIf id="what-if" status={status} reading={status.reading} ladders={ladders} feed={feed} />}
                 <Moves log={botLog} empty="Nothing yet. It is watching." />
-                <p className="px-1 pt-2 text-[16px] text-ink-2">
-                  {live ? <>Want to see it act? <a href="/#save" className={LINK}>Watch a real save, replayed</a>, or </> : !demo.open ? <><button type="button" onClick={() => demo.setOpen(true)} className={LINK}>Show the push button</button>, or </> : <>Got a wallet? </>}
-                  <button type="button" onClick={() => go("mine")} className={LINK}>{!live && demo.open ? "Protect your own loan" : "protect your own loan"}</button>.
-                </p>
+                {!live && (
+                  <p className="px-1 pt-2 text-[16px] text-ink-2">
+                    {!demo.open ? <><button type="button" onClick={() => demo.setOpen(true)} className={LINK}>Show the push button</button>, or </> : <>Got a wallet? </>}
+                    <button type="button" onClick={() => go("mine")} className={LINK}>{demo.open ? "Protect your own loan" : "protect your own loan"}</button>.
+                  </p>
+                )}
               </>
             )}
 

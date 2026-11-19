@@ -63,6 +63,7 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 - **Non-custodial.** We wrote `AirbagGuard` (`contracts/`): the bot's own key can only move the owner's savings into the owner's own loan and back, with a daily cap and a health floor on-chain. It runs on Arc Testnet and the bot can sign through it (README "Live proof"). One guard per user works from the page too (Connect wallet). Next is moving our first bot wallet to it.
 - **Mainnet**, with a real price feed (Arc Testnet's lending oracle is fixed at $75,000). We checked the cost: Arc mainnet charges the same gas price as testnet today, so turning protection on would cost about 0.035 USDC and each save about 0.0097 USDC. The page reads mainnet's gas price live to keep that estimate honest.
 - **When savings run out:** sell a small slice of collateral with Swap Kit.
+- **A limit per wallet.** Today the hosted bot uses one limit for every loan it protects. The page already lets a visitor try other limits on paper.
 - **Alerts** on Telegram/X or by voice, and many loans per user.
 - **Always-on hosting.**
 

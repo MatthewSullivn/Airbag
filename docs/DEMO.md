@@ -4,6 +4,8 @@ The video is judged for the Gemini and QuickNode bounties (they don't see a live
 
 The page has two parts. `/` is the landing page, a walk-through: what it does, who it is for, then four numbered steps (1 the problem, 2 the save, 3 Gemini, 4 Arc) and the receipts. Its top bar jumps to any of them. `/app/` is the app, with two screens: **Live demo** and **My loan**.
 
+On the live site nobody can push the Live demo's loan from the page: it is real, and the server does not hold its owner's key. The bar at its top says so and offers three ways to see Airbag act: *Push it on paper* (a what-if with two sliders, lower on the same screen), *Watch a real save*, and *Push your own loan*. To push that loan for real, its owner runs `npm run demo:push` on their own machine, and `npm run demo:reset` afterwards.
+
 Both app screens show a loan the same way: the chance and the price as two charts, **On Arc, right now** (the money, with Arc's block number counting live), and **How this number is made, right now** (Gemini's live prices turning into the number). On My loan, once the wallet is set up, all of it fits one screen under a slim bar with the two buttons.
 
 ## Which link
@@ -59,6 +61,7 @@ Use these numbers, not the early drafts. Two answers in our first plan did not s
 
 - **"Doesn't this defeat the purpose of the liquidation line?"** No. The line protects the lender. Airbag never touches it: it pays back part of the loan early, with the borrower's own savings, which is what the lender wants anyway. If the savings run out and bitcoin keeps falling, the loan is still sold off. The line protects the lender; Airbag protects the borrower.
 - **"Do you place the hedge on Gemini?"** No. The page shows the exact order and its live price, and links to the bet. Gemini's prediction markets are real money and this is a testnet project, so it stays a quote.
+- **"Can I change the 5%?"** It is the owner's setting. On the Live demo anyone can try another limit on paper: the what-if runs the bot's own rule and says what it would do. On our hosted bot one limit applies to every loan it protects; a limit per wallet is next.
 - **"Is the number really live?"** Yes. The page listens to Gemini's live feed and works the number out itself with the bot's own code. The bot is woken by the same feed and reads the prices again before it decides. Its own last check is printed next to the page's number.
 - **"Isn't this just DeFi Saver?"** The saving idea is the same. Two differences: the trigger is a live market's odds instead of a ratio, and it is built for Arc's bitcoin loans on Circle's kits, where nothing like it existed.
 - **"Why odds instead of the health factor?"**
