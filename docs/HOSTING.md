@@ -14,7 +14,7 @@ The live proof (real transactions on Arc Testnet) is in the README, on the real 
 ## Set it up (about 5 minutes, once)
 
 1. Sign in at [render.com](https://render.com) with GitHub.
-2. **New → Blueprint**, pick the `MatthewSullivn/ubc` repo. Render reads `render.yaml` and creates the `airbag-demo` web service.
+2. **New → Blueprint**, pick the `MatthewSullivn/airbag` repo. Render reads `render.yaml` and creates the `airbag-demo` web service.
    - If Render can't see the repo, the repo owner has to sign in, or grant Render access to it on GitHub.
 3. Click **Apply**. The first build takes a few minutes. The link looks like `https://airbag-demo-xxxx.onrender.com`.
 4. Open the link. Check:

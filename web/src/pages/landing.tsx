@@ -318,7 +318,7 @@ export function Landing() {
 
         <footer className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-t border-line py-7 text-[15px] text-faint">
           <p>Built on Arc with Circle's Borrow Kit and Earn Kit, Gemini's prediction market and QuickNode Streams.</p>
-          <a href="https://github.com/MatthewSullivn/ubc" target="_blank" rel="noopener" className={LINK}>Code on GitHub</a>
+          <a href="https://github.com/MatthewSullivn/airbag" target="_blank" rel="noopener" className={LINK}>Code on GitHub</a>
         </footer>
       </div>
     </>

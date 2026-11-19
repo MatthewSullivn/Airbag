@@ -16,7 +16,7 @@ export function SiteFooter({ status }: { status: Status | null }) {
           ) : null
         ) : status ? " The demo loan on this page is simulated. The odds are live." : ""}
       </p>
-      <a href="https://github.com/MatthewSullivn/ubc" target="_blank" rel="noopener" className="underline decoration-current/30 underline-offset-2 hover:decoration-current">Code on GitHub</a>
+      <a href="https://github.com/MatthewSullivn/airbag" target="_blank" rel="noopener" className="underline decoration-current/30 underline-offset-2 hover:decoration-current">Code on GitHub</a>
     </footer>
   );
 }

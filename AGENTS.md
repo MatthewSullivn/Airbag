@@ -82,6 +82,7 @@ demo buttons ───────┘        │        │         └─ Circl
 | `src/wallet-plan.ts` | What a connected wallet can do for itself: open a loan, add savings. It builds the transactions (`POST /api/plan/...`) after checking them against the chain. The visitor's wallet signs; the server never does. |
 | `src/protector.ts`, `src/guard-code.mjs` | Protects every wallet that turned protection on from the page (`PROTECT=true`, live only). Finds guards made for our bot key and their history from Arc's explorer, runs `decide()` for each, and acts only through that wallet's guard. One server per bot key. |
 | `src/one-at-a-time.mjs` | Makes sure the check of connected wallets' loans never runs twice at once, whether the timer or a QuickNode Stream delivery starts it. A delivery that arrives during a check is followed by one more check. |
+| `src/guard-search.mjs` | Finds the guards made for our bot key straight from Arc's RPC (`BotChanged` events), in ranges of 5,000 blocks, one request at a time. Pure logic: the caller passes in the function that asks the chain. |
 | `contracts/AirbagGuard.artifact.json` | The guard's ABI and bytecode, committed so hosts without Foundry can deploy and recognise it. Regenerate with `npm run guard:artifact` whenever the contract changes. |
 | `src/guard-plan.mjs` | Guard mode's pure checks: which key setups may run, and clamping a move to the guard's on-chain cap. `LiveArc` uses them when `USE_GUARD=true`. |
 | `render.yaml`, `docs/HOSTING.md` | The simulator hosted on Render. A tool for working on the page: the submission points only at the real loan on https://airbagged.me. |
@@ -166,6 +167,8 @@ Read these before touching `src/arc.ts`.
 14. **MetaMask flags `onrender.com` links.** Connecting a wallet on `airbag-live.onrender.com` showed MetaMask's "malicious site" warning. Its site check returned BLOCK for every `onrender.com` name we tried (and for names on `vercel.app`, `netlify.app` and `github.io`), so it is the suffix, not our page.
     - The hosted live bot has its own domain for that reason: https://airbagged.me (the same Render service, Matthew's account). The check returns nothing for it.
     - Use that link for anything with Connect wallet. The simulator needs no wallet, so its `onrender.com` link is fine.
+15. **Arc's public RPC limits log searches.** `eth_getLogs` over 10,000 blocks is refused (`requested range too large`); 5,000 is answered. Twenty searches in 7 seconds, four at a time, got `Request exceeds defined limit`. One at a time with a short pause, ten per pass, went through. `src/guard-search.mjs` works that way.
+16. **The hosted bot forgets connected wallets on every restart** and has to find their guards again. Every push to `main` and every wake-up from sleep is a restart. Before a live push from a connected wallet, check that the page says protection is on.
 
 ## Code conventions
 
@@ -190,7 +193,7 @@ Read these before touching `src/arc.ts`.
 
 ## What's left
 
-- [ ] **The hosted bot does not find guards by itself after a restart.** Seen Nov 19, 2026 on https://airbagged.me: 12 minutes after a restart `protector.loans` was still empty, although the explorer's `getLogs` answered the same search from another machine in under 2 s (both guards). A wallet is watched again when its owner opens the page (`use-wallet.ts` posts the remembered guard to `/api/protect`). Every push to `main` and every wake-up from sleep is a restart. First step: read the service's log for `[protector] could not search for guards`. A sturdier search would read the `BotChanged` logs from Arc's RPC instead of the explorer.
+- [ ] **Confirm on the hosted bot that it finds guards by itself after a restart.** On Nov 19, 2026 it did not: 12 minutes after a restart `protector.loans` was still empty (the explorer's `getLogs` answered the same search from another machine at once), and the wallet was only watched again when its owner opened the page (`use-wallet.ts` posts the remembered guard to `/api/protect`). Since then the bot also searches Arc's RPC itself (`src/guard-search.mjs`, `discoverOnChain()` in `src/protector.ts`). To confirm: after a restart, `GET /api/status` should list the test wallet's guard under `protector.loans` within a minute, with nobody opening the page. If the explorer search still fails, the service's log says `[protector] could not search for guards`.
 - [ ] **See a Stream delivery wake the check for a connected wallet, live.** Since Nov 19, 2026 `/api/stream` also calls `protector.wake()`. Tested with unit tests only. To see it: Stream pointed at `https://airbagged.me/api/stream`, then one push from a connected wallet. The save should follow within a few seconds, and the page's bot line should say "woken by QuickNode Stream".
 - [ ] **Keep the QuickNode Stream pointed at the live link.**
   - The Stream `airbag-arc-testnet` is created and verified.

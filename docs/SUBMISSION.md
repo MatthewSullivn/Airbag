@@ -12,7 +12,7 @@ Submit at `ubc-hackathon-2026.devpost.com` before **Friday Nov 20, 12:00 PM CST*
 | Main track | DeFi and Onchain Applications |
 | Chain award | Best use of Arc |
 | Bounties (opt in to each) | Gemini Prediction Markets; QuickNode Streams |
-| GitHub | https://github.com/MatthewSullivn/ubc |
+| GitHub | https://github.com/MatthewSullivn/airbag |
 | Demo | https://airbagged.me (the live bot: a real cirBTC loan on Arc Testnet, guarded right now. The page shows its live number, replays a real save from its recorded transactions, and lets any wallet open a loan and turn protection on. Nothing on it is simulated. It sleeps when nobody visits, so the first load can take about a minute.) |
 | Video (2–3 min) | *(YouTube or Google Drive link; open it in a private window to check judges can view it)* |
 

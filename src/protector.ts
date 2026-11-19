@@ -6,11 +6,12 @@
 // It needs no memory of its own: which guards exist, and how much of each owner's savings is inside
 // their loan, are both read back from Arc (through the explorer's log API), so a restart loses nothing.
 import { readFileSync } from "node:fs";
-import { createPublicClient, createWalletClient, decodeAbiParameters, formatUnits, http, parseAbi, parseUnits, toEventSelector, type Abi, type Address, type Hex } from "viem";
+import { createPublicClient, createWalletClient, decodeAbiParameters, formatUnits, http, numberToHex, parseAbi, parseUnits, toEventSelector, type Abi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arcTestnet } from "viem/chains";
 import { decide, RULE } from "./brain.mjs";
 import { insideLoan, sameContract, type ImmutableRefs } from "./guard-code.mjs";
+import { searchBotChanged } from "./guard-search.mjs";
 import { oneAtATime } from "./one-at-a-time.mjs";
 import { isAddress } from "./wallet-math.mjs";
 import { resolveIds, type WalletView } from "./wallet-view.js";
@@ -93,6 +94,11 @@ export class Protector {
    */
   private look = oneAtATime(() => this.tick().catch((e) => console.warn(`[protector] a check failed: ${firstLine(e)}`)));
   private lastDiscover = 0;
+  /** The last block the search on Arc itself has covered, and the guards it has seen for our bot key. */
+  private searchedTo: number | null = null;
+  private seenOnChain = new Set<string>();
+  /** The search on Arc has not reached the newest block yet: it carries on at every look, not every 30 s. */
+  private catchingUp = true;
   private timer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -195,6 +201,37 @@ export class Protector {
     }
   }
 
+  /**
+   * The same search as discover() below, asked of Arc itself instead of its explorer (src/guard-search.mjs says
+   * why). The first pass covers every block since `fromBlock`; later passes only the new blocks. A guard seen
+   * once is looked at again on every pass until it is being watched, because its owner may give it its two
+   * permissions later.
+   */
+  private async discoverOnChain() {
+    if (!this.botAddress) return;
+    const me = this.botAddress.toLowerCase();
+    const latest = Number(await this.client.getBlockNumber());
+    const from = this.searchedTo == null ? this.fromBlock : this.searchedTo + 1;
+    if (from <= latest) {
+      const r = await searchBotChanged({
+        from,
+        to: latest,
+        pause: 150,
+        getLogs: (a, b) => this.client.request({ method: "eth_getLogs", params: [{ fromBlock: numberToHex(a), toBlock: numberToHex(b), topics: [TOPIC.botChanged] }] }),
+      });
+      if (r.scannedTo >= from) this.searchedTo = r.scannedTo;
+      this.catchingUp = r.scannedTo < latest;
+      for (const f of r.found) if (f.bot === me) this.seenOnChain.add(f.guard);
+      if (r.error) console.warn(`[protector] the search on Arc stopped at block ${r.scannedTo}: ${r.error}`);
+    }
+    for (const guard of this.seenOnChain) {
+      if (this.loans.has(guard) || (this.opts.skipGuard && guard === this.opts.skipGuard.toLowerCase())) continue;
+      try {
+        if ((await this.verify(guard)).active) await this.register(guard);
+      } catch { /* not a guard of ours, or not ready yet: look again next time */ }
+    }
+  }
+
   /** Find guards made for our bot key since `fromBlock`: each guard announces its bot key in a BotChanged event when it is created. */
   private async discover() {
     if (!this.botAddress) return;
@@ -231,8 +268,13 @@ export class Protector {
 
   /** Started only through `look`, which makes sure one runs at a time. */
   private async tick() {
-    if (Date.now() - this.lastDiscover > DISCOVER_EVERY_MS) {
+    const due = Date.now() - this.lastDiscover > DISCOVER_EVERY_MS;
+    // Arc itself first: it is what the bot can always reach. After a restart it has many blocks to go through,
+    // a few thousand per look, so until it has caught up it carries on at every look.
+    if (due || this.catchingUp) await this.discoverOnChain().catch((e) => console.warn(`[protector] could not search Arc for guards: ${firstLine(e)}`));
+    if (due) {
       this.lastDiscover = Date.now();
+      // then the explorer, as before
       await this.discover().catch((e) => console.warn(`[protector] could not search for guards: ${firstLine(e)}`));
       this.botGasUsdc = Number(formatUnits(await this.client.getBalance({ address: this.botAddress! }), 18));
       if (this.botGasUsdc < 0.05) console.warn(`[protector] the bot key is nearly out of gas (${this.botGasUsdc} USDC). Send USDC to ${this.botAddress}.`);
