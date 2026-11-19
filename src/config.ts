@@ -33,6 +33,9 @@ export const config = {
   dryRun: str("DRY_RUN") === "true",
 
   geminiTickers: list("GEMINI_TICKERS"),
+  /** A key for Gemini's TEST site (exchange.sandbox.gemini.com, role Trader). With both set, the bot places the hedge there when it saves a loan (src/hedger.ts). Test money only. */
+  geminiSandboxKey: str("GEMINI_SANDBOX_KEY"),
+  geminiSandboxSecret: str("GEMINI_SANDBOX_SECRET"),
   /** Listen to Gemini's live feed and wake the bot when a bet's price moves (src/gemini-feed.ts). false = only read every 20 s. */
   geminiFeed: str("GEMINI_FEED") !== "false",
   /** "real" = value the cirBTC at Gemini's live BTC price (what mainnet's oracle would say). "oracle" = the lending market's own price. */

@@ -68,7 +68,10 @@ demo buttons ───────┘        │        │         └─ Circl
 | `src/gemini.ts` | Ladders (cached 20 s), discovering new BTC ladders when ours expire, live BTC price. |
 | `src/gemini-live.mjs` | Pure logic for Gemini's LIVE feed (`wss://ws.gemini.com`): what a message means, a bet's chance from its bid and ask (the same way `brain.mjs` reads REST), laying the feed's prices over a ladder, the price of a "No". Shared by the server, the page and the tests. Types in `gemini-live.d.mts`. |
 | `src/gemini-feed.ts` | The server's socket to that feed. It only says WHEN to look: on a price move the kept ladders are thrown away and the bot is woken, then it reads REST and decides as always. Settles 1.5 s, at most every 4 s, restarts the bot's 5 s timer. `GEMINI_FEED=false` turns it off. |
-| `src/hedge.mjs` | Pure logic for the hedge QUOTE in the landing page's Gemini part: Gemini's price to buy "No" on a bet, and Morpho's sell-off penalty. Read-only: nothing places an order. Types in `hedge.d.mts`. |
+| `src/hedge.mjs` | Pure logic for the hedge: Gemini's price to buy "No" on a bet, Morpho's sell-off penalty, the quote (`hedgeQuote`) and the quote as an order for Gemini's API (`hedgeOrder`). The page shows it; with a test key the bot places it. Types in `hedge.d.mts`. |
+| `src/gemini-sign.mjs`, `src/gemini-trade.ts` | A signed request for Gemini's private REST API, and the client that places, lists and cancels prediction market orders. It can reach Gemini's TEST site only (`api.sandbox.gemini.com` is a constant, and a test checks it). Gemini's order numbers are too long for a JavaScript number: they travel as text. |
+| `src/hedger.ts` | With `GEMINI_SANDBOX_KEY` and `GEMINI_SANDBOX_SECRET` set: after each save (the bot's own loan and connected wallets') it places the hedge on Gemini's test site, and cancels what is open of it when the loan is calm. Every failure is caught and logged; it never touches a save. Without a key nothing runs. |
+| `src/calibration.mjs`, `scripts/gemini-calibration.mjs` | The check of Gemini's settled bitcoin ladders against what happened (`npm run calibration`, about 10 minutes, public data). Writes `replay/gemini-calibration.json` and the summary the page shows (`web/src/recorded/gemini-calibration.json`: rebuild the page after a new run). |
 | `src/market-history.mjs` | Pure logic for the market-over-time chart: Gemini's hourly candles for a bet → points, and which bets are worth drawing. Types in `market-history.d.mts`. |
 | `src/arc.ts` | `LiveArc` (Circle App Kit + viem reads) and `SimArc` (in-memory twin). Every money move goes through here. |
 | `src/bot.ts` | The loop: one run at a time, 8 s cooldown after acting, daily cap, dry run, health-only fallback. Also the demo push/reset. |
@@ -99,6 +102,8 @@ demo buttons ───────┘        │        │         └─ Circl
 npm start                   # LIVE bot + dashboard on Arc Testnet (needs .env)
 npm run tunnel              # public https link via cloudflared; re-registers the Borrow Kit webhook
 npm run odds                # live odds for a range of health levels
+npm run hedge:test          # the hedge on Gemini's TEST site: shows the order and sends nothing (-- --send places it, -- --orders lists them)
+npm run calibration         # re-read Gemini's settled bitcoin ladders and score their odds (about 10 minutes)
 npm run loan:show           # loan, savings, wallet
 npm run balances            # wallet USDC + cirBTC
 npm run roundtrip -- 0.25   # live savings round trip (moves 0.25 USDC both ways)
@@ -180,7 +185,14 @@ Read these before touching `src/arc.ts`.
     - Gemini closes a socket that does not answer its pings for 60 s. Node's built-in `WebSocket` and browsers answer by themselves: a Node connection was still open after 100 s.
     - It works from a browser page too, and so does Arc's public RPC (`eth_getBlockByNumber` from the page: that is the live block number in `ArcNow`).
     - No trade happened while we listened (25 minutes on both ladders, 12,606 price updates), so `readMessage`'s trade branch follows Gemini's documentation, not a recording.
-18. **Gemini's sandbox lists prediction markets.** `https://api.sandbox.gemini.com/v1/prediction-markets/events/<ticker>` answered on Nov 19, 2026 with the same events and its own, nearly empty, order book. Our earlier notes said the sandbox does not cover them. Placing a test order there (`POST /v1/prediction-markets/order`: `symbol`, `orderType`, `side`, `outcome`, `quantity`, `price`, `timeInForce`) needs a sandbox account and a Trader key. Not tried.
+18. **Gemini's test site trades prediction markets** (tried Nov 19, 2026). Our earlier notes said the sandbox does not cover them. It does.
+    - Account: `https://exchange.sandbox.gemini.com/register`. It sends no codes: Gemini's docs give the test switch (the cookie `GEMINI-SANDBOX-2FA=true`, then the code `9999999`). A new account starts with test dollars. Key: Settings > API, role Trading, time based nonce.
+    - A private call: the JSON payload holds `request` (the path), `nonce` and the call's fields; it goes Base64-encoded in `X-GEMINI-PAYLOAD` with an empty body; `X-GEMINI-SIGNATURE` is the hex HMAC-SHA384 of that Base64 text. A time based nonce is Unix seconds within 30 s of Gemini's clock, so `gemini-trade.ts` takes the time from Gemini's own `Date` header, not the local clock.
+    - Calls that worked: `GET /v1/prediction-markets/terms/status`, `POST /v1/prediction-markets/order`, `/orders/active`, `/orders/history`, `/positions`. `POST /order/cancel` is written from the docs and has not run yet (both our orders filled at once).
+    - The test site lists FEWER bets than the real one (Nov 30 market: 8 of 12, from $67,500), and an order for a bet it lacks is refused with `SymbolNotFound`. So the order's bet must come from the test site's own list, with the real market's price as the limit.
+    - Order numbers are 64-bit (`145853902322727138`): `JSON.parse` rounds them. Keep them as text (`parseKeepingLongNumbers`, `wholeNumber` in `gemini-sign.mjs`).
+    - Its book has resting orders: our limit of 84¢ for a "No" was filled at 68¢.
+    - Accepting Gemini's terms is the account owner's call: only `npm run hedge:test -- --accept-terms` does it, never the bot.
 
 ## Code conventions
 
@@ -209,7 +221,9 @@ Read these before touching `src/arc.ts`.
 - [x] **A Stream delivery about a connected wallet, live.** Nov 19, 2026, 01:29 UTC on https://airbagged.me: the push from the third test wallet was delivered one second after it landed (`connected wallet: borrow`, block 72,941,932) and the bot's save was in block 72,941,938, 3 s after the push. Links in README "Live proof". The log shows the bot's own wake-up line; the protector writes none, so that the delivery (and not the 10 s timer) triggered the save is likely, not proven.
 - [x] **Gemini's live feed wakes the hosted bot.** Seen Nov 19, 2026, 02:12 UTC, a minute after it reached `main`: `GET https://airbagged.me/api/status` showed `bot.geminiFeed` as `live` with 33 bets (368 updates, 202 price moves in the first minute), `bot.lastWake.reason` was "Gemini's live feed", the bot checked every 4 s with no error, and the page's bot line said "woken by Gemini's live feed". No save has been started by such a wake-up there yet. If Render ever blocks the socket, the bot just keeps reading every 20 s.
 - [ ] **Press the buttons of the rebuilt My loan screen with a real wallet.** Since Nov 19, 2026 a set-up wallet sees one slim bar (*Push it to the edge*, *Calm it down*) above its whole loan instead of the four steps. The calls are the same as step 4's (`wallet.run("push")`, `wallet.run("calm")`), but nobody has signed from the bar yet. *The steps* opens the old steps.
-- [ ] **Optional: a real test order for the hedge.** Gemini's sandbox lists the prediction markets (lesson 18). With a sandbox account and Trader key, the hedge ticket's order could be placed there for real, with test money. Needs a person to create the account; never put a production Gemini key anywhere in this project.
+- [x] **The hedge as a real test order.** Nov 19, 2026 on Gemini's test site: one order by hand and one by the bot a second after a simulated save, both filled (README "Live proof").
+- [ ] **Give the hosted bot the test key.** Add `GEMINI_SANDBOX_KEY` and `GEMINI_SANDBOX_SECRET` in Render's Environment tab (Matthew's account). Then a save of a real loan should be followed by "Hedge on Gemini's test site: bought …" under *What Airbag did*, and `GET /api/status` shows it under `hedge.last`. Not seen on the hosted bot yet.
+- [ ] **See an open hedge order cancelled.** `Hedger.calm()` cancels what is open when the savings go back. Both test orders filled at once, so the cancel call has not run against Gemini yet.
 - [ ] **Keep the QuickNode Stream pointed at the live link.**
   - The Stream `airbag-arc-testnet` is created and verified.
   - Every time the tunnel restarts, paste the new `…/api/stream` URL that `npm run tunnel` prints into the Stream's destination (QuickNode → Streams → airbag-arc-testnet → Settings).

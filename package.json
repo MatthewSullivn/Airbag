@@ -38,6 +38,8 @@
     "savings:deposit": "tsx --env-file=.env scripts/deposit.ts",
     "webhook:register": "tsx --env-file=.env scripts/register-webhook.ts",
     "odds": "node scripts/odds.mjs",
+    "hedge:test": "tsx --env-file-if-exists=.env scripts/hedge-test.ts",
+    "calibration": "node scripts/gemini-calibration.mjs",
     "replay": "node replay/fetch-candles.mjs && node replay/replay.mjs",
     "replay:run": "node replay/replay.mjs",
     "tunnel": "tsx --env-file-if-exists=.env scripts/tunnel.ts",

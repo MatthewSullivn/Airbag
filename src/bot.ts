@@ -71,6 +71,9 @@ export class Bot {
   private warned = new Set<string>();
   private lastSampleAt = 0;
   private lastWakeLog = new Map<string, number>();
+  /** Called after a save and after a give-back of the bot's own loan (the hedge on Gemini's test site listens). They must not throw. */
+  onSaved: ((x: { debt: number; line: number; lltv: number; ticker: string | null }) => void) | null = null;
+  onGaveBack: (() => void) | null = null;
 
   constructor(private arc: ArcBackend, private gemini: GeminiOdds, private store: Store, private cfg: Config) {}
 
@@ -265,6 +268,7 @@ export class Bot {
       move.txs,
     );
     this.afterAction(r);
+    try { this.onSaved?.({ debt: debt - move.amount, line: newLine, lltv: this.arc.lltv, ticker: r.odds?.ticker ?? null }); } catch { /* an extra: never part of the save */ }
   }
 
   private async giveBack(r: Reading, wanted: number) {
@@ -285,6 +289,7 @@ export class Bot {
       move.txs,
     );
     this.afterAction(r);
+    try { this.onGaveBack?.(); } catch { /* an extra: never part of the give-back */ }
   }
 
   private afterAction(r: Reading) {

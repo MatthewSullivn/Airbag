@@ -3,17 +3,18 @@
 // and what they pay. Every number is either Gemini's price to buy "No" on one of its bets (from its live feed,
 // or the server's last read), or follows from the loan and the lending market's own sell-off rule
 // (src/hedge.mjs, shared with the server and the tests).
-// Read-only. Airbag never places this order: Gemini's prediction markets are real money. The page says so, shows
-// the exact order, and links to the bet on Gemini.
+// On the real site this is a quote: Gemini's prediction markets are real money, so the page shows the exact order
+// and links to the bet. When the server has a key for Gemini's TEST site, the bot places this order there for
+// real each time it saves a loan (src/hedger.ts), and the card shows the last one.
 import { useState } from "react";
 import { ArrowUpRight, Check, Copy } from "lucide-react";
-import { hedgeQuote } from "@hedge";
+import { hedgeOrder, hedgeQuote } from "@hedge";
 import { buyNoOf } from "@live";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { MetalButton, MetalLink } from "@/components/ui/cta";
-import type { Ladders, Reading } from "@/lib/api";
+import type { Ladders, Reading, Status } from "@/lib/api";
 import type { GeminiFeed } from "@/lib/gemini-feed";
-import { dayET, usd } from "@/lib/format";
+import { clock, dayET, usd } from "@/lib/format";
 import { Card } from "./bits";
 import { cents, LiveBadge, Tick } from "./live-odds";
 
@@ -24,7 +25,7 @@ const SIZES = [
   { value: "100000", label: "$100,000" },
 ];
 
-export function HedgeCard({ ladders, reading, lltv, feed }: { ladders: Ladders | null; reading: Reading | null; lltv: number; feed?: GeminiFeed }) {
+export function HedgeCard({ ladders, reading, lltv, feed, hedge }: { ladders: Ladders | null; reading: Reading | null; lltv: number; feed?: GeminiFeed; /** Orders the bot placed on Gemini's test site, when it has a key for it. */ hedge?: Status["hedge"] }) {
   // testnet loans are a few dollars, so the ticket opens on a loan of a size people recognise
   const [size, setSize] = useState("100000");
   const [copied, setCopied] = useState(false);
@@ -40,21 +41,15 @@ export function HedgeCard({ ladders, reading, lltv, feed }: { ladders: Ladders |
 
   const penalty = `${(q.penaltyShare * 100).toFixed(1)}%`;
   const date = dayET(event.expiryDate);
-  // one "No" pays one dollar, so covering the loss takes that many contracts, rounded up to a whole one
-  const contracts = Math.max(1, Math.ceil(q.loss - 1e-9));
+  // one "No" pays one dollar, so covering the loss takes that many contracts, rounded up to a whole one.
+  // hedgeOrder() is the same function the bot uses when it places the order on Gemini's test site.
+  const order = hedgeOrder(q);
+  const contracts = order ? Number(order.quantity) : Math.max(1, Math.ceil(q.loss - 1e-9));
   const cost = contracts * q.price;
-  const order = {
-    symbol: q.symbol ?? "",
-    orderType: "limit",
-    side: "buy",
-    outcome: "no",
-    quantity: String(contracts),
-    price: q.price.toFixed(2),
-    timeInForce: "immediate-or-cancel",
-  };
+  const placed = hedge?.enabled ? hedge.last : null;
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(`Buy ${contracts.toLocaleString("en-US")} No on "${usd(q.strike)} or above" (${order.symbol}), limit ${cents(q.price)}`);
+      await navigator.clipboard.writeText(`Buy ${contracts.toLocaleString("en-US")} No on "${usd(q.strike)} or above" (${q.symbol ?? ""}), limit ${cents(q.price)}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch { /* no clipboard here: the order is on the screen */ }
@@ -107,7 +102,22 @@ export function HedgeCard({ ladders, reading, lltv, feed }: { ladders: Ladders |
             {event.url && <MetalLink small href={event.url} target="_blank" rel="noopener">Open this bet on Gemini <ArrowUpRight aria-hidden="true" className="size-4" /></MetalLink>}
             <MetalButton small onClick={copy}>{copied ? <Check aria-hidden="true" className="size-4" /> : <Copy aria-hidden="true" className="size-4" />}{copied ? "Copied" : "Copy the order"}</MetalButton>
           </div>
-          <p className="mt-4 text-[14.5px] leading-snug text-faint">A quote, not an order. Airbag does not place it: Gemini's prediction markets are real money.</p>
+          {hedge?.enabled ? (
+            <div className="mt-4 text-[14.5px] leading-snug text-ink-2" role="status">
+              <p>On Gemini's test site, Airbag places this order for real each time it saves a loan. Test money. On the real site it stays a quote.</p>
+              {placed && (
+                <p className="mt-2">
+                  <span className="font-semibold text-ink">Last order:</span> {placed.quantity} "No" on "{Number.isFinite(placed.strike) ? usd(placed.strike) : placed.symbol} or above" at {cents(Number(placed.price))}. Order {placed.orderId}, {placed.status}, {clock(placed.at)}.
+                </p>
+              )}
+              {placed && Number.isFinite(placed.strike) && placed.strike !== q.strike && (
+                <p className="mt-2 text-faint">The test site lists fewer bets than the real one, so the test order is on the lowest bet it has that covers this loan.</p>
+              )}
+              {hedge.lastError && (!placed || hedge.lastError.at > placed.at) && <p className="mt-2 text-faint">The last try did not go through: {hedge.lastError.message}</p>}
+            </div>
+          ) : (
+            <p className="mt-4 text-[14.5px] leading-snug text-faint">A quote, not an order. Airbag does not place it: Gemini's prediction markets are real money.</p>
+          )}
           {feed && <LiveBadge feed={feed} onLight className="mt-auto pt-4 !text-faint" />}
         </div>
       </div>
@@ -121,11 +131,15 @@ export function HedgeCard({ ladders, reading, lltv, feed }: { ladders: Ladders |
           <li>A sell-off takes {penalty} more bitcoin than the debt is worth. That is the lending market's rule (Morpho, for loans up to {Math.round(lltv * 100)}%). {penalty} of {size === "own" ? `${debt.toFixed(2)} USDC` : usd(debt)} is {q.loss < 100 ? money(q.loss) : usd(q.loss)}.</li>
           <li>Contracts are rounded up to a whole one. Gemini's own fees are not included.</li>
         </ul>
-        {order.symbol && (
+        {order && (
           <>
             <p className="mt-4 font-semibold text-ink">The same order for Gemini's API</p>
-            <pre className="mono mt-2 overflow-x-auto rounded-xl border border-line bg-page/60 p-4 text-[13px] leading-relaxed text-ink">{`POST https://api.gemini.com/v1/prediction-markets/order\n${JSON.stringify(order, null, 2)}`}</pre>
-            <p className="mt-2 text-[14px] leading-snug text-faint">Written from Gemini's API reference. Never sent: placing it needs your own Gemini account and a Trader key.</p>
+            <pre className="mono mt-2 overflow-x-auto rounded-xl border border-line bg-page/60 p-4 text-[13px] leading-relaxed text-ink">{`POST /v1/prediction-markets/order\n${JSON.stringify(order, null, 2)}`}</pre>
+            <p className="mt-2 text-[14px] leading-snug text-faint">
+              {hedge?.enabled
+                ? "This is what the bot sends to Gemini's test site (api.sandbox.gemini.com), signed with a test key. It is never sent to the real site."
+                : "Written from Gemini's API reference. Not sent from here: placing it needs your own Gemini account and a Trader key."}
+            </p>
           </>
         )}
       </details>

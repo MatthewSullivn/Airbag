@@ -9,7 +9,8 @@ import { Card } from "./bits";
 /** What the bot did. Only its moves at first; the whole log is one click away. */
 export function Moves({ log, empty }: { log: LogEntry[]; empty: string }) {
   const [all, setAll] = useState(false);
-  const moves = log.filter((e) => e.level === "action");
+  // the bot's moves of money, and the hedge it placed on Gemini's test site for them (src/hedger.ts)
+  const moves = log.filter((e) => e.level === "action" || /^Hedge on Gemini/.test(e.text));
   const shown = all ? log : moves;
   return (
     <Card>
@@ -27,7 +28,7 @@ export function Moves({ log, empty }: { log: LogEntry[]; empty: string }) {
             <li key={`${e.t}-${i}`} className="grid grid-cols-[5rem_1fr] gap-3 border-t border-line py-3.5 first:border-t-0">
               <time dateTime={new Date(e.t).toISOString()} className="mono pt-0.5 text-faint">{clock(e.t)}</time>
               <div className="min-w-0">
-                <p className={cn("leading-snug [overflow-wrap:anywhere]", e.level === "action" ? "font-medium text-ink" : e.level === "error" ? "text-critical" : "text-ink-2")}>{e.text}</p>
+                <p className={cn("leading-snug [overflow-wrap:anywhere]", e.level === "action" || /^Hedge on Gemini/.test(e.text) ? "font-medium text-ink" : e.level === "error" ? "text-critical" : "text-ink-2")}>{e.text}</p>
                 {e.txs?.length ? (
                   <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[15px]">
                     {e.txs.map((t, j) =>

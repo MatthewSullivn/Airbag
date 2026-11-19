@@ -44,7 +44,8 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
   - The bot reads the loan straight from the Morpho contract and the vault on-chain, because the kits' read APIs lag after a write.
 - **Alarms.** Two live feeds wake the bot: Gemini's live feed when a bet's price moves, and a QuickNode Stream filtered to our Morpho market and wallet when the loan moves. Behind them, a 5-second timer and Borrow Kit's health-band webhook.
 - **The page.** A landing page that walks through it: what Airbag does, who it is for, the February crash, a real save replayed from its recorded transactions, then how it uses Gemini (the market's live bets, the ladder with the loan's line on it, the odds over time, a hedge quote) and Arc (the contracts, what a move costs, the Stream's events). An app with two screens: a live demo and your own loan (your wallet, four steps). Each shows one number, bitcoin's price against the price where the bitcoin is lost, where the money is on Arc with the block number counting live, and how the number is being made this second from Gemini's live prices.
-- **A hedge ticket.** The same Gemini market sells "No" on its bets, which pays if bitcoin ends below a price. The page writes the order that would cover the loan's sell-off penalty: which bet, how many contracts, the live price, the cost and the payout, with a link to the bet. A quote only: Airbag places no order.
+- **A hedge.** The same Gemini market sells "No" on its bets, which pays if bitcoin ends below a price. The page writes the order that would cover the loan's sell-off penalty: which bet, how many contracts, the live price, the cost and the payout, with a link to the bet. On Gemini's test site the bot places that order for real after each save, through Gemini's order API with test money (two test orders were filled on Nov 19). On the real site it stays a quote.
+- **The odds, checked.** We scored 47 of Gemini's settled bitcoin markets against what happened: likelier bets came true more often at every step, and touching a price was 1.5 times as likely as ending below it, so our doubling is on the careful side. Two days of data: a first look.
 - **Live on Arc Testnet.**
   - We pushed a real loan to 42% odds.
   - The bot moved 0.78 USDC from savings into the loan, and it was safe again 4 seconds later on-chain, for 0.0154 USDC of gas.
@@ -72,7 +73,7 @@ Loan apps show a "health factor" nobody understands. Staying safe today means bo
 - Arc Testnet
 - Circle App Kit: Borrow Kit and Earn Kit, with `@circle-fin/adapter-viem-v2/next`
 - Morpho Blue (underneath Borrow Kit), via viem reads
-- Gemini Prediction Markets API (event ladders, active-event discovery, each bet's hourly candles) and Gemini's live WebSocket feed for the same bets, plus Gemini market data (BTC price, daily candles)
+- Gemini Prediction Markets API: market data (event ladders, active-event discovery, settled events, each bet's candles), the live WebSocket feed for the same bets, and the trading endpoints on Gemini's test site (place, cancel, active orders, history, positions). Plus Gemini market data (BTC price, candles)
 - QuickNode Streams (Arc Testnet, Block with Receipts, JS filter, webhook)
 - Node.js, TypeScript, Express; React, Vite and Tailwind for the page
 - Cloudflare quick tunnel

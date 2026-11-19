@@ -15,6 +15,7 @@ import { GeminiMarketCard } from "@/components/gemini-market-card";
 import { HedgeCard } from "@/components/hedge-card";
 import { LadderCard } from "@/components/ladder-card";
 import { OverTime } from "@/components/market-parts";
+import { OddsCheck } from "@/components/odds-check";
 import { LoanCards } from "@/components/loan-cards";
 import { SaveReplay } from "@/components/save-replay";
 import { TiltFrame } from "@/components/ui/tilt-frame";
@@ -219,7 +220,8 @@ export function Landing() {
             <div className="mt-10 grid gap-4">
               <LadderCard ladders={ladders} reading={reading} limit={status?.limit} />
               {status && <OverTime history={history} spot={spot} samples={status.samples} actions={botActions} limit={status.limit} ofWallet={false} own={own} />}
-              {status && <HedgeCard ladders={ladders} reading={reading} lltv={status.lltv} feed={feed} />}
+              <OddsCheck />
+              {status && <HedgeCard ladders={ladders} reading={reading} lltv={status.lltv} feed={feed} hedge={status.hedge} />}
             </div>
           </Section>
 

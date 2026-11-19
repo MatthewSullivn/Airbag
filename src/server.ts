@@ -10,6 +10,8 @@ import { config } from "./config.js";
 import { makeArc } from "./arc.js";
 import { GeminiOdds } from "./gemini.js";
 import { GeminiFeed } from "./gemini-feed.js";
+import { GeminiSandbox } from "./gemini-trade.js";
+import { Hedger } from "./hedger.js";
 import { Store, type StreamEvent } from "./state.js";
 import { Bot, ladderStatus } from "./bot.js";
 import { RULE, health as healthOf } from "./brain.mjs";
@@ -83,6 +85,7 @@ app.get("/api/status", (_req, res) => {
     wallet: { address: arc.address, ...(r?.wallet ?? {}) },
     custody: arc.custody,
     protector: protector.summary(),
+    hedge: hedger.summary(),
     marketId: arc.marketId,
     lltv: arc.lltv,
     limit: bot.limit,
@@ -255,7 +258,23 @@ app.get("/api/gas", async (_req, res) => {
 const walletIds = { marketId: arc.marketId, vault: arc.vault?.address ?? null };
 const readWalletView = makeWalletReader(config, gemini, walletIds);
 // Wallets that turned protection on from the page: each has its own AirbagGuard for our bot key (src/protector.ts).
-const protector = new Protector(config, gemini, store, readWalletView, { ids: walletIds, limit: () => bot.limit, skipGuard: arc.custody?.guard ?? null });
+// ---- The hedge, placed for real on Gemini's TEST site (src/hedger.ts). Only with a sandbox key in .env: each
+// time Airbag saves a loan it buys the "No" contracts that cover what a sell-off would still cost, and cancels
+// what is open of them when the loan is calm again. Test money only. Without a key it stays a quote on the page.
+const hedger = new Hedger(
+  new GeminiSandbox(config.geminiSandboxKey, config.geminiSandboxSecret),
+  (level, text, who) => store.log(level, text, undefined, who),
+  async (ticker) => (await extrasOf(ticker)).bets,
+);
+if (hedger.enabled) store.log("info", "A Gemini sandbox key is set: Airbag places its hedge on Gemini's test site when it saves a loan (test money).");
+bot.onSaved = (x) => void hedger.saved({ owner: null, ...x });
+bot.onGaveBack = () => void hedger.calm(null);
+const protector = new Protector(config, gemini, store, readWalletView, {
+  ids: walletIds,
+  limit: () => bot.limit,
+  skipGuard: arc.custody?.guard ?? null,
+  onMove: (m) => void (m.kind === "save" ? hedger.saved(m) : hedger.calm(m.owner)),
+});
 const walletHit = makeRateLimiter(300, 60_000);
 app.get("/api/wallet/:address", async (req, res) => {
   const address = String(req.params.address);

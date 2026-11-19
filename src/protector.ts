@@ -106,7 +106,13 @@ export class Protector {
     private gemini: GeminiOdds,
     private store: Store,
     private readWalletView: (address: string, opts?: { fresh?: boolean }) => Promise<WalletView>,
-    private opts: { ids: { marketId: string | null; vault: string | null }; limit: () => number; skipGuard: string | null },
+    private opts: {
+      ids: { marketId: string | null; vault: string | null };
+      limit: () => number;
+      skipGuard: string | null;
+      /** Called after a save or a give-back for a connected wallet (the hedge on Gemini's test site listens). It must not throw. */
+      onMove?: (x: { owner: string; kind: "save" | "give_back"; debt: number; line: number; lltv: number; ticker: string | null }) => void;
+    },
   ) {
     this.client = createPublicClient({ chain: arcTestnet, transport: http(cfg.rpcUrl) });
     this.morpho = cfg.morphoAddress as Address;
@@ -308,27 +314,33 @@ export class Protector {
     if (d.action === "repay") {
       const amount = Math.min(cents(d.repay, true), cents(v.savings), v.loan.debt);
       const why = d.odds != null && d.odds > limit ? `odds hit ${pct(d.odds)} (limit ${pct(limit)})` : `health fell to ${d.health.toFixed(2)} (the rule acts under ${RULE.actBelowHealth.toFixed(2)})`;
-      await this.move(loan, "save", amount, `${who}: ${why}. Moved {amount} USDC from its savings into its loan. Line was ${usd(d.line)}.`);
+      const moved = await this.move(loan, "save", amount, `${who}: ${why}. Moved {amount} USDC from its savings into its loan. Line was ${usd(d.line)}.`);
+      if (moved > 0) this.tell(loan.owner, "save", v.loan.debt - moved, v.loan.collateral, v.market.lltv, odds.detail(d.line)?.ticker ?? null);
     } else if (d.action === "give_back") {
-      await this.move(loan, "giveBack", cents(d.borrow), `${who}: calm again (odds ${pct(d.odds)}, health ${d.health.toFixed(2)}). Gave {amount} USDC back to its savings.`);
+      const moved = await this.move(loan, "giveBack", cents(d.borrow), `${who}: calm again (odds ${pct(d.odds)}, health ${d.health.toFixed(2)}). Gave {amount} USDC back to its savings.`);
+      if (moved > 0) this.tell(loan.owner, "give_back", v.loan.debt + moved, v.loan.collateral, v.market.lltv, null);
     } else if (d.action === "out_of_savings") {
       throw new Error("in danger, but its savings pot is empty");
     }
   }
 
-  /** One transaction on the owner's guard, signed by our bot key. Never more than that guard's on-chain cap still allows. */
-  private async move(loan: ProtectedLoan, fn: "save" | "giveBack", wanted: number, text: string) {
-    if (!this.wallet || !this.account) return;
+  private tell(owner: string, kind: "save" | "give_back", debt: number, collateral: number, lltv: number, ticker: string | null) {
+    try { this.opts.onMove?.({ owner, kind, debt, line: debt / (collateral * lltv), lltv, ticker }); } catch { /* an extra: never part of the move */ }
+  }
+
+  /** One transaction on the owner's guard, signed by our bot key. Never more than that guard's on-chain cap still allows. Returns what it moved (0 = nothing sent). */
+  private async move(loan: ProtectedLoan, fn: "save" | "giveBack", wanted: number, text: string): Promise<number> {
+    if (!this.wallet || !this.account) return 0;
     const left = Number(formatUnits(await this.client.readContract({ address: loan.guard, abi: GUARD_ABI, functionName: "capLeft" }), 6));
     const amount = cents(Math.min(wanted, left));
     if (amount < 0.01) {
       if (wanted >= 0.01) throw new Error(`its guard's daily cap is used up (${left.toFixed(2)} USDC left today)`);
-      return;
+      return 0;
     }
     if (this.cfg.dryRun) {
       this.store.log("action", `${text.replace("{amount}", amount.toFixed(2)).replace("Moved", "Would move").replace("Gave", "Would give")} (dry run)`, undefined, loan.owner);
       loan.cooldownUntil = Date.now() + COOLDOWN_MS;
-      return;
+      return 0;
     }
     // simulate first: a refusal (cap, health floor, paused, permission revoked) shows its reason and costs no gas
     const { request } = await this.client.simulateContract({ account: this.account, address: loan.guard, abi: GUARD_ABI, functionName: fn, args: [parseUnits(amount.toFixed(6), 6)] });
@@ -339,6 +351,7 @@ export class Protector {
     loan.lastMove = { t: Date.now(), kind: fn === "save" ? "save" : "give_back", usdc: amount, tx: hash };
     loan.cooldownUntil = Date.now() + COOLDOWN_MS;
     this.store.log("action", text.replace("{amount}", amount.toFixed(2)), [{ label: fn === "save" ? "save through its guard" : "give back through its guard", hash, url: `${this.cfg.explorer}/tx/${hash}` }], loan.owner);
+    return amount;
   }
 
   /** Stop watching a guard whose owner took its permissions away. */

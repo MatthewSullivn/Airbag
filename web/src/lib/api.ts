@@ -31,6 +31,7 @@ export interface TxRef { label: string; hash?: string; url?: string }
 export interface LogEntry { t: number; level: "action" | "info" | "warn" | "error"; text: string; txs?: TxRef[]; who?: string }
 export interface Sample { t: number; odds: number | null; source: string | null; line: number | null; health: number | null; btc: number | null }
 export interface StreamEvent { t: number; block: number | null; tx: string | null; kind: string; detail: string }
+export interface HedgeOrderPlaced { at: number; owner: string | null; orderId: string; symbol: string; strike: number; quantity: string; price: string; limit?: string; status: string }
 export interface GuardInfo {
   address: string;
   capUsdc: number;
@@ -49,6 +50,8 @@ export interface Status {
   wallet: { address: string; usdc?: number | null; cirbtc?: number | null };
   custody: { mode: "owner-key" | "guard"; guard: string | null; botKeyAddress: string | null; ownerKeyOnServer: boolean; guardDailyCapUsdc: number | null } | null;
   protector: { enabled: boolean; why: string | null; botAddress: string | null; botGasUsdc: number | null; loans: { guard: string; owner: string; inLoan: number; lastError: string | null }[] };
+  /** The hedge as a real order on Gemini's TEST site: on only when the server has a sandbox key. */
+  hedge?: { enabled: boolean; last: HedgeOrderPlaced | null; open: HedgeOrderPlaced[]; lastError: { at: number; message: string } | null };
   marketId: string | null;
   lltv: number;
   limit: number;
