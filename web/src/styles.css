@@ -166,6 +166,21 @@
     --shiny-angle: 360deg;
   }
 }
+/* a value on Gemini's live feed lights up for a moment when it changes (components/live-odds.tsx) */
+@keyframes tick-flash {
+  0% {
+    background-color: color-mix(in oklab, var(--brand) 62%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--brand) 62%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+.tick-flash {
+  border-radius: 6px;
+  animation: tick-flash 1.2s ease-out;
+}
 
 @layer components {
   /* micro label, like the lettering on a gauge */

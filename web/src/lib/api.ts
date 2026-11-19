@@ -64,6 +64,8 @@ export interface Status {
     lastWake: { reason: string; at: number } | null;
     lastError: { at: number; message: string } | null;
     geminiError: string | null;
+    /** The server's own connection to Gemini's live feed, which wakes the bot when a bet's price moves. */
+    geminiFeed?: { state: "off" | "connecting" | "live" | "down"; bets: number; heard: number; moves: number; lastAt: number | null };
     tickSeconds: number;
     cooldownLeftMs: number;
   };

@@ -1,37 +1,10 @@
-// The quiet parts under a loan's two big cards: four plain facts and the list of what Airbag did.
+// The quiet part under a loan's cards: the list of what Airbag did. (The money itself is in arc-now.tsx.)
 import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
-import type { LogEntry, Reading } from "@/lib/api";
-import { btc, clock, usdc } from "@/lib/format";
+import type { LogEntry } from "@/lib/api";
+import { clock } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Card, Count } from "./bits";
-
-// The label keeps two lines of room on a phone and the unit sits under the number, so the four tiles line up.
-function Fact({ label, value, format, unit }: { label: string; value: number | null | undefined; format: (v: number) => string; unit: string }) {
-  return (
-    <Card className="p-5 sm:p-6">
-      <p className="min-h-[2.6em] text-[15px] leading-snug text-ink-2 sm:min-h-0">{label}</p>
-      <p className="figure mt-1 text-[2.3rem] text-ink sm:mt-2 sm:text-[2.8rem]"><Count value={value} format={format} /></p>
-      <p className="mt-1 text-[13.5px] text-faint">{unit}</p>
-    </Card>
-  );
-}
-
-// USDC is a dollar, so the page says dollars and names the token small, underneath.
-const dollars = (v: number) => "$" + usdc(v);
-
-export function Facts({ reading }: { reading: Reading | null }) {
-  const r = reading;
-  const apy = r?.savings?.apy;
-  return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <Fact label="Borrowed" value={r?.loan.debt} format={dollars} unit="USDC" />
-      <Fact label="Bitcoin locked" value={r?.loan.collateral} format={btc} unit="cirBTC" />
-      <Fact label="Savings, ready" value={r?.savings?.balance} format={dollars} unit={apy != null && apy > 0 ? `USDC, earning ${+(apy * 100).toFixed(1)}% a year` : "USDC"} />
-      <Fact label="Savings in the loan now" value={r?.inLoan} format={dollars} unit="USDC" />
-    </div>
-  );
-}
+import { Card } from "./bits";
 
 /** What the bot did. Only its moves at first; the whole log is one click away. */
 export function Moves({ log, empty }: { log: LogEntry[]; empty: string }) {

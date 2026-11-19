@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
 import { postJson, useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
+import { symbolsOf, useGeminiFeed, useLiveEvents } from "@/lib/gemini-feed";
 import { usePressed } from "@/lib/use-pressed";
 import { ADDRESSES, EXPLORER, LIVE_URL, SAVES, VISITOR_RUN } from "@/recorded/proof";
 import { pct } from "@/lib/format";
@@ -60,15 +61,18 @@ export function Landing() {
     }
   };
 
-  // Gemini's market for the ladder the number comes from, and its own hourly history
+  // Gemini's market for the ladder the number comes from: the bot's own read of it (every 20 s) with Gemini's
+  // live feed laid over it, so the prices on this page move the moment the market does. And its hourly history.
+  const feed = useGeminiFeed(symbolsOf(ladders));
+  const liveEvents = useLiveEvents(ladders, feed);
   const ticker = reading?.odds?.ticker ?? ladders?.events[0]?.ticker ?? null;
-  const event = ladders?.events.find((e) => e.ticker === ticker) ?? ladders?.events[0];
+  const event = liveEvents.find((e) => e.ticker === ticker) ?? liveEvents[0];
   const { data: historyData } = useMarketHistory(ticker);
   const history = historyData && historyData.ticker === ticker ? historyData : null;
   const spot = reading?.priceUsed ?? ladders?.spot ?? null;
   const own = reading ? { line: reading.line, odds: reading.decision.odds } : null;
   // the bet nearest bitcoin's price: its Yes price in cents is the example in the steps (54 until it has loaded)
-  const nearest = event && spot != null ? [...event.ladder].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot))[0] : null;
+  const nearest = event && spot != null ? [...event.live].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot))[0] : null;
   const cents = nearest ? Math.round(nearest.pAbove * 100) : 54;
   // the recorded save of Nov 18: what moved and how fast, straight from its four transactions
   const [pushed, saved, calmed, returned] = VISITOR_RUN.steps;
@@ -117,7 +121,7 @@ export function Landing() {
                 An airbag for your <span className="accent">bitcoin loan.</span>
               </h1>
               <p className="mx-auto mt-6 max-w-[38ch] text-[1.3rem] leading-snug text-ink-2">
-                When a crash looks likely, it moves your own savings into the loan. So you keep your bitcoin.
+                When a crash looks likely, it pays down your loan with your own savings. So the crash can't take your bitcoin.
               </p>
               <div className="mt-9 flex flex-wrap justify-center gap-3">
                 <ShinyLink href="#save">Watch a real save <ArrowDown aria-hidden="true" className="size-5" /></ShinyLink>
@@ -180,9 +184,9 @@ export function Landing() {
                 <p className="figure text-[4.2rem]">{reading?.decision.odds != null ? pct(reading.decision.odds) : "–"}</p>
                 <p className="mt-2 text-[1.15rem] font-semibold leading-snug">chance of losing the bitcoin right now, read from Gemini's prediction market</p>
               </BounceCard>
-              <BounceCard title="It tops up your loan." color="orange" className="col-span-12 md:col-span-7">
+              <BounceCard title="It pays down your loan." color="orange" className="col-span-12 md:col-span-7">
                 <p className="figure text-[4.2rem]">+${savedUsd}</p>
-                <p className="mt-2 max-w-[44ch] text-[1.15rem] font-semibold leading-snug">of the owner's own savings went into the loan, {saved.at - pushed.at} seconds after the danger. A real save on Nov 18.</p>
+                <p className="mt-2 max-w-[44ch] text-[1.15rem] font-semibold leading-snug">of the owner's own savings paid the loan down, {saved.at - pushed.at} seconds after the danger. A real save on Nov 18.</p>
               </BounceCard>
               <BounceCard title="It gives the money back." color="green" className="col-span-12 md:col-span-7">
                 <p className="figure text-[4.2rem]">${backUsd}</p>
@@ -221,7 +225,7 @@ export function Landing() {
               <CrashCard replay={replay} />
             </Section>
             {/* "Watch a real save" lands on the replay itself, so the whole card is on screen */}
-            <Section step="2" title={<>Airbag tops up the loan <span className="accent">before that happens.</span></>} lead="Your spare dollars wait in a savings account, earning interest. When the danger gets too high, Airbag moves some into the loan. Later it moves them back.">
+            <Section step="2" title={<>Airbag pays the loan down <span className="accent">before that happens.</span></>} lead="Your spare dollars wait in a savings account, earning interest. When the danger gets too high, Airbag pays back part of the loan with them. A smaller loan means bitcoin must fall much further before yours is sold. Later it puts the dollars back.">
               <SaveReplay id="save" />
             </Section>
           </div>
@@ -229,7 +233,7 @@ export function Landing() {
           {/* 5. In depth: Gemini's prediction market */}
           <Section id="gemini" step="3" title={<>The danger is read from <span className="accent">Gemini's market.</span></>} lead="On Gemini, people bet real money on where bitcoin will be on a date. Those prices are odds. Airbag checks the loan against them every 5 seconds.">
             <div className="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[0.85fr_1.15fr]">
-              <GeminiMarketCard event={event} spot={spot} />
+              <GeminiMarketCard event={event} spot={spot} feed={feed} />
               <ol className="space-y-8 border-l border-line pl-7">
                 {([
                   ["Gemini lists the bets.", "Will bitcoin be at this price or above on the date? People buy Yes or No with real money."],
@@ -247,7 +251,7 @@ export function Landing() {
             <div className="mt-10 grid gap-4">
               <LadderCard ladders={ladders} reading={reading} limit={status?.limit} />
               {status && <OverTime history={history} spot={spot} samples={status.samples} actions={botActions} limit={status.limit} ofWallet={false} own={own} />}
-              {status && <HedgeCard ladders={ladders} reading={reading} lltv={status.lltv} />}
+              {status && <HedgeCard ladders={ladders} reading={reading} lltv={status.lltv} feed={feed} />}
             </div>
           </Section>
 

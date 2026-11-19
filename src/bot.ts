@@ -92,10 +92,19 @@ export class Bot {
     if (this.timer) clearInterval(this.timer);
   }
 
-  /** Alarm. Only one run at a time: a timer alarm during a run is skipped; news (webhook, stream) re-runs once after. */
-  wake(reason: string, detail?: string) {
+  /**
+   * Alarm. Only one run at a time: a timer alarm during a run is skipped; news (webhook, stream) re-runs once after.
+   *   quiet       do not write it to the log (Gemini's live feed wakes the bot many times a minute)
+   *   resetTimer  count the seconds to the next timer check from now, so this check replaces one instead of
+   *               adding one (the chain is not read more often because the market is busy)
+   */
+  wake(reason: string, detail?: string, opts: { quiet?: boolean; resetTimer?: boolean } = {}) {
     this.lastWake = { reason, at: Date.now() };
-    if (reason !== "timer") {
+    if (opts.resetTimer && this.timer) {
+      clearInterval(this.timer);
+      this.timer = setInterval(() => this.wake("timer"), this.cfg.tickSeconds * 1000);
+    }
+    if (reason !== "timer" && !opts.quiet) {
       const key = reason + (detail ?? "");
       const prev = this.lastWakeLog.get(key) ?? 0;
       if (Date.now() - prev > 10_000 && reason !== "start" && !reason.startsWith("re-read")) {

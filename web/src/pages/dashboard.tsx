@@ -1,20 +1,24 @@
 // The app. Two screens: the live demo (a loan Airbag is guarding right now) and my loan (do it with your own
-// wallet). How the number is made and what happens on Arc are explained on the first page, not here.
+// wallet). Under each loan, one strip shows how its number is being made right now from Gemini's live feed.
+// The longer explanation, and what happens on Arc, are on the first page.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePressed } from "@/lib/use-pressed";
 import { Wallet } from "lucide-react";
-import { useStatus } from "@/lib/api";
+import { useLadders, useStatus } from "@/lib/api";
+import { symbolsOf, useGeminiFeed } from "@/lib/gemini-feed";
 import { short } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useWallet } from "@/wallet/use-wallet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { MetalButton } from "@/components/ui/cta";
+import { ArcNotes, ArcNow } from "@/components/arc-now";
 import { Wordmark } from "@/components/bits";
 import { DemoDrawer, useDemoDrawer } from "@/components/demo-drawer";
 import { LoanCards } from "@/components/loan-cards";
-import { Facts, Moves } from "@/components/loan-parts";
+import { Moves } from "@/components/loan-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { BotBadge, ModeBadge } from "@/components/top-bar";
-import { Wizard } from "@/components/wizard";
+import { WalletLookup, Wizard } from "@/components/wizard";
 
 const SCREENS = [
   { value: "demo", label: "Live demo" },
@@ -28,6 +32,9 @@ const LINK = "font-semibold text-ink underline decoration-current/30 underline-o
 
 export function Dashboard() {
   const { data: status, error } = useStatus();
+  // Gemini's market: the ladders the bot reads (every 20 s), and Gemini's own live feed for the same bets
+  const { data: ladders } = useLadders();
+  const feed = useGeminiFeed(symbolsOf(ladders));
   const wallet = useWallet();
   const demo = useDemoDrawer(status);
   const [screen, setScreen] = useState(screenFromHash);
@@ -78,12 +85,39 @@ export function Dashboard() {
       : { reading: W.reading, samples: wallet.samples }
     : null;
 
-  // After "Push it to the edge" or "Calm it down" in the steps, bring the wallet's own loan into view:
-  // that is where the number turns red and Airbag answers, and nobody should have to hunt for it.
+  // Once a wallet's loan is on screen and nothing is left to set up (it is protected, or it is only being looked
+  // at), the steps fold into a slim bar and the loan gets the whole screen: chance, price, money, and how the
+  // number is made, without scrolling on a wide screen.
+  const guarded = !!W && (W.protectedHere || !!W.reading?.protected || !!W.protection.guard);
+  const cockpit = !!W && !!own && !!W.loan && (guarded || !wallet.canSign);
+  // Airbag acts through this loan's own guard (the server's own guard for the loan the bot itself protects)
+  const ownGuard = W?.protection.guard
+    ? { address: W.protection.guard.address, capUsdc: W.protection.guard.capUsdc }
+    : W?.protectedHere && status?.custody?.guard
+      ? { address: status.custody.guard, capUsdc: status.custody.guardDailyCapUsdc }
+      : null;
+  // What the QuickNode Stream reported about this loan. A connected wallet's deliveries are not marked with the
+  // wallet, so they are only shown when this is the one connected wallet the bot protects, or when the
+  // transaction is one of this loan's own moves.
+  const ownStream = useMemo(() => {
+    if (!status || !W) return [];
+    if (W.protectedHere) return status.stream.filter((e) => e.kind.startsWith("our loan: "));
+    const loans = status.protector.loans;
+    const only = loans.length === 1 && loans[0].owner.toLowerCase() === W.address.toLowerCase();
+    const txs = new Set(ownLog.flatMap((e) => (e.txs ?? []).map((t) => t.hash?.toLowerCase())));
+    return status.stream.filter((e) => e.kind.startsWith("connected wallet: ") && (only || (!!e.tx && txs.has(e.tx.toLowerCase()))));
+  }, [status, W, ownLog]);
+
+  // After "Push it to the edge" or "Calm it down", bring the wallet's own loan into view: that is where the
+  // number turns red and Airbag answers, and nobody should have to hunt for it.
   const ownRef = useRef<HTMLElement>(null);
   const lastStep = wallet.steps[wallet.steps.length - 1];
   useEffect(() => {
-    if (lastStep?.state === "done" && /^(Pushed|Calmer)\./.test(lastStep.text)) ownRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (lastStep?.state !== "done" || !/^(Pushed|Calmer)\./.test(lastStep.text)) return;
+    if (cockpit) scrollTo({ top: 0, behavior: "smooth" });            // the bar and the whole loan are one screen
+    else ownRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // only a newly finished step moves the page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastStep?.id, lastStep?.state, lastStep?.text]);
 
   // A demo button was pressed: say so on the big number at once, and bring the number into view.
@@ -142,9 +176,15 @@ export function Dashboard() {
                   samples={status.samples}
                   actions={botActions}
                   pending={pressed.pending}
-                  footer={<a href="/#gemini" className="underline decoration-on-panel-faint/60 underline-offset-[3px] hover:decoration-on-panel">Where does this number come from?</a>}
+                  footer={<a href="#made" onClick={(e) => { e.preventDefault(); document.getElementById("made")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="underline decoration-on-panel-faint/60 underline-offset-[3px] hover:decoration-on-panel">Where does this number come from?</a>}
+                  made={{ ladders, feed, id: "made" }}
                 />
-                <Facts reading={status.reading} />
+                <ArcNow
+                  status={status}
+                  reading={status.reading}
+                  guard={status.custody?.guard ? { address: status.custody.guard, capUsdc: status.custody.guardDailyCapUsdc } : null}
+                  stream={status.stream.filter((e) => e.kind.startsWith("our loan: "))}
+                />
                 <Moves log={botLog} empty="Nothing yet. It is watching." />
                 <p className="px-1 pt-2 text-[16px] text-ink-2">
                   {live ? <>Want to see it act? <a href="/#save" className={LINK}>Watch a real save, replayed</a>, or </> : !demo.open ? <><button type="button" onClick={() => demo.setOpen(true)} className={LINK}>Show the push button</button>, or </> : <>Got a wallet? </>}
@@ -155,23 +195,41 @@ export function Dashboard() {
 
             {screen === "mine" && (
               <>
-                <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3 pb-2 pt-3 sm:pt-6">
-                  <h1 className="display max-w-[18ch] text-[clamp(2rem,4.4vw,3.2rem)] text-ink">Protect <span className="accent">your own loan.</span></h1>
-                  <span className="pb-1"><ModeBadge status={status} /></span>
-                </div>
-                <Wizard wallet={wallet} status={status} />
+                {/* with a loan on screen and nothing left to set up, the slim bar is the heading (components/wizard.tsx) */}
+                {!cockpit && (
+                  <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3 pb-2 pt-3 sm:pt-6">
+                    <h1 className="display max-w-[18ch] text-[clamp(2rem,4.4vw,3.2rem)] text-ink">Protect <span className="accent">your own loan.</span></h1>
+                    <span className="pb-1"><ModeBadge status={status} /></span>
+                  </div>
+                )}
+                <Wizard wallet={wallet} status={status} compact={cockpit} />
                 {W && own && (
-                  <section ref={ownRef} aria-labelledby="own-loan" className="grid scroll-mt-24 gap-3 pt-8">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 pb-1">
-                      <h2 id="own-loan" className="display text-[clamp(1.7rem,3.4vw,2.4rem)] text-ink">{mine ? "Your loan" : `The loan of ${short(W.address)}`}</h2>
-                      <p className="text-[15px] text-ink-2" role="status">{W.protectedHere || W.reading?.protected ? "Airbag is protecting it." : "Not protected yet."}</p>
-                    </div>
-                    {/* a new wallet starts with a clean chart */}
-                    <LoanCards key={who ?? "bot"} status={status} reading={own.reading} samples={own.samples} actions={ownActions} />
-                    <Facts reading={own.reading} />
+                  <section ref={ownRef} aria-labelledby={cockpit ? undefined : "own-loan"} aria-label={cockpit ? "The loan" : undefined} className={cn("grid scroll-mt-24 gap-3", !cockpit && "pt-8")}>
+                    {!cockpit && (
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 pb-1">
+                        <h2 id="own-loan" className="display text-[clamp(1.7rem,3.4vw,2.4rem)] text-ink">{mine ? "Your loan" : `The loan of ${short(W.address)}`}</h2>
+                        <p className="text-[15px] text-ink-2" role="status">{guarded ? "Airbag is protecting it." : "Not protected yet."}</p>
+                      </div>
+                    )}
+                    {/* a new wallet starts with a clean chart. Beside the two charts: the money on Arc. Under them: how the number is made. */}
+                    <LoanCards
+                      key={who ?? "bot"}
+                      status={status}
+                      reading={own.reading}
+                      samples={own.samples}
+                      actions={ownActions}
+                      made={{ ladders, feed }}
+                      aside={<ArcNow tight status={status} reading={own.reading} wallet={{ address: W.address, usdc: W.usdc }} mine={mine} />}
+                    />
+                    {(ownGuard || ownStream.length > 0) && status.explorer && (
+                      <div className="rounded-[22px] border border-panel-line bg-panel px-6 py-4">
+                        <ArcNotes status={status} guard={ownGuard} stream={ownStream} mine={mine} max={4} />
+                      </div>
+                    )}
                     <Moves log={ownLog} empty="Nothing yet for this loan." />
                   </section>
                 )}
+                {cockpit && <WalletLookup wallet={wallet} />}
               </>
             )}
           </main>

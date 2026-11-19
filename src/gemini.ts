@@ -53,14 +53,26 @@ export class GeminiOdds {
   private inflight: Promise<OddsSnapshot> | null = null;
   private discovered: { at: number; tickers: string[] } | null = null;
   private spotCache: { at: number; price: number } | null = null;
+  private stale = false;
 
   constructor(private configured: string[]) {}
 
   /** The odds model from the configured ladders (or discovered ones), cached for ~20 s. Never throws. */
   async get(): Promise<OddsSnapshot> {
-    if (this.cache && Date.now() - this.cache.fetchedAt < LADDER_TTL_MS) return this.cache;
-    if (!this.inflight) this.inflight = this.refresh().finally(() => (this.inflight = null));
+    if (this.cache && !this.stale && Date.now() - this.cache.fetchedAt < LADDER_TTL_MS) return this.cache;
+    if (!this.inflight) {
+      this.stale = false;
+      this.inflight = this.refresh().finally(() => (this.inflight = null));
+    }
     return this.inflight;
+  }
+
+  /**
+   * Gemini's live feed says a price moved: the next get() reads the ladders again instead of answering from
+   * the last 20 s. (A read that is already on its way is let finish; the one after it is fresh.)
+   */
+  expire() {
+    this.stale = true;
   }
 
   private async tickers(): Promise<string[]> {

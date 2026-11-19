@@ -1,4 +1,6 @@
 // "Try it with your own wallet": four steps, one on screen at a time, with a bar showing where you are.
+// Once the wallet is set up (or is only being looked at) and its loan is on screen, the steps fold into one slim
+// bar with the two buttons, so the whole loan can be read without scrolling. The steps are one click away.
 // Every transaction is prepared by the server and signed in the visitor's own wallet
 // (src/wallet/core.js does that part, unchanged from the classic page).
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +11,12 @@ import { cn } from "@/lib/utils";
 import { LIVE_URL } from "@/recorded/proof";
 import { recall } from "@/wallet/core";
 import type { WalletApi } from "@/wallet/use-wallet";
-import { Button, Card, ExplorerLink, Panel } from "./bits";
+import { Button, Card, ExplorerLink, Panel, StatusPill } from "./bits";
+import { MetalButton, ShinyButton } from "./ui/cta";
+
+// what the page says once the wallet has signed: the app's screen listens for these two (pages/dashboard.tsx)
+const PUSHED = "Pushed. Now keep your hands off and watch the bot.";
+const CALMER = "Calmer. The bot gives your savings back by itself when it is safe to.";
 
 const FIELDS = ["collateral", "borrow", "save", "cap"] as const;
 type Field = (typeof FIELDS)[number];
@@ -41,14 +48,21 @@ function Progress({ done, current, onPick }: { done: boolean[]; current: number;
   );
 }
 
-export function Wizard({ wallet, status }: { wallet: WalletApi; status: Status }) {
+export function Wizard({ wallet, status, compact }: { wallet: WalletApi; status: Status; /** The wallet's loan is on screen and there is nothing left to set up: show the slim bar. */ compact?: boolean }) {
   const v = wallet.view;
   const explorer = v?.explorer ?? "https://explorer.testnet.arc.io";
-  const [paste, setPaste] = useState("");
+  // the full steps, asked for from the slim bar
+  const [steps, setSteps] = useState(false);
 
+  if (compact && v && wallet.address && !steps) return <Controls wallet={wallet} v={v} explorer={explorer} onSteps={() => setSteps(true)} />;
   return (
     <div className="grid gap-3">
       <Panel aria-label="Try it with your own wallet">
+        {compact && (
+          <div className="-mt-2 mb-4 flex justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setSteps(false)}><X aria-hidden="true" className="size-4" /> Hide the steps</Button>
+          </div>
+        )}
         {!wallet.address ? (
           <>
             <Progress done={[false, false, false, false]} current={-1} />
@@ -77,18 +91,94 @@ export function Wizard({ wallet, status }: { wallet: WalletApi; status: Status }
           <p role="status" className="py-16 text-center text-on-panel-2">{wallet.note || "Reading Arc Testnet…"}</p>
         )}
       </Panel>
-
-      <Card className="flex flex-wrap items-center gap-x-4 gap-y-3 p-5">
-        <form className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-3 sm:basis-0" onSubmit={(e) => { e.preventDefault(); if (wallet.lookup(paste.trim())) setPaste(""); }}>
-          <label htmlFor="wallet-paste" className="text-[15px] text-ink-2">No wallet? Look at any address</label>
-          <input id="wallet-paste" value={paste} onChange={(e) => setPaste(e.target.value)} spellCheck={false} autoComplete="off" placeholder="0x…" className="mono min-w-0 flex-1 basis-40 rounded-full border border-line bg-page px-4 py-2.5 text-ink placeholder:text-faint" />
-          <Button type="submit" variant="ink" size="sm">Look</Button>
-        </form>
-        {wallet.address && (
-          <Button variant="outline" size="sm" onClick={wallet.disconnect}><X aria-hidden="true" className="size-4" /> {wallet.how === "connected" ? "Disconnect" : "Close"}</Button>
-        )}
-      </Card>
+      {!compact && <WalletLookup wallet={wallet} />}
     </div>
+  );
+}
+
+/** Look at any wallet without connecting one, and the way out of the wallet on screen. */
+export function WalletLookup({ wallet }: { wallet: WalletApi }) {
+  const [paste, setPaste] = useState("");
+  return (
+    <Card className="flex flex-wrap items-center gap-x-4 gap-y-3 p-5">
+      <form className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-3 sm:basis-0" onSubmit={(e) => { e.preventDefault(); if (wallet.lookup(paste.trim())) setPaste(""); }}>
+        <label htmlFor="wallet-paste" className="text-[15px] text-ink-2">{wallet.address ? "Look at another address" : "No wallet? Look at any address"}</label>
+        <input id="wallet-paste" value={paste} onChange={(e) => setPaste(e.target.value)} spellCheck={false} autoComplete="off" placeholder="0x…" className="mono min-w-0 flex-1 basis-40 rounded-full border border-line bg-page px-4 py-2.5 text-ink placeholder:text-faint" />
+        <Button type="submit" variant="ink" size="sm">Look</Button>
+      </form>
+      {wallet.address && (
+        <Button variant="outline" size="sm" onClick={wallet.disconnect}><X aria-hidden="true" className="size-4" /> {wallet.how === "connected" ? "Disconnect" : "Close"}</Button>
+      )}
+    </Card>
+  );
+}
+
+/** What the wallet is signing or has signed, newest last. */
+function StepLog({ wallet, explorer, className }: { wallet: WalletApi; explorer: string; className?: string }) {
+  if (!wallet.steps.length) return null;
+  return (
+    <ol aria-live="polite" className={cn("space-y-2.5 rounded-3xl border border-panel-line bg-panel-2 p-6 text-[1.05rem]", className)}>
+      {wallet.steps.map((s) => (
+        <li key={s.id} className={cn("flex items-start gap-3", s.state === "done" ? "text-on-panel" : s.state === "failed" ? "text-[#ff8a80]" : "text-on-panel-2")}>
+          <span className="mt-1 shrink-0" aria-hidden="true">
+            {s.state === "done" ? <Check className="size-5 text-good" strokeWidth={3} /> : s.state === "failed" ? <X className="size-5" /> : s.state === "info" ? <span className="block size-5" /> : <Loader className="size-5 animate-spin text-brand" />}
+          </span>
+          <span className="min-w-0">
+            {s.text}
+            {s.hash && (
+              <a href={`${explorer}/tx/${s.hash}`} target="_blank" rel="noopener" className="ml-2 inline-flex items-center gap-0.5 text-[15px] underline decoration-current/40 underline-offset-[3px]">
+                see it<ArrowUpRight aria-hidden="true" className="size-3.5" />
+              </a>
+            )}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * The slim bar, which is also the screen's heading: whose loan this is, whether Airbag protects it, and the two
+ * things left to do with a protected loan: push it to the edge, and calm it down. The same calls as step 4.
+ */
+function Controls({ wallet, v, explorer, onSteps }: { wallet: WalletApi; v: WalletView; explorer: string; onSteps(): void }) {
+  const guard = v.protection.guard;
+  const signer = wallet.canSign, busy = wallet.busy;
+  const mine = wallet.how === "connected";
+  const guarded = !!guard || v.protectedHere || !!v.reading?.protected;
+  const noSavings = v.savings < 0.01 && (guard?.inLoan ?? 0) <= 0;
+  return (
+    <section aria-labelledby="loan-title" className="rounded-[26px] border border-panel-line bg-panel px-5 py-4 text-on-panel shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_24px_48px_-30px_rgb(0_0_0/0.45)] sm:px-6">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <h1 id="loan-title" className="display text-[1.75rem] text-on-panel">{mine ? "Your loan" : "A loan, looked up"}</h1>
+        <span role="status"><StatusPill tone={guarded ? "good" : "neutral"} small>{guarded ? "Airbag is protecting it" : "Not protected yet"}</StatusPill></span>
+        <p className="min-w-0 text-[14px] text-on-panel-faint">
+          {mine ? `${wallet.walletName} · ` : ""}
+          <ExplorerLink explorer={explorer} kind="address" id={v.address} className="text-on-panel-2" />
+          {noSavings ? " · no savings ready" : ""}
+        </p>
+        <div className="flex flex-wrap items-center gap-2.5 sm:ml-auto">
+          {signer && guard ? (
+            <>
+              <ShinyButton small disabled={busy} onClick={() => wallet.run("push", {}, PUSHED)}>Push it to the edge</ShinyButton>
+              <MetalButton small disabled={busy} onClick={() => wallet.run("calm", {}, CALMER)}>Calm it down</MetalButton>
+            </>
+          ) : !signer ? (
+            <span className="text-[14px] text-on-panel-faint">Read-only. Connect this wallet to act.</span>
+          ) : null}
+          <Button variant="ghost" size="sm" onClick={onSteps}>{signer ? "The steps" : "Details"}</Button>
+          <Button variant="ghost" size="sm" onClick={wallet.disconnect}>{wallet.how === "connected" ? "Disconnect" : "Close"}</Button>
+        </div>
+      </div>
+      {signer && guard && wallet.steps.length === 0 && (
+        <p className="mt-2.5 text-[13.5px] leading-snug text-on-panel-faint">
+          {guard.inLoan > 0 ? `${usdc(guard.inLoan)} USDC of your savings is in the loan now. It comes back when things are calm. ` : ""}
+          Push it, then hands off: the number turns red, and Airbag answers by itself.
+        </p>
+      )}
+      <StepLog wallet={wallet} explorer={explorer} className="mt-3.5 p-4 text-[1rem]" />
+      {wallet.note && <p role="status" className="mt-2.5 text-[14.5px] text-on-panel-2">{wallet.note}</p>}
+    </section>
   );
 }
 
@@ -195,8 +285,8 @@ function Steps({ wallet, v, status, explorer }: { wallet: WalletApi; v: WalletVi
     body = guard ? (
       <div className="space-y-4">
         <div className="flex flex-wrap gap-3">
-          <Button variant="danger" size="lg" disabled={busy} onClick={() => wallet.run("push", {}, "Pushed. Now keep your hands off and watch the bot.")}>Push it to the edge</Button>
-          <Button size="lg" disabled={busy} onClick={() => wallet.run("calm", {}, "Calmer. The bot gives your savings back by itself when it is safe to.")}>Calm it down</Button>
+          <Button variant="danger" size="lg" disabled={busy} onClick={() => wallet.run("push", {}, PUSHED)}>Push it to the edge</Button>
+          <Button size="lg" disabled={busy} onClick={() => wallet.run("calm", {}, CALMER)}>Calm it down</Button>
         </div>
         <p className="text-[15px] text-on-panel-faint">
           {guard.inLoan > 0 ? `${usdc(guard.inLoan)} USDC of your savings is in the loan now. It comes back when things are calm. ` : ""}
@@ -239,25 +329,7 @@ function Steps({ wallet, v, status, explorer }: { wallet: WalletApi; v: WalletVi
         </dl>
       </div>
 
-      {wallet.steps.length > 0 && (
-        <ol aria-live="polite" className="mt-8 space-y-2.5 rounded-3xl border border-panel-line bg-panel-2 p-6 text-[1.05rem]">
-          {wallet.steps.map((s) => (
-            <li key={s.id} className={cn("flex items-start gap-3", s.state === "done" ? "text-on-panel" : s.state === "failed" ? "text-[#ff8a80]" : "text-on-panel-2")}>
-              <span className="mt-1 shrink-0" aria-hidden="true">
-                {s.state === "done" ? <Check className="size-5 text-good" strokeWidth={3} /> : s.state === "failed" ? <X className="size-5" /> : s.state === "info" ? <span className="block size-5" /> : <Loader className="size-5 animate-spin text-brand" />}
-              </span>
-              <span className="min-w-0">
-                {s.text}
-                {s.hash && (
-                  <a href={`${explorer}/tx/${s.hash}`} target="_blank" rel="noopener" className="ml-2 inline-flex items-center gap-0.5 text-[15px] underline decoration-current/40 underline-offset-[3px]">
-                    see it<ArrowUpRight aria-hidden="true" className="size-3.5" />
-                  </a>
-                )}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
+      <StepLog wallet={wallet} explorer={explorer} className="mt-8" />
 
       {signer && (
         <p className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-on-panel-faint">

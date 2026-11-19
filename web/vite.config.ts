@@ -10,9 +10,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 // serves as plain files, and is committed. So the server (and Render) never needs anything in this folder.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  // @brain is the bot's own odds maths, @hedge the hedge quote and @history the market's candles (all dependency-free), so the page computes
+  // @brain is the bot's own odds maths, @hedge the hedge quote, @history the market's candles and @live Gemini's live feed (all dependency-free), so the page computes
   // with the very same functions as the server and the tests
-  resolve: { alias: { "@brain": resolve(here, "../src/brain.mjs"), "@hedge": resolve(here, "../src/hedge.mjs"), "@history": resolve(here, "../src/market-history.mjs"), "@": resolve(here, "src") } },
+  resolve: { alias: { "@brain": resolve(here, "../src/brain.mjs"), "@hedge": resolve(here, "../src/hedge.mjs"), "@history": resolve(here, "../src/market-history.mjs"), "@live": resolve(here, "../src/gemini-live.mjs"), "@": resolve(here, "src") } },
   publicDir: false,
   build: {
     outDir: resolve(here, "../public"),

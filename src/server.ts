@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { config } from "./config.js";
 import { makeArc } from "./arc.js";
 import { GeminiOdds } from "./gemini.js";
+import { GeminiFeed } from "./gemini-feed.js";
 import { Store, type StreamEvent } from "./state.js";
 import { Bot, ladderStatus } from "./bot.js";
 import { RULE, health as healthOf } from "./brain.mjs";
@@ -97,6 +98,7 @@ app.get("/api/status", (_req, res) => {
       lastWake: bot.lastWake,
       lastError: bot.lastError,
       geminiError: bot.geminiError,
+      geminiFeed: feed.summary(),
       tickSeconds: config.tickSeconds,
       cooldownLeftMs: bot.cooldownLeftMs,
     },
@@ -151,6 +153,32 @@ async function extrasOf(ticker: string): Promise<EventExtras> {
     return hit ?? { bets: [], url: null };
   }
 }
+// ---- Gemini's live feed wakes the bot the moment the market moves (src/gemini-feed.ts). It only says WHEN to
+// look: the bot then reads the ladders again over REST and decides as always. A move is acted on 1.5 s after
+// it is heard (a quote that flickers and comes back is not chased), and at most once every 4 s. Each such
+// check restarts the bot's own 5 s timer, so a busy market does not make it read the chain more often.
+const FEED_SETTLE_MS = 1500, FEED_EVERY_MS = 4000;
+let feedTimer: NodeJS.Timeout | null = null, feedWokeAt = 0;
+const feed = new GeminiFeed(() => {
+  if (feedTimer) return;
+  feedTimer = setTimeout(() => {
+    feedTimer = null;
+    feedWokeAt = Date.now();
+    gemini.expire();
+    bot.wake("Gemini's live feed", undefined, { quiet: true, resetTimer: true });
+  }, Math.max(FEED_SETTLE_MS, feedWokeAt + FEED_EVERY_MS - Date.now()));
+  feedTimer.unref?.();
+});
+/** Point the feed at every bet of the ladders the bot reads. Asked again every few minutes: ladders expire and new ones appear. */
+async function watchFeed() {
+  if (!config.geminiFeed) return;
+  try {
+    const snap = await gemini.get();
+    const extras = await Promise.all(snap.events.map((e) => extrasOf(e.ticker)));
+    feed.watch(extras.flatMap((x) => x.bets.map((b) => b.symbol)));
+  } catch { /* Gemini did not answer: the bot goes on reading every 20 s, and this is tried again */ }
+}
+
 app.get("/api/ladders", async (_req, res) => {
   const [snap, spot] = await Promise.all([gemini.get(), gemini.spot()]);
   res.json({
@@ -414,12 +442,15 @@ const server = app.listen(config.port, () => {
   console.log(`Airbag dashboard: http://localhost:${config.port}  (mode: ${config.mode})`);
   bot.start();
   protector.start();
+  void watchFeed();
+  setInterval(() => void watchFeed(), 5 * 60_000).unref();
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const)
   process.on(sig, () => {
     bot.stop();
     protector.stop();
+    feed.stop();
     store.flush();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 1500).unref();

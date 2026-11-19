@@ -14,7 +14,8 @@ Airbag protects a bitcoin-backed USDC loan on Arc Testnet.
 **Status:**
 - Works live on Arc Testnet: open loan, savings round trip, a bot save and a bot give-back. The transaction links are in README "Live proof".
 - The Borrow Kit webhook works through a Cloudflare tunnel.
-- The QuickNode Stream `airbag-arc-testnet` delivers our loan's and wallet's activity to `/api/stream`. Verified live.
+- The QuickNode Stream `airbag-arc-testnet` delivers our loan's and wallet's activity to `/api/stream`. Verified live. A second Stream, `airbag`, delivers to the hosted bot at `https://airbagged.me/api/stream` (since Nov 19, 2026).
+- Gemini's live feed (a public WebSocket) wakes the bot when a bet's price moves, and the page shows the number being made from it. Seen in the simulator; not on the hosted bot yet.
 
 ## Quick start
 
@@ -41,6 +42,7 @@ npm run sim                     # http://localhost:3000 (landing) and /app/ (the
 
 ```
 timer (5 s) ────────┐
+Gemini live feed ───┤
 Borrow Kit webhook ─┼─> bot.ts: read -> decide -> act -> log ──> the page (web/ built into public/, polls /api/status)
 QuickNode Stream ───┤        │        │         │
 demo buttons ───────┘        │        │         └─ Circle App Kit: earn.withdraw -> borrow.repay   (save)
@@ -64,6 +66,8 @@ demo buttons ───────┘        │        │         └─ Circl
 |---|---|
 | `src/brain.mjs` | Pure logic, no dependencies: ladder → odds, estimated tail, worse-of-ladders, `decide()`. Types in `brain.d.mts`: keep the two in sync. |
 | `src/gemini.ts` | Ladders (cached 20 s), discovering new BTC ladders when ours expire, live BTC price. |
+| `src/gemini-live.mjs` | Pure logic for Gemini's LIVE feed (`wss://ws.gemini.com`): what a message means, a bet's chance from its bid and ask (the same way `brain.mjs` reads REST), laying the feed's prices over a ladder, the price of a "No". Shared by the server, the page and the tests. Types in `gemini-live.d.mts`. |
+| `src/gemini-feed.ts` | The server's socket to that feed. It only says WHEN to look: on a price move the kept ladders are thrown away and the bot is woken, then it reads REST and decides as always. Settles 1.5 s, at most every 4 s, restarts the bot's 5 s timer. `GEMINI_FEED=false` turns it off. |
 | `src/hedge.mjs` | Pure logic for the hedge QUOTE in the landing page's Gemini part: Gemini's price to buy "No" on a bet, and Morpho's sell-off penalty. Read-only: nothing places an order. Types in `hedge.d.mts`. |
 | `src/market-history.mjs` | Pure logic for the market-over-time chart: Gemini's hourly candles for a bet → points, and which bets are worth drawing. Types in `market-history.d.mts`. |
 | `src/arc.ts` | `LiveArc` (Circle App Kit + viem reads) and `SimArc` (in-memory twin). Every money move goes through here. |
@@ -72,7 +76,7 @@ demo buttons ───────┘        │        │         └─ Circl
 | `src/state.ts` | `data/state.<mode>.json`: log, odds samples, `inLoan`, money moved (for the cap). |
 | `src/clock.ts` | Corrects a fast or slow local clock against Arc block time. |
 | `src/config.ts` | All `.env` settings (documented in `.env.example`). |
-| `web/` | The page's source: React + Vite + Tailwind, with its own `package.json`. `/` is the landing page (a walk-through that also explains the Gemini odds and the Arc contracts in depth), `/app/` is the app (two screens: Live demo, My loan). Charts are built on tweenly's chart kit (MIT, see `web/THIRD-PARTY.md`). |
+| `web/` | The page's source: React + Vite + Tailwind, with its own `package.json`. `/` is the landing page (a walk-through that also explains the Gemini odds and the Arc contracts in depth), `/app/` is the app (two screens: Live demo, My loan). Both app screens show a loan as two charts, `ArcNow` (the money on Arc, with Arc's block counted live from its public RPC) and `LiveOdds` (how the number is made right now from Gemini's live feed, `web/src/lib/gemini-feed.ts`). Charts are built on tweenly's chart kit (MIT, see `web/THIRD-PARTY.md`). |
 | `public/` | What the server serves. `index.html`, `app/`, `assets/` and `build.json` are BUILT from `web/`: never edit them by hand. `classic/` is the old plain page, kept as a fallback at `/classic/`. |
 | `scripts/` | Wallet, open loan, round trip, deposit, odds, webhook, tunnel. |
 | `replay/` | The Feb 2026 crash replay, using the same `decide()`. |
@@ -169,6 +173,14 @@ Read these before touching `src/arc.ts`.
     - Use that link for anything with Connect wallet. The simulator needs no wallet, so its `onrender.com` link is fine.
 15. **Arc's public RPC limits log searches.** `eth_getLogs` over 10,000 blocks is refused (`requested range too large`); 5,000 is answered. Twenty searches in 7 seconds, four at a time, got `Request exceeds defined limit`. One at a time with a short pause, ten per pass, went through. `src/guard-search.mjs` works that way.
 16. **The hosted bot forgets connected wallets on every restart** and has to find their guards again. Every push to `main` and every wake-up from sleep is a restart. Before a live push from a connected wallet, check that the page says protection is on.
+17. **Gemini's live feed** (found and measured Nov 19, 2026).
+    - `wss://ws.gemini.com`, public, no key. Send `{ id, method: "SUBSCRIBE", params: ["<bet>@bookTicker", "<bet>@trade"] }`; the reply is `{ id, status: 200 }`. One message took all 33 bets of both ladders (66 streams), and every bet answered at once with its current prices.
+    - A quote is `{ s, b, B, a, A, c, C }`: the symbol in LOWER case, best bid and ask of "Yes" as text (`"0.8400"`), their sizes, and the last trade. An empty text means nobody quotes that side: it is not zero.
+    - Its bid and ask equalled REST's `prices.bestBid` and `bestAsk` for all 33 bets. REST's `prices.buy.no` is 1 minus the best bid; with no bid it falls back to 1 minus the last trade, which nobody is actually selling at.
+    - Gemini closes a socket that does not answer its pings for 60 s. Node's built-in `WebSocket` and browsers answer by themselves: a Node connection was still open after 100 s.
+    - It works from a browser page too, and so does Arc's public RPC (`eth_getBlockByNumber` from the page: that is the live block number in `ArcNow`).
+    - No trade happened while we listened (25 minutes on both ladders, 12,606 price updates), so `readMessage`'s trade branch follows Gemini's documentation, not a recording.
+18. **Gemini's sandbox lists prediction markets.** `https://api.sandbox.gemini.com/v1/prediction-markets/events/<ticker>` answered on Nov 19, 2026 with the same events and its own, nearly empty, order book. Our earlier notes said the sandbox does not cover them. Placing a test order there (`POST /v1/prediction-markets/order`: `symbol`, `orderType`, `side`, `outcome`, `quantity`, `price`, `timeInForce`) needs a sandbox account and a Trader key. Not tried.
 
 ## Code conventions
 
@@ -194,7 +206,10 @@ Read these before touching `src/arc.ts`.
 ## What's left
 
 - [ ] **Confirm on the hosted bot that it finds guards by itself after a restart.** On Nov 19, 2026 it did not: 12 minutes after a restart `protector.loans` was still empty (the explorer's `getLogs` answered the same search from another machine at once), and the wallet was only watched again when its owner opened the page (`use-wallet.ts` posts the remembered guard to `/api/protect`). Since then the bot also searches Arc's RPC itself (`src/guard-search.mjs`, `discoverOnChain()` in `src/protector.ts`). To confirm: after a restart, `GET /api/status` should list the test wallet's guard under `protector.loans` within a minute, with nobody opening the page. If the explorer search still fails, the service's log says `[protector] could not search for guards`.
-- [ ] **See a Stream delivery wake the check for a connected wallet, live.** Since Nov 19, 2026 `/api/stream` also calls `protector.wake()`. Tested with unit tests only. To see it: Stream pointed at `https://airbagged.me/api/stream`, then one push from a connected wallet. The save should follow within a few seconds, and the page's bot line should say "woken by QuickNode Stream".
+- [x] **A Stream delivery about a connected wallet, live.** Nov 19, 2026, 01:29 UTC on https://airbagged.me: the push from the third test wallet was delivered one second after it landed (`connected wallet: borrow`, block 72,941,932) and the bot's save was in block 72,941,938, 3 s after the push. Links in README "Live proof". The log shows the bot's own wake-up line; the protector writes none, so that the delivery (and not the 10 s timer) triggered the save is likely, not proven.
+- [ ] **See Gemini's live feed wake the hosted bot.** Built and seen in the simulator on Nov 19, 2026 (11 of 12 checks in 45 s were woken by it). After it is on `main`: `GET https://airbagged.me/api/status` should show `bot.geminiFeed.state` as `live`, and the page's bot line should say "woken by Gemini's live feed". If Render blocks the socket, the bot just keeps reading every 20 s.
+- [ ] **Press the buttons of the rebuilt My loan screen with a real wallet.** Since Nov 19, 2026 a set-up wallet sees one slim bar (*Push it to the edge*, *Calm it down*) above its whole loan instead of the four steps. The calls are the same as step 4's (`wallet.run("push")`, `wallet.run("calm")`), but nobody has signed from the bar yet. *The steps* opens the old steps.
+- [ ] **Optional: a real test order for the hedge.** Gemini's sandbox lists the prediction markets (lesson 18). With a sandbox account and Trader key, the hedge ticket's order could be placed there for real, with test money. Needs a person to create the account; never put a production Gemini key anywhere in this project.
 - [ ] **Keep the QuickNode Stream pointed at the live link.**
   - The Stream `airbag-arc-testnet` is created and verified.
   - Every time the tunnel restarts, paste the new `…/api/stream` URL that `npm run tunnel` prints into the Stream's destination (QuickNode → Streams → airbag-arc-testnet → Settings).

@@ -8,16 +8,20 @@ import type { LoanView } from "@/lib/loan-view";
 import { cn } from "@/lib/utils";
 import { Count, Panel, StatusPill } from "./bits";
 
-export function PriceCard({ reading, samples, view, className }: {
+export function PriceCard({ reading, samples, view, compact, className }: {
   status: Status;
   reading: Reading | null;
   samples: Sample[];
   /** What to show right now: the live reading, or a danger held on screen long enough to be seen (lib/loan-view). */
   view: LoanView;
+  /** Smaller figures and a lower chart: this card is one of several on a screen that shows a whole loan at once. */
+  compact?: boolean;
   className?: string;
 }) {
   const r = reading;
   const line = view.line ?? r?.line ?? null;
+  // the two prices shrink with the card (cqw), so they never run into each other
+  const PRICE = compact ? "text-[length:min(3.1rem,15.5cqw)]" : "text-[length:min(2.6rem,15.5cqw)] sm:text-[4.2rem]";
   const chart = useMemo(() => {
     if (!r || line == null) return null;
     let pts = samples.filter((p) => p.btc != null && p.line != null);
@@ -56,24 +60,24 @@ export function PriceCard({ reading, samples, view, className }: {
   const danger = view.danger;
 
   return (
-    <Panel className={className} aria-label="Bitcoin's price and the price where the bitcoin is lost">
+    <Panel className={cn(compact && "sm:p-6", className)} aria-label="Bitcoin's price and the price where the bitcoin is lost">
       {/* on a phone the two prices share a narrow row: they shrink with the card (cqw), so they never run into each other */}
       <div className="@container grid grid-cols-2 gap-4 sm:gap-6">
         <div>
           <p className="flex min-h-[2.6em] items-start gap-2 text-[15px] font-medium leading-snug text-on-panel-2 sm:min-h-0 sm:items-center sm:text-[16px]">
             <span aria-hidden="true" className="mt-[0.6em] h-0.5 w-4 shrink-0 rounded sm:mt-0" style={{ background: SERIES.s2 }} /> Bitcoin now
           </p>
-          <p className="figure mt-2 text-[length:min(2.6rem,15.5cqw)] text-on-panel sm:mt-3 sm:text-[4.2rem]"><Count value={r.priceUsed} format={usd} /></p>
+          <p className={cn("figure mt-2 text-on-panel", !compact && "sm:mt-3", PRICE)}><Count value={r.priceUsed} format={usd} /></p>
         </div>
         <div>
           <p className="flex min-h-[2.6em] items-start gap-2 text-[15px] font-medium leading-snug text-on-panel-2 sm:min-h-0 sm:items-center sm:text-[16px]">
             <span aria-hidden="true" className="mt-[0.6em] h-0.5 w-4 shrink-0 rounded sm:mt-0" style={{ background: SERIES.s1 }} /> You lose it below
           </p>
-          <p className={cn("figure mt-2 text-[length:min(2.6rem,15.5cqw)] sm:mt-3 sm:text-[4.2rem]", danger ? "text-[#ff6b5e]" : "text-on-panel")}><Count value={line} format={usd} /></p>
+          <p className={cn("figure mt-2", !compact && "sm:mt-3", PRICE, danger ? "text-[#ff6b5e]" : "text-on-panel")}><Count value={line} format={usd} /></p>
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className={compact ? "mt-4" : "mt-6"}>
         <XYChart
           xs={chart.xs}
           series={[{ key: "btc", label: "Bitcoin's price", color: SERIES.s2, values: chart.price }]}
@@ -91,7 +95,7 @@ export function PriceCard({ reading, samples, view, className }: {
               { label: "You lose it below", value: usd(chart.lines[i]), color: SERIES.s1 },
             ],
           })}
-          height={190}
+          height={compact ? 150 : 190}
           padRight={74}
           pulse
           hideLegend
@@ -100,7 +104,7 @@ export function PriceCard({ reading, samples, view, className }: {
         />
       </div>
 
-      <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-panel-line pt-4 text-[16px] text-on-panel">
+      <p className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-panel-line text-on-panel", compact ? "mt-auto pt-3.5 text-[15px]" : "mt-5 pt-4 text-[16px]")}>
         <StatusPill tone={danger ? "critical" : "good"} small>{danger ? "Too close" : "Room to fall"}</StatusPill>
         <span>Bitcoin can fall <strong className="font-semibold">{usd(room)}</strong> before you lose it.</span>
       </p>

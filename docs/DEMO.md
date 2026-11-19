@@ -4,6 +4,8 @@ The video is judged for the Gemini and QuickNode bounties (they don't see a live
 
 The page has two parts. `/` is the landing page, a walk-through: what it does, who it is for, then four numbered steps (1 the problem, 2 the save, 3 Gemini, 4 Arc) and the receipts. Its top bar jumps to any of them. `/app/` is the app, with two screens: **Live demo** and **My loan**.
 
+Both app screens show a loan the same way: the chance and the price as two charts, **On Arc, right now** (the money, with Arc's block number counting live), and **How this number is made, right now** (Gemini's live prices turning into the number). On My loan, once the wallet is set up, all of it fits one screen under a slim bar with the two buttons.
+
 ## Which link
 
 - **https://airbagged.me** is the live bot: a real loan on Arc Testnet. Record the video here.
@@ -13,11 +15,13 @@ The page has two parts. `/` is the landing page, a walk-through: what it does, w
 
 1. **Open https://airbagged.me once and wait for it to load.** The free server sleeps after 15 quiet minutes and takes about a minute to wake. Keep a tab open on it.
 2. **MetaMask on the "Test 2" account, on Arc Testnet.** Lock Phantom. Never sign for this project with a real wallet.
-3. **Open the app, go to My loan, press Connect wallet.** It should show step 3 done ("Protection is on") and step 4 ready, with *Your loan* under the steps.
-4. **The loan must be calm before you start.** Under *Your loan*: "Safe", and bitcoin can fall 25% or more. If not, press *Calm it down* in step 4 and wait until Airbag has given the savings back.
-5. **Savings: at least 3 USDC** (shown beside the steps). Add some in step 2 if needed.
-6. **Zoom the browser to 110% or 125%** so the big number reads from the back of the room. In the app, the keys **1** and **2** switch between Live demo and My loan.
-7. **Have the recorded save ready** (landing page, step 2, or *Watch a real save*): it is the backup if the network is slow.
+3. **Open the app, go to My loan, press Connect wallet.** It should show a slim bar, "Your loan · Airbag is protecting it", with *Push it to the edge* and *Calm it down*, and the whole loan under it. If it shows the four steps instead, protection is not on yet: wait a minute after a restart, or finish step 3.
+4. **Press both buttons once before recording.** They moved into that bar on Nov 19 and have not been pressed with a wallet since. They make the same calls as before. If one fails, *The steps* opens the old steps, which still work.
+5. **The loan must be calm before you start.** "Safe", and bitcoin can fall 25% or more. If not, press *Calm it down* and wait until Airbag has given the savings back.
+6. **Savings: at least 3 USDC** ("Savings, ready" in *On Arc, right now*). Add some under *The steps* if needed.
+7. **The two green dots must be on:** "Gemini's live feed" and "block …" in *On Arc, right now*. They show the page is hearing Gemini and Arc live.
+8. **Record at 1920 × 1080 with the browser full screen.** Then the whole My loan screen fits without scrolling. In the app, the keys **1** and **2** switch between Live demo and My loan.
+9. **Have the recorded save ready** (landing page, step 2, or *Watch a real save*): it is the backup if the network is slow.
 
 ## The 2–3 minute video
 
@@ -27,20 +31,21 @@ Record it Thursday evening, not Friday. Talk slowly, with no music over the talk
 |---|---|---|
 | 0:00–0:20 | The landing page, top. Scroll a little: the frame lies flat and the big number in it is live. | "Borrow dollars against your bitcoin and you can lose it in one bad day. Airbag shows one number, the chance you lose your bitcoin, and fixes the loan by itself." |
 | 0:20–0:40 | Scroll to step **1** (*One bad day can take your bitcoin*). | "February 6, 2026: bitcoin dipped to $60,000. A loan that had borrowed 60% against one bitcoin was sold off and kept a tenth of it. The same loan with Airbag kept the whole bitcoin." |
-| 0:40–1:00 | Scroll to step **2** (*Airbag tops up the loan*). The replay plays by itself. | "This is a real save, recorded on Arc. The loan is pushed to the edge. Three seconds later Airbag has moved the owner's savings in. The fee was one cent, paid in USDC." |
-| 1:00–1:50 | **One take, no cuts.** Top bar → **My loan** → *Push it to the edge* → confirm in MetaMask. The page scrolls down to *Your loan* by itself: the number goes red and stays red for at least three seconds, then the badge says *Saved by Airbag*. | "Now live, with my own wallet. I push my loan to the edge. Hands off." Wait. "Airbag just moved my savings into my loan, through my own guard contract. It never held my key." Click the transaction link under *What Airbag did*. |
-| 1:50–2:15 | *Home*, then **Gemini** in the top bar. Point at the card with Gemini's bets. Hover the curve. Scroll to *Gemini's odds, hour by hour*. | "The number comes from Gemini's prediction market. These are its live bets on bitcoin's price. This is the market's curve for November 30, and the loan's line sits here. Below the lowest bet the curve is estimated, and the page says so. And this is Gemini's own history for one bet, hour by hour." |
-| 2:15–2:35 | **Arc** in the top bar. Click the guard's address. | "Everything is on Arc. The savings are in Circle's Earn Kit, the loan in Borrow Kit, and our AirbagGuard contract sits between them. The bot's key can only press save and give back. A save cost one cent, paid in USDC. A QuickNode Stream wakes the bot the moment the loan moves." |
-| 2:35–2:50 | Scroll on to the last section (*It already works, on Arc*). | "Three real saves, each with its two transactions. Three or four seconds from danger to safe, about a cent in fees, and the bot never held a wallet key. Next: mainnet." |
+| 0:40–1:00 | Scroll to step **2** (*Airbag pays the loan down*). The replay plays by itself. | "This is a real save, recorded on Arc. The loan is pushed to the edge. Three seconds later Airbag has paid part of it back with the owner's savings, so the price that would take the bitcoin is far away again. The fee was one cent, paid in USDC." |
+| 1:00–1:20 | Top bar → **My loan**. Before pressing anything, point at *How this number is made, right now*. Wait for a price to flash. | "This is my own loan. The number comes from Gemini's prediction market, live. These are two of its bets on bitcoin's price, ticking as people trade. From them: the chance bitcoin ends below my price. Doubled, because a dip at any moment counts. Under 5%, so Airbag waits." |
+| 1:20–1:55 | **One take, no cuts.** *Push it to the edge* → confirm in MetaMask. Everything is on one screen: the number goes red and stays red for at least three seconds, the strip says *Over 5%. Airbag steps in.*, then the badge says *Saved by Airbag* and "Savings in the loan" goes up in *On Arc, right now*. | "I push my loan to the edge. Hands off." Wait. "The odds jumped over my limit. Airbag moved my savings into my loan, through my own guard contract. It never held my key." Click a "see it" link in the line "Seen on Arc by QuickNode's Stream". |
+| 1:55–2:20 | *Home*, then **Gemini** in the top bar. Point at the card with Gemini's bets (its prices flash when they change). Hover the curve. Scroll to *Gemini's odds, hour by hour*, then to the hedge ticket. | "This is Gemini's market itself, live. The curve for November 30, with my loan's line on it. Gemini's own history for one bet, hour by hour. And the same market sells insurance: this is the exact order that would cover the loan, at the live price. Airbag does not place it. It is a quote." |
+| 2:20–2:40 | **Arc** in the top bar. Click the guard's address. | "Everything is on Arc. The savings are in Circle's Earn Kit, the loan in Borrow Kit, and our AirbagGuard contract sits between them. The bot's key can only press save and give back. A save cost one cent, paid in USDC. Two live feeds wake the bot: Gemini's for the market, and a QuickNode Stream for the chain." |
+| 2:40–2:55 | Scroll on to the last section (*It already works, on Arc*). | "Real saves, each with its two transactions. Three to six seconds from danger to safe, about a cent in fees, and the bot never held a wallet key. Next: mainnet." |
 
 After the take, press *Calm it down* on My loan, so the loan is ready for the next run.
 
 ## The 4-minute live pitch (finalists)
 
 1. **The problem, 30 s.** Landing page, step 1: the left-alone loan is sold off on Feb 6.
-2. **The number, 30 s.** The app, Live demo: "X% chance of losing the bitcoin by Nov 30. Live, from Gemini." Point at "Airbag steps in at 5%".
-3. **The save, 75 s.** My loan → *Push it to the edge* → red → hands off → green. Click the transaction.
-4. **How the odds work, 40 s.** Landing page, **Gemini**: the market's bets, the curve, the line, doubled for any-time dips, estimated below the lowest bet.
+2. **The number, 30 s.** The app, Live demo: "X% chance of losing the bitcoin by Nov 30. Live, from Gemini." Point at *How this number is made, right now*: two live bets, the chance below the line, doubled, against 5%.
+3. **The save, 75 s.** My loan → *Push it to the edge* → red → hands off → green, all on one screen. Click a "see it" link.
+4. **How the odds work, 40 s.** Landing page, **Gemini**: the market's bets, the curve, the line, estimated below the lowest bet, and the hedge ticket.
 5. **It is real, 30 s.** Landing page, **Arc**: the addresses, the fee, the Stream.
 6. **Replay results and what is next, 35 s.**
    - The 60%, 65% and 70% loans were sold off when left alone, and kept their bitcoin with Airbag.
@@ -52,6 +57,9 @@ After the take, press *Calm it down* on My loan, so the loan is ready for the ne
 
 Use these numbers, not the early drafts. Two answers in our first plan did not survive testing; they are marked ⚠️.
 
+- **"Doesn't this defeat the purpose of the liquidation line?"** No. The line protects the lender. Airbag never touches it: it pays back part of the loan early, with the borrower's own savings, which is what the lender wants anyway. If the savings run out and bitcoin keeps falling, the loan is still sold off. The line protects the lender; Airbag protects the borrower.
+- **"Do you place the hedge on Gemini?"** No. The page shows the exact order and its live price, and links to the bet. Gemini's prediction markets are real money and this is a testnet project, so it stays a quote.
+- **"Is the number really live?"** Yes. The page listens to Gemini's live feed and works the number out itself with the bot's own code. The bot is woken by the same feed and reads the prices again before it decides. Its own last check is printed next to the page's number.
 - **"Isn't this just DeFi Saver?"** The saving idea is the same. Two differences: the trigger is a live market's odds instead of a ratio, and it is built for Arc's bitcoin loans on Circle's kits, where nothing like it existed.
 - **"Why odds instead of the health factor?"**
   - Nobody knows what health 1.31 means; everyone understands "12% chance by Nov 30".

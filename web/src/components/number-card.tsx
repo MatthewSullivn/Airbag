@@ -23,7 +23,7 @@ export function recentMove(log: LogEntry[], now: number): string | null {
   return took ? `Saved by Airbag in ${took[1]} s` : "Saved by Airbag";
 }
 
-export function NumberCard({ status, reading, samples, view, footer, pending, justNow, beam, className }: {
+export function NumberCard({ status, reading, samples, view, footer, pending, justNow, beam, compact, className }: {
   status: Status;
   reading: Reading | null;
   samples: Sample[];
@@ -37,6 +37,8 @@ export function NumberCard({ status, reading, samples, view, footer, pending, ju
   justNow?: string | null;
   /** A slow beam of light round the card while it is calm. */
   beam?: boolean;
+  /** A smaller figure and chart: this card is one of several on a screen that shows a whole loan at once. */
+  compact?: boolean;
   className?: string;
 }) {
   const limit = status.limit;
@@ -52,7 +54,7 @@ export function NumberCard({ status, reading, samples, view, footer, pending, ju
   const estimated = !danger && r?.odds?.source === "estimated";
 
   return (
-    <Panel tone={danger ? "critical" : null} beam={beam} className={className} aria-label="Chance of losing the bitcoin">
+    <Panel tone={danger ? "critical" : null} beam={beam} className={cn(compact && "sm:p-6", className)} aria-label="Chance of losing the bitcoin">
       {/* on a narrow card the date drops under the label instead of squeezing it into three lines */}
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <p className="text-[16px] font-medium text-on-panel-2">Chance of losing the bitcoin</p>
@@ -64,12 +66,12 @@ export function NumberCard({ status, reading, samples, view, footer, pending, ju
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-x-5 gap-y-3">
-        <p className={cn("figure text-[6.5rem] sm:text-[8.5rem]", danger ? "text-[#ff6b5e]" : "text-on-panel")} aria-live="polite">
+      <div className={cn("flex flex-wrap items-end", compact ? "mt-3 gap-x-4 gap-y-2" : "mt-4 gap-x-5 gap-y-3")}>
+        <p className={cn("figure", compact ? "text-[5.4rem] sm:text-[6rem]" : "text-[6.5rem] sm:text-[8.5rem]", danger ? "text-[#ff6b5e]" : "text-on-panel")} aria-live="polite">
           {/* into and out of the alarm the number jumps (a new Count), so the figure and the badge always agree */}
           {odds == null ? "–" : <Count key={danger ? "alarm" : "calm"} value={odds} format={pct} />}
         </p>
-        <div className="mb-3" role="status">
+        <div className={compact ? "mb-2" : "mb-3"} role="status">
           {waiting ? <StatusPill tone="neutral">{waiting}</StatusPill>
             : danger ? <StatusPill tone="critical">At risk</StatusPill>
             : pending ? <span className="inline-block animate-pulse"><StatusPill tone="neutral">{pending}</StatusPill></span>
@@ -78,7 +80,7 @@ export function NumberCard({ status, reading, samples, view, footer, pending, ju
         </div>
       </div>
 
-      <div className="mt-auto pt-7">
+      <div className={cn("mt-auto", compact ? "pt-5" : "pt-7")}>
         {trace.length > 0 && (
           <>
             <Spark
@@ -87,7 +89,7 @@ export function NumberCard({ status, reading, samples, view, footer, pending, ju
               floor={0}
               ceiling={limit * 2}
               mark={{ y: limit, color: LEVEL }}
-              height={84}
+              height={compact ? 64 : 84}
               label={`The chance over the last hour. Now ${pct(odds)}. Airbag steps in at ${pct(limit)}.`}
             />
             <p className="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[13.5px] text-on-panel-faint">
