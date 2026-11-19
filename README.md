@@ -2,30 +2,46 @@
 
 **Every loan app shows a ratio nobody understands. Airbag shows the real odds you lose your bitcoin, from a live market, and fixes the loan by itself.**
 
-Airbag watches a cirBTC-backed USDC loan on [Arc](https://arc.network) (Circle's Borrow Kit). It reads the odds of bitcoin falling under the loan's liquidation line from Gemini's prediction market. When those odds pass your limit, it moves USDC from a savings vault (Circle's Earn Kit) into the loan. When the market calms down, it moves the money back. Nobody presses anything.
+- You borrow dollars against bitcoin on [Arc](https://arc.network), with [Circle](https://www.circle.com)'s Borrow Kit.
+- Airbag reads the odds of a crash from [Gemini's prediction markets](https://www.gemini.com/predictions).
+- When the odds pass your limit, it pays the loan down with your own savings (Circle's Earn Kit). When it is calm, it gives the money back.
+- Nobody presses anything. Gemini's live feed and a [QuickNode](https://www.quicknode.com/streams) Stream wake it.
 
-**Try it:** [airbagged.me](https://airbagged.me) is the live bot: a real cirBTC loan on Arc Testnet that Airbag is guarding right now. The first screen shows its live number. *Watch a real save* replays a save from its recorded transactions. *Live demo* shows how the number is being made this second, from Gemini's live feed, and where the money is on Arc. Nobody can push that loan from the page (it is real, and the server does not hold its owner's key), so the page has a what-if instead: push it on paper, move the limit, and see what the bot's own rule would do. *My loan* lets any wallet open a loan and turn protection on. Nothing on it is simulated. The first visit after a quiet spell takes about a minute to load.
+**Try it: [airbagged.me](https://airbagged.me).** A real loan on Arc Testnet, guarded right now. Nothing on it is simulated. The first visit after a quiet spell takes about a minute to load.
 
-**Live on Arc Testnet (Nov 17, 2026):** we pushed a real loan into danger and Airbag saved it with no human input. The push landed at 21:53:55 UTC. The bot read the odds at 42% (limit 5%), withdrew 0.78 USDC from savings and repaid the loan. The repay landed at 21:53:59, and the odds were back to 0.8%. Two transactions, 0.0154 USDC of gas. See [Live proof](#live-proof).
+## Judging a prize? Start here
+
+| Prize | What Airbag does with it | See it live | Read it |
+|---|---|---|---|
+| **[Gemini](https://www.gemini.com/predictions) Prediction Markets** | Reads Gemini's odds live, over REST and its WebSocket feed. Acts on them by itself. Places the hedge through Gemini's order API, on Gemini's test site. Checked 47 settled markets against what happened. | [the Gemini part](https://airbagged.me/#gemini) | [what the bounty asks for, and what is here](#what-airbag-does-with-geminis-prediction-markets) · [all of §2](#2-the-odds-gemini) |
+| **[Arc](https://arc.network) and Circle** | A real cirBTC loan (Borrow Kit) and its savings (Earn Kit) on Arc Testnet. Our own contract, AirbagGuard, so the bot never holds a wallet key. Fees in USDC: about one cent a save. | [the Arc part](https://airbagged.me/#arc) | [contracts and kit calls](#3-how-arc-and-circles-kits-are-used) · [every transaction](#live-proof) |
+| **[QuickNode](https://www.quicknode.com/streams) Streams** | A Stream filtered to our lending market tells the bot the moment a loan moves. On Nov 19 a save was on-chain 3 seconds after the push. | [seen on Arc](https://airbagged.me/#arc) | [the filter and the setup](#6-quicknode-stream) |
+
+**It has already saved real loans.** First on Nov 17, 2026: pushed into danger at 21:53:55 UTC, odds 42% against a 5% limit, saved by the bot alone at 21:53:59. Two transactions, 0.0154 USDC of gas. All of them are under [Live proof](#live-proof).
+
+### See it work
 
 | The real loan, live | A real loan pushed to the edge | The same loan, saved 3 seconds later |
 |---|---|---|
 | ![The frame on the first screen: the real loan on Arc Testnet, its chance of losing the bitcoin and the room bitcoin has to fall, live](docs/page-1-first-screen.jpg) | ![The page's replay of the save of Nov 18, 2026, at the moment after the push: at risk, a 41.9% chance of losing the bitcoin](docs/page-2-at-risk.jpg) | ![The same replay three seconds later: Airbag has moved the owner's savings into the loan, and it is safe](docs/page-3-saved.jpg) |
 
-| Gemini's bets, and how they become the number | The market's own odds, hour by hour | How the money moves on Arc |
-|---|---|---|
-| ![The landing page's Gemini part: a card with Gemini's live bets on bitcoin's price, and the three steps from those prices to the loan's number](docs/page-4-market.jpg) | ![The landing page: Gemini's hourly history for one bet, and a hedge quote](docs/page-5-odds-over-time.jpg) | ![The landing page's Arc part: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) |
+### Gemini
 
-| The number being made, live, and the money on Arc | Push it on paper: what the bot's rule would do | Gemini's odds, checked against what happened |
+| Gemini's bets, and how they become the number | The number being made, live | Gemini's odds, checked against what happened |
 |---|---|---|
-| ![The Live demo screen on airbagged.me: two of Gemini's live bets with bid and ask, the chance bitcoin ends below the loan's price, that chance doubled against the 5% limit, and under it the loan's money on Arc with the block number](docs/page-7-number-being-made.jpg) | ![The what-if card: the real loan pushed to the edge on paper reads 42%, and Airbag would pay down 3.88 USDC](docs/page-8-what-if.jpg) | ![A chart of what Gemini's market said against how often it happened, for 256 settled bets, and the finding that a dip was 1.5 times as likely as ending below](docs/page-9-odds-checked.jpg) |
+| ![The landing page's Gemini part: a card with Gemini's live bets on bitcoin's price, and the three steps from those prices to the loan's number](docs/page-4-market.jpg) | ![The Live demo screen on airbagged.me: two of Gemini's live bets with bid and ask, the chance bitcoin ends below the loan's price, that chance doubled against the 5% limit, and under it the loan's money on Arc with the block number](docs/page-7-number-being-made.jpg) | ![A chart of what Gemini's market said against how often it happened, for 256 settled bets, and the finding that a dip was 1.5 times as likely as ending below](docs/page-9-odds-checked.jpg) |
 
-| The hedge, as an order | One loan on one screen |
+| The market's own odds, hour by hour | The hedge, as an order | Push it on paper: what the bot's rule would do |
+|---|---|---|
+| ![The landing page: Gemini's hourly history for one bet, and a hedge quote](docs/page-5-odds-over-time.jpg) | ![The hedge ticket: buy 4,385 No on Bitcoin 57,500 dollars or above on Nov 30, the live price, the cost and the payout, and the note that Airbag places it for real on Gemini's test site](docs/page-10-hedge-ticket.jpg) | ![The what-if card: the real loan pushed to the edge on paper reads 42%, and Airbag would pay down 3.88 USDC](docs/page-8-what-if.jpg) |
+
+### Arc
+
+| How the money moves on Arc | One loan on one screen, with its money on Arc |
 |---|---|
-| ![The hedge ticket: buy 4,385 No on Bitcoin 57,500 dollars or above on Nov 30, the live price, the cost and the payout, and the note that Airbag places it for real on Gemini's test site](docs/page-10-hedge-ticket.jpg) | ![The My loan screen with a connected wallet's real loan: the chance, the price against the price where the bitcoin is lost, the money on Arc, and how the number is made](docs/page-11-my-loan.jpg) |
+| ![The landing page's Arc part: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) | ![The My loan screen with a connected wallet's real loan: the chance, the price against the price where the bitcoin is lost, the money on Arc, and how the number is made](docs/page-11-my-loan.jpg) |
 
-All of these show real things: the loan the hosted bot guards on Arc Testnet, a connected wallet's real loan, Gemini's live market and its settled markets, and the page's replay of the save of Nov 18, 2026, drawn from its recorded transactions. The last five were taken on Nov 19, 2026. The page as it looked during the first live saves is under [Live proof](#live-proof).
-
+All of these show real things: the loan the hosted bot guards on Arc Testnet, a connected wallet's real loan, Gemini's live market and its settled markets, and the page's replay of the save of Nov 18, 2026, drawn from its recorded transactions. The page as it looked during the first live saves is under [Live proof](#live-proof).
 ---
 
 ## 1. How it works
