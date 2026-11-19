@@ -46,11 +46,10 @@ Each file says so at the top and lists our changes. MIT License, Copyright (c) M
 
 ## Written here, after components on 21st.dev
 
-Matthew picked five components on 21st.dev for the look. These are our own code, written from how the originals look and move. No code from them is used:
+Matthew picked five components on 21st.dev for the look. Four are on the page (the section built after Bounce Card Features was taken off on Nov 19, 2026, to shorten the page). These are our own code, written from how the originals look and move. No code from them is used:
 
 - `src/components/ui/cta.tsx` and the `.btn-shiny` / `.btn-metal` rules in `src/styles.css`, after the Shiny Button and the Metallic Button (Hyperiux)
 - `src/components/ui/spotlight-card.tsx`, after the Spotlight Card
-- `src/components/ui/bounce-card.tsx`, after Bounce Card Features
 - `src/components/ui/tilt-frame.tsx`, after the Container Scroll Animation (Aceternity UI)
 
 `src/components/gemini-market-card.tsx` is also ours. It is drawn to look like a market card on gemini.com and shows Gemini's live figures; it says it is not Gemini's and links to the real market.

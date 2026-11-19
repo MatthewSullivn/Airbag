@@ -1,12 +1,12 @@
-// The first page a visitor sees: a walk-through. What Airbag is (with the live app in a frame), what it does,
-// who it is for, how it works step by step (the problem, then a real save replayed), and then in depth how it
-// uses Gemini's prediction market and Arc with Circle's kits. Few words per screen, one real picture each.
+// The first page a visitor sees: a walk-through. What Airbag is (with the live app in a frame), who it is for,
+// how it works step by step (the problem, then a real save replayed), and then in depth how it uses Gemini's
+// prediction market and Arc with Circle's kits. Few words per screen, one real picture each.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
 import { postJson, useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
 import { symbolsOf, useGeminiFeed, useLiveEvents } from "@/lib/gemini-feed";
 import { usePressed } from "@/lib/use-pressed";
-import { ADDRESSES, EXPLORER, LIVE_URL, SAVES, VISITOR_RUN } from "@/recorded/proof";
+import { ADDRESSES, EXPLORER, LIVE_URL, SAVES } from "@/recorded/proof";
 import { pct } from "@/lib/format";
 import { ExplorerLink, Section, Wordmark } from "@/components/bits";
 import { Costs, MoneyMap, StreamList } from "@/components/chain-parts";
@@ -17,7 +17,6 @@ import { LadderCard } from "@/components/ladder-card";
 import { OverTime } from "@/components/market-parts";
 import { LoanCards } from "@/components/loan-cards";
 import { SaveReplay } from "@/components/save-replay";
-import { BounceCard } from "@/components/ui/bounce-card";
 import { TiltFrame } from "@/components/ui/tilt-frame";
 import { BotBadge } from "@/components/top-bar";
 import { MetalLink, ShinyButton, ShinyLink } from "@/components/ui/cta";
@@ -74,9 +73,6 @@ export function Landing() {
   // the bet nearest bitcoin's price: its Yes price in cents is the example in the steps (54 until it has loaded)
   const nearest = event && spot != null ? [...event.live].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot))[0] : null;
   const cents = nearest ? Math.round(nearest.pAbove * 100) : 54;
-  // the recorded save of Nov 18: what moved and how fast, straight from its four transactions
-  const [pushed, saved, calmed, returned] = VISITOR_RUN.steps;
-  const savedUsd = (pushed.debt - saved.debt).toFixed(2), backUsd = (returned.debt - calmed.debt).toFixed(2);
 
   // A link like /#save from the app: the target only exists once this has drawn, and the cards above it grow as
   // their data arrives. So go there now, and again each time one of the three loads, until the visitor moves.
@@ -171,35 +167,7 @@ export function Landing() {
             </TiltFrame>
           </section>
 
-          {/* 2. What it does: four cards, one thing each */}
-          <section id="what" className="scroll-mt-20 py-14 sm:py-20">
-            <FadeIn distance={18} duration={0.7} amount={0.3}>
-              <div className="flex flex-wrap items-end justify-between gap-6">
-                <h2 className="display max-w-[16ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">Borrow against your bitcoin. <span className="accent">Keep it.</span></h2>
-                <MetalLink href="/app/" small>See it live</MetalLink>
-              </div>
-            </FadeIn>
-            <div className="mt-10 grid grid-cols-12 gap-4">
-              <BounceCard title="It watches the odds." color="violet" className="col-span-12 md:col-span-5">
-                <p className="figure text-[4.2rem]">{reading?.decision.odds != null ? pct(reading.decision.odds) : "–"}</p>
-                <p className="mt-2 text-[1.15rem] font-semibold leading-snug">chance of losing the bitcoin right now, read from Gemini's prediction market</p>
-              </BounceCard>
-              <BounceCard title="It pays down your loan." color="orange" className="col-span-12 md:col-span-7">
-                <p className="figure text-[4.2rem]">+${savedUsd}</p>
-                <p className="mt-2 max-w-[44ch] text-[1.15rem] font-semibold leading-snug">of the owner's own savings paid the loan down, {saved.at - pushed.at} seconds after the danger. A real save on Nov 18.</p>
-              </BounceCard>
-              <BounceCard title="It gives the money back." color="green" className="col-span-12 md:col-span-7">
-                <p className="figure text-[4.2rem]">${backUsd}</p>
-                <p className="mt-2 max-w-[44ch] text-[1.15rem] font-semibold leading-snug">went back to savings, {returned.at - calmed.at} seconds after things were calm. Savings earn interest while they wait.</p>
-              </BounceCard>
-              <BounceCard title="It never holds your keys." color="pink" className="col-span-12 md:col-span-5">
-                <p className="figure text-[4.2rem]">0</p>
-                <p className="mt-2 text-[1.15rem] font-semibold leading-snug">of your keys. Its guard contract can do one thing: move your savings into your own loan, and back.</p>
-              </BounceCard>
-            </div>
-          </section>
-
-          {/* 3. Who it is for */}
+          {/* 2. Who it is for */}
           <section id="who" className="scroll-mt-20 py-14 sm:py-20">
             <FadeIn distance={18} duration={0.7} amount={0.3}>
               <h2 className="display max-w-[16ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">Who it is <span className="accent">for.</span></h2>
@@ -219,7 +187,7 @@ export function Landing() {
             </div>
           </section>
 
-          {/* 4. How it works, step by step */}
+          {/* 3. How it works, step by step */}
           <div id="how" className="scroll-mt-20">
             <Section step="1" title={<>One bad day can <span className="accent">take your bitcoin.</span></>} lead="You borrowed dollars against your bitcoin. If bitcoin falls below a set price, even for a minute, the bitcoin is sold. In February 2026 that is what happened.">
               <CrashCard replay={replay} />
@@ -230,7 +198,7 @@ export function Landing() {
             </Section>
           </div>
 
-          {/* 5. In depth: Gemini's prediction market */}
+          {/* 4. In depth: Gemini's prediction market */}
           <Section id="gemini" step="3" title={<>The danger is read from <span className="accent">Gemini's market.</span></>} lead="On Gemini, people bet real money on where bitcoin will be on a date. Those prices are odds. Airbag checks the loan against them every 5 seconds.">
             <div className="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[0.85fr_1.15fr]">
               <GeminiMarketCard event={event} spot={spot} feed={feed} />
@@ -255,7 +223,7 @@ export function Landing() {
             </div>
           </Section>
 
-          {/* 6. In depth: Arc, Circle and QuickNode */}
+          {/* 5. In depth: Arc, Circle and QuickNode */}
           <Section id="arc" step="4" title={<>The money moves on <span className="accent">Arc.</span></>} lead="The loan and the savings are Circle's own kits on Arc, where fees are paid in dollars. Our guard contract sits between them, and a QuickNode Stream wakes the bot the moment the loan moves.">
             <div className="grid gap-4">
               <MoneyMap status={status} marketUrl={event?.url ?? null} />
@@ -266,7 +234,7 @@ export function Landing() {
             </div>
           </Section>
 
-          {/* 7. The proof: receipts. Each row is a save that happened, with its transactions. */}
+          {/* 6. The proof: receipts. Each row is a save that happened, with its transactions. */}
           <Section id="proof" title={<>It already works, <span className="accent">on Arc.</span></>}>
             <ol className="border-t border-line">
               {SAVES.map((s) => (

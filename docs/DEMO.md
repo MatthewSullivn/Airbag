@@ -2,7 +2,7 @@
 
 The video is judged for the Gemini and QuickNode bounties (they don't see a live demo), so it matters as much as the code. Finalists also give a 4 min pitch + 2 min Q&A in person on Saturday Nov 21.
 
-The page has two parts. `/` is the landing page, a walk-through: what it does, who it is for, then four numbered steps (1 the problem, 2 the save, 3 Gemini, 4 Arc) and the receipts. Its top bar jumps to any of them. `/app/` is the app, with two screens: **Live demo** and **My loan**.
+The page has two parts. `/` is the landing page, a walk-through: what it is, who it is for, then four numbered steps (1 the problem, 2 the save, 3 Gemini, 4 Arc) and the receipts. Its top bar jumps to any of them. `/app/` is the app, with two screens: **Live demo** and **My loan**.
 
 On the live site nobody can push the Live demo's loan from the page: it is real, and the server does not hold its owner's key. The bar at its top says so and offers three ways to see Airbag act: *Push it on paper* (a what-if with two sliders, lower on the same screen), *Watch a real save*, and *Push your own loan*. To push that loan for real, its owner runs `npm run demo:push` on their own machine, and `npm run demo:reset` afterwards.
 
