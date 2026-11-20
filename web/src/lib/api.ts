@@ -146,17 +146,7 @@ export const useStatus = () => usePoll<Status>("/api/status", 1500);
 export const useLadders = () => usePoll<Ladders>("/api/ladders", 20_000);
 export const useMarketHistory = (ticker: string | null | undefined) => usePoll<MarketHistory>(ticker ? `/api/market-history?ticker=${encodeURIComponent(ticker)}` : null, 10 * 60_000);
 
-export interface CrashReplay {
-  params: { start: string; limit: number; savingsPct: number; liquidationIncentive: number; volWindowDays: number; horizonDays: number };
-  headline: {
-    untouched: { openPrice: number; ltv: number; debt0: number; line0: number; liquidation: { date: string; price: number; btcKept: number } | null };
-    intraday: { liquidated: boolean; maxInLoan: number; savings: number; avgInPot: number; liquidation?: { date: string } };
-    daily: { liquidated: boolean; liquidation?: { date: string } };
-  };
-  chart: { date: string; low: number; close: number; untouchedLine0: number; airbagLine: number; inLoan: number }[];
-  table: { ltv: number; mode: "untouched" | "daily" | "intraday"; liquidated: boolean; line0: number; btcKept: number; maxInLoan: number; savings: number; avgInPot: number; liquidation?: { date: string } }[];
-}
-export const useCrashReplay = () => usePoll<CrashReplay>("/api/replay", 0);
+// (The February replay is not fetched: it is built into the page from replay/results.json, see components/crash-story.tsx.)
 
 export async function postJson<T = unknown>(path: string, body: unknown, key = ""): Promise<T> {
   const res = await fetch(path, {

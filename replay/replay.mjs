@@ -93,6 +93,8 @@ function simulate(ltv, mode) {
     potShareSum += pot / savingsTotal;
     series.push({
       date: day.date,
+      open: day.open,
+      high: day.high,
       low: day.low,
       close: day.close,
       line: liquidation ? null : Math.round(line()),
@@ -127,6 +129,8 @@ const byDate = (s) => new Map(s.series.map((d) => [d.date, d]));
 const u = byDate(head.untouched), a = byDate(head.intraday);
 const chart = head.intraday.series.filter(inWindow).map((d) => ({
   date: d.date,
+  open: d.open,                                   // the day's candle, for the landing page's crash test
+  high: d.high,
   low: d.low,
   close: d.close,
   untouchedLine: u.get(d.date)?.line ?? null,     // null once it has been liquidated

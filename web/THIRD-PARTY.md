@@ -48,7 +48,7 @@ Each file says so at the top and lists our changes. MIT License, Copyright (c) M
 
 Matthew picked five components on 21st.dev for the look. They are our own code, written from how the originals look and move. No code from them is used. On Nov 20, 2026 the page was restyled to look less like a template, and most of them went:
 
-- `src/components/ui/tilt-frame.tsx`, after the Container Scroll Animation (Aceternity UI). The frame is still on the page, now shown flat, without the tilt.
+- The tilting frame after the Container Scroll Animation (Aceternity UI): removed with the page's scroll story.
 - `src/components/ui/spotlight-card.tsx`, after the Spotlight Card. No longer on the page.
 - The Shiny Button and the Metallic Button (Hyperiux) were the looks of `.btn-shiny` / `.btn-metal` in `src/styles.css`. Those rules are now plain buttons of our own.
 - The section built after Bounce Card Features was taken off on Nov 19, 2026, to shorten the page.
