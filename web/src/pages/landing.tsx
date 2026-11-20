@@ -107,7 +107,7 @@ export function Landing() {
           {/* 1. The first screen: what it is, in plain words, and February's crash run without Airbag and with it */}
           <section className="relative pb-6 pt-12 sm:pt-20">
             <CrashTest replay={replay} actions={<a href="/app/" className="btn-shiny">Open the live demo</a>}>
-              <h1 className="display max-w-[17ch] text-[clamp(2.7rem,6.2vw,4.9rem)] text-ink">Crash insurance for your bitcoin loan.</h1>
+              <h1 className="display max-w-[17ch] text-[clamp(2.7rem,6.2vw,4.9rem)] text-ink">Keep your bitcoin through a crash.</h1>
               {/* the problem first, then what Airbag does about it */}
               <p className="mt-5 max-w-[46ch] text-[1.08rem] leading-relaxed text-ink-2 sm:mt-6 sm:text-[1.32rem]">
                 Borrow against bitcoin, and one bad day can sell it. Airbag sees the crash coming in Gemini's odds and pays your loan down first, with your own savings.
