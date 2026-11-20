@@ -211,6 +211,7 @@ Read these before touching `src/arc.ts`.
   - `web/src/wallet/core.js` is the signing logic. It was proven on-chain and cannot be re-tested without a person signing. Do not rewrite it.
   - Never put server text into the page as HTML (no `dangerouslySetInnerHTML`).
   - Colors come from the tokens in `web/src/styles.css` (light and dark are both defined). Chart series colors are in `web/src/charts/xy-chart.tsx`.
+  - Both pages are always light: `data-theme="light"` on `<html>` in `web/index.html` and `web/app/index.html` (Matthew's call, Nov 20, 2026). Take the attribute off to follow the visitor's system again.
   - Charts keep a table view. Check phone width.
   - Few words. One idea per screen. `?still` in the address turns animations off for screenshots.
 - **New behaviour gets a test** in `test/`, using the saved fixtures rather than live calls.
