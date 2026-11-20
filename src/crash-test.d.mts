@@ -60,10 +60,16 @@ export interface Frame {
   inLoan: number;
 }
 export const OPEN_AT: number;
-export const STORY_END: number;
-export const INTRO_SECONDS: number;
+/** The story's steps: position 1, 2 and 3 are where each one ends. */
+export const STEPS: number;
+/** How long the story takes to play by itself, in seconds. */
+export const PLAY_SECONDS: number;
 export function storyKeys(story: CrashStory): StoryKeys;
-export function sceneAt(s: number, keys: StoryKeys): Scene;
-export function introAt(t: number, keys: StoryKeys): number;
+/** How many candles are on the chart at position u (0 to 3); the same in both runs. */
+export function candlesAt(u: number, keys: StoryKeys): number;
+/** Which step the story is in at position u: 1, 2 or 3. */
+export function stepAt(u: number): number;
+/** Where the story is t seconds into a play by itself: a position from 0 to 3. */
+export function playAt(t: number): number;
 export function airbagOpen(scene: Scene, keys: StoryKeys): boolean;
 export function frameOf(story: CrashStory, scene: Scene, pop: number): Frame;

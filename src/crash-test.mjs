@@ -62,9 +62,13 @@ export function candleSoFar(day, f) {
 }
 
 // ------------------------------------------------------------------ the story, moment by moment
-// The page tells the story as the visitor scrolls: a position s runs from 0 (the top of the page) through six
-// captions to 7. These functions say what the chart shows at each position. They are here, not in the page, so the
-// tests can walk the whole story and check that the picture never says something the replay does not.
+// The page plays the story on its chart in three steps, the same three for both runs (without Airbag, and with it):
+//   1  bitcoin falls for a week, to the evening before the crash (with Airbag: the airbag opens on the way)
+//   2  the day of the crash (without: the candle touches the line and the bitcoin is sold; with: it lands on the airbag)
+//   3  the days after it, as bitcoin comes back
+// A position u runs from 0 (the calm before the fall) to 3. These functions say what the chart shows at each
+// position, and where a play by itself is after t seconds. They are here, not in the page, so the tests can walk
+// both runs and check that the picture never says something the replay does not.
 
 const clamp = (x, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -73,8 +77,8 @@ const smooth = (x) => x * x * (3 - 2 * x);
 
 /** The airbag opens this far into the day the odds pass the limit. */
 export const OPEN_AT = 0.4;
-/** The story's last position. */
-export const STORY_END = 7;
+/** The story's steps: position 1, 2 and 3 are where each one ends. */
+export const STEPS = 3;
 
 /**
  * The days the story turns on, as counts of candles: all of them, the calm before the fall, the day Airbag first
@@ -86,36 +90,48 @@ export function storyKeys(story) {
 }
 
 /**
- * What is on the chart at story position s: how many candles (the last one may be half made), and whether Airbag is on.
- *   0  the ending with Airbag, then rewinding to the calm before the fall as the visitor starts to scroll
- *   1  the loan and its line          2  bitcoin falls for a week      3  it touches the line: sold
- *   4  rewind, and Airbag comes on    5  the airbag opens              6  the same candle lands on it
- * @param {number} s
- * @param {{ N: number, calm: number, save: number, crash: number }} keys
+ * How many candles are on the chart at position u (the last one may be half made). The same in both runs: the
+ * candles are bitcoin's, whatever the loan does.
+ * @param {number} u 0 to 3
+ * @param {{ N: number, calm: number, crash: number }} keys
  */
-export function sceneAt(s, { N, calm, save, crash }) {
-  if (s < 1) return { n: lerp(N, calm, smooth(seg(s, 0.1, 0.9))), airbag: true };
-  if (s < 2) return { n: calm, airbag: false };
-  if (s < 3) return { n: lerp(calm, crash, seg(s, 2.04, 2.96)), airbag: false };
-  if (s < 4) return { n: s < 3.56 ? lerp(crash, crash + 1, seg(s, 3.04, 3.52)) : lerp(crash + 1, N, seg(s, 3.56, 3.96)), airbag: false };
-  if (s < 5) return s < 4.6 ? { n: lerp(N, save, smooth(seg(s, 4.04, 4.56))), airbag: false } : { n: save, airbag: true };
-  if (s < 6) return { n: lerp(save, crash, seg(s, 5.04, 5.96)), airbag: true };
-  if (s < 7) return { n: s < 6.56 ? lerp(crash, crash + 1, seg(s, 6.04, 6.52)) : lerp(crash + 1, N, seg(s, 6.56, 6.96)), airbag: true };
-  return { n: N, airbag: true };
+export function candlesAt(u, { N, calm, crash }) {
+  const x = clamp(u, 0, STEPS);
+  if (x <= 1) return lerp(calm, crash, x);
+  if (x <= 2) return lerp(crash, crash + 1, x - 1);
+  return lerp(crash + 1, N, x - 2);
 }
 
-/** How long the ending with Airbag plays by itself when the page opens, in seconds. */
-export const INTRO_SECONDS = 5.6;
+/** Which step the story is in at position u: 1, 2 or 3. */
+export function stepAt(u) {
+  return Math.min(STEPS, Math.max(1, Math.ceil(u - 1e-9)));
+}
+
+// A play by itself: each step takes its time, then the chart holds still so the step can be read.
+const PLAY = [
+  { until: 0.7, from: 0, to: 0 },      // the calm, for a moment
+  { until: 5.3, from: 0, to: 1 },      // the week of falling
+  { until: 7.1, from: 1, to: 1 },
+  { until: 9.7, from: 1, to: 2 },      // the day of the crash, slowly
+  { until: 11.5, from: 2, to: 2 },
+  { until: 13.5, from: 2, to: 3, ease: true },   // the days after
+];
+/** How long the story takes to play by itself, in seconds. */
+export const PLAY_SECONDS = PLAY[PLAY.length - 1].until;
 /**
- * That ending, second by second: how many candles are on the chart t seconds in.
+ * Where the story is t seconds into a play: a position from 0 to 3.
  * @param {number} t
- * @param {{ N: number, calm: number, save: number, crash: number }} keys
  */
-export function introAt(t, { N, calm, save, crash }) {
-  if (t < 0.7) return calm;
-  if (t < 1.9) return lerp(calm, save, smooth(seg(t, 0.7, 1.9)));
-  if (t < 4.5) return lerp(save, crash + 1, seg(t, 1.9, 4.5));
-  return lerp(crash + 1, N, 1 - (1 - seg(t, 4.5, INTRO_SECONDS)) ** 3);
+export function playAt(t) {
+  let since = 0;
+  for (const part of PLAY) {
+    if (t < part.until) {
+      const k = seg(t, since, part.until);
+      return lerp(part.from, part.to, part.ease ? 1 - (1 - k) ** 3 : k);
+    }
+    since = part.until;
+  }
+  return STEPS;
 }
 
 /** Whether the airbag is open in this scene. */

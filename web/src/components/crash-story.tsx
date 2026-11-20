@@ -1,16 +1,17 @@
-// The landing page's first screens: February 2026's crash, told on a trading chart as you scroll.
+// The landing page's first screen: February 2026's crash, played on a trading chart.
 //
 // The chart is bitcoin's real daily candles (replay/results.json, through src/crash-test.mjs) and one line: the price
-// below which the bitcoin is sold. Scrolling is time. A dark stage stays in view while short captions pass beside it:
-//   without Airbag, the candles fall until one touches the line, and the bitcoin is sold;
-//   with Airbag, the odds pass 5% two days earlier, an airbag opens under the price and pushes the line down, and
-//   the very same candle lands on it.
-// At the top of the page the chart plays the ending with Airbag once by itself, so a visitor who never scrolls still
-// sees it. Every number comes from the replay. ?story=4.8 in the address holds the story at that point (0 to 7), for
-// pictures; with reduced motion (or ?still) nothing plays by itself and the chart follows the scroll exactly.
+// below which the bitcoin is sold. It plays the week once by itself, slowly, in three steps that stay written under
+// it (press one to go to it):
+//   with Airbag, the odds pass 5% two days early, an airbag opens under the price and pushes the line down, and the
+//   candle of the crash lands on it;
+//   without Airbag (the switch above the chart), the very same candle touches the line and the bitcoin is sold.
+// Every number comes from the replay. For pictures, ?story=2 in the address holds the story at that point (0 to 3)
+// and &run=without shows the other run; with reduced motion (or ?still) nothing plays and the chart shows the ending.
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { RotateCcw } from "lucide-react";
 import replay from "@replay";
-import { INTRO_SECONDS, STORY_END, airbagOpen, crashStory, frameOf, introAt, sceneAt, storyKeys, type CrashStory as Story, type Frame, type Scene, type StoryKeys } from "@crash";
+import { PLAY_SECONDS, STEPS, airbagOpen, candlesAt, crashStory, frameOf, playAt, stepAt, storyKeys, type CrashStory as Story, type Frame, type Scene, type StoryKeys } from "@crash";
 import { SERIES, STATUS } from "@/charts/xy-chart";
 import { useStill } from "@/lib/chart-kit";
 import { dayUTC, usd, usdK } from "@/lib/format";
@@ -20,20 +21,20 @@ const STORY = crashStory(replay);
 const ORANGE = SERIES.s1, UP = SERIES.s3, DOWN = STATUS.critical;
 
 const clamp = (x: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
-const seg = (x: number, a: number, b: number) => clamp((x - a) / (b - a));
 const easeOut = (x: number) => 1 - (1 - x) ** 3;
 const easeOutBack = (x: number) => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2; };
 
-// What the chart shows at each point of the story (sceneAt, introAt, frameOf) lives in src/crash-test.mjs, where the
-// tests walk the whole story against the replay. This file draws it.
+// What the chart shows at each point of the story (candlesAt, playAt, frameOf) lives in src/crash-test.mjs, where the
+// tests walk both runs against the replay. This file draws it.
 
 // ------------------------------------------------------------------ small hooks
 
 const HOLD = (() => {
   if (typeof location === "undefined") return null;
-  const raw = new URLSearchParams(location.search).get("story");
+  const q = new URLSearchParams(location.search);
+  const raw = q.get("story");
   const v = raw == null ? NaN : Number(raw);
-  return Number.isFinite(v) ? clamp(v, 0, STORY_END) : null;
+  return Number.isFinite(v) ? { u: clamp(v, 0, STEPS), airbag: q.get("run") !== "without" } : null;
 })();
 
 /** A number that eases to its target over `ms` (at once when motion is off). */
@@ -75,69 +76,6 @@ function useSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-/**
- * Where the story is, from where the page is scrolled: 0 at the top, k when caption k arrives, eased so a mouse wheel's
- * steps play smoothly. Each caption arrives when its block comes up to a little below where the caption sticks.
- */
-function useStoryScroll(section: React.RefObject<HTMLElement | null>, still: boolean) {
-  const [s, setS] = useState(HOLD ?? 0);
-  const marks = useRef<number[]>([]);   // the scroll position where each part begins, and where the last one ends
-  useEffect(() => {
-    if (HOLD != null) return;
-    let raf = 0, shown = 0, target = 0;
-    const read = () => {
-      const el = section.current;
-      if (!el) return 0;
-      const blocks = [...el.querySelectorAll<HTMLElement>("[data-step]")];
-      if (blocks.length < 2) return 0;
-      const m = blocks.map((b, i) => {
-        if (i === 0) return 0;
-        const caption = b.querySelector<HTMLElement>("[data-caption]");
-        const sticks = caption ? parseFloat(getComputedStyle(caption).top) || 0 : 0;
-        return b.getBoundingClientRect().top + scrollY - sticks - innerHeight * 0.14;
-      });
-      // The last part is as long as the one before it, and it is over a little before the stage lets go (which is when
-      // the end of the last block comes up to the stage's lower edge), so the ending is seen on a chart that stays put.
-      const part = blocks[blocks.length - 2].offsetHeight;
-      const stage = el.querySelector<HTMLElement>("[data-stage]");
-      let end = m[m.length - 1] + part;
-      if (stage) {
-        const letsGo = blocks[blocks.length - 1].getBoundingClientRect().bottom + scrollY - (parseFloat(getComputedStyle(stage).top) || 0) - stage.offsetHeight;
-        end = Math.min(end, letsGo - innerHeight * 0.1);
-      }
-      m.push(Math.max(end, m[m.length - 1] + part * 0.35));
-      for (let i = 1; i < m.length; i++) m[i] = Math.max(m[i], m[i - 1] + 1);
-      marks.current = m;
-      let i = 0;
-      while (i < m.length - 2 && scrollY >= m[i + 1]) i++;
-      return i + clamp((scrollY - m[i]) / (m[i + 1] - m[i]));
-    };
-    const tick = () => {
-      const d = target - shown;
-      shown = Math.abs(d) < 0.002 ? target : shown + d * 0.18;
-      setS(shown);
-      raf = shown === target ? 0 : requestAnimationFrame(tick);
-    };
-    const onScroll = () => {
-      target = read();
-      if (still) { shown = target; setS(target); } else if (!raf) raf = requestAnimationFrame(tick);
-    };
-    shown = target = read();
-    setS(shown);
-    addEventListener("scroll", onScroll, { passive: true });
-    addEventListener("resize", onScroll);
-    return () => { removeEventListener("scroll", onScroll); removeEventListener("resize", onScroll); cancelAnimationFrame(raf); };
-  }, [section, still]);
-  /** Scroll to a point of the story (for the stage's own switch). */
-  const goTo = useCallback((to: number) => {
-    const m = marks.current;
-    if (m.length < 2) return;
-    const i = Math.min(m.length - 2, Math.floor(to));
-    scrollTo({ top: m[i] + (to - i) * (m[i + 1] - m[i]), behavior: still ? "auto" : "smooth" });
-  }, [still]);
-  return { s, goTo };
-}
-
 // ------------------------------------------------------------------ the chart
 
 /** A closed shape through these corners, each rounded by r (or less where an edge is short). */
@@ -157,13 +95,11 @@ function rounded(pts: [number, number][], r: number, close: boolean) {
   return d + (close ? "Z" : "");
 }
 
-function Plot({ story, scene, frame, pop, summary, flash, thud, uid }: {
+function Plot({ story, scene, frame, pop, flash, thud, uid }: {
   story: Story;
   scene: Scene;
   frame: Frame;
   pop: number;
-  /** 1 at the top of the page, where the chart shows both endings at once; 0 once the story is being told. */
-  summary: number;
   /** 1 at the moment of the sale, fading to 0. */
   flash: number;
   /** 1 at the moment bitcoin lands on the airbag, fading to 0. */
@@ -208,7 +144,7 @@ function Plot({ story, scene, frame, pop, summary, flash, thud, uid }: {
   const yPriceTag = Math.abs(yPrice - yLine) < 23 ? yLine + (yPrice > yLine ? 23 : -23) : yPrice;
   const room = price - level;
   // the room is drawn until the airbag opens: after that the airbag itself is the picture of it
-  const showRoom = !sold && !cushion && summary < 0.4 && room > 0;
+  const showRoom = !sold && !cushion && room > 0;
   const roomRight = X(cur) + bw / 2 + 96 < xr;
   const xRoom = X(cur) + (roomRight ? 1 : -1) * (bw / 2 + 10);
   const tight = room / price < 0.04;
@@ -252,10 +188,10 @@ function Plot({ story, scene, frame, pop, summary, flash, thud, uid }: {
             {/* the airbag */}
             {cushion && (
               <>
-                <path d={rounded(bagPts, 9, true)} fill={`url(#${uid}-bag)`} />
-                <path d={rounded(bagPts, 9, true)} fill="none" stroke="#ffffff" strokeOpacity="0.9" strokeWidth="1" />
-                {/* where the line was: the airbag's top edge */}
-                <line x1={left(save) + 6} x2={xr} y1={y0} y2={y0} stroke={ORANGE} strokeWidth="1.5" strokeDasharray="5 5" />
+                {/* a dark edge all round it, so it stands clear of the two lines it sits between */}
+                <path d={rounded(bagPts, 9, true)} fill={`url(#${uid}-bag)`} stroke="var(--panel)" strokeWidth={phone ? 7 : 9} strokeLinejoin="round" />
+                {/* where the line was: above the airbag */}
+                <line x1={left(save) + 6} x2={xr} y1={y0} y2={y0} stroke={ORANGE} strokeWidth="2" strokeDasharray="6 5" />
               </>
             )}
 
@@ -279,7 +215,7 @@ function Plot({ story, scene, frame, pop, summary, flash, thud, uid }: {
             })}
 
             {/* the line itself */}
-            <path d={linePath} fill="none" stroke={ORANGE} strokeWidth="2.25" strokeLinejoin="round" />
+            <path d={linePath} fill="none" stroke={ORANGE} strokeWidth="3" strokeLinejoin="round" />
 
             {/* the sale: the whole chart flashes */}
             {flash > 0.01 && <rect x={M.l} y={M.t} width={pw} height={ph} fill={DOWN} opacity={0.28 * flash} />}
@@ -365,35 +301,53 @@ function Plot({ story, scene, frame, pop, summary, flash, thud, uid }: {
 // ------------------------------------------------------------------ the story
 
 export function CrashStory({ children }: {
-  /** The page's headline, its sentence and its buttons: the story's first screen. */
+  /** The page's headline, its sentence and its buttons, beside the chart. */
   children: React.ReactNode;
 }) {
   const story = STORY;
   const still = useStill();
-  const section = useRef<HTMLElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const uid = "story" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const { s, goTo } = useStoryScroll(section, still);
   const K = useMemo<StoryKeys>(() => (story ? storyKeys(story) : { N: 1, calm: 0, save: 0, crash: 0 }), [story]);
 
-  // The ending with Airbag plays once by itself when the page opens at its top. It starts from the calm before the
-  // fall, so the first thing drawn is already its first frame. A scroll hands the chart over to the visitor at once.
-  const [intro, setIntro] = useState<number | null>(() => (story && !still && HOLD == null && typeof scrollY === "number" && scrollY < 30 && !location.hash ? K.calm : null));
-  useEffect(() => {
-    if (intro == null) return;
+  const [airbag, setAirbag] = useState(HOLD ? HOLD.airbag : true);
+  const [u, setU] = useState(HOLD ? HOLD.u : still ? STEPS : 0);   // where the story is: 0 to 3
+  const [playing, setPlaying] = useState(false);
+  const raf = useRef(0);
+  const play = useCallback(() => {
+    cancelAnimationFrame(raf.current);
+    if (still) { setPlaying(false); setU(STEPS); return; }
     const t0 = performance.now();
-    let raf = requestAnimationFrame(function tick(now) {
+    setPlaying(true);
+    setU(0);
+    const tick = (now: number) => {
       const t = (now - t0) / 1000;
-      if (t >= INTRO_SECONDS) { setIntro(null); return; }
-      setIntro(introAt(t, K));
-      raf = requestAnimationFrame(tick);
-    });
-    const handOver = () => { if (scrollY > 30) { cancelAnimationFrame(raf); setIntro(null); } };
-    addEventListener("scroll", handOver, { passive: true });
-    return () => { cancelAnimationFrame(raf); removeEventListener("scroll", handOver); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      if (t >= PLAY_SECONDS) { setU(STEPS); setPlaying(false); return; }
+      setU(playAt(t));
+      raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+  }, [still]);
+  /** Go to the end of a step and stay there. */
+  const goTo = (step: number) => { cancelAnimationFrame(raf.current); setPlaying(false); setU(step); };
+  const choose = (on: boolean) => { setAirbag(on); play(); };
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+  useEffect(() => { if (still && !HOLD) { cancelAnimationFrame(raf.current); setPlaying(false); setU(STEPS); } }, [still]);
 
-  const scene: Scene = intro != null ? { n: intro, airbag: true } : sceneAt(s, K);
+  // It plays once by itself, with Airbag, when the chart is on screen.
+  const started = useRef(false);
+  useEffect(() => {
+    if (HOLD || still || started.current) return;
+    const el = panel.current;
+    if (!el) return;
+    const go = () => { if (!started.current) { started.current = true; play(); } };
+    if (typeof IntersectionObserver === "undefined") { go(); return; }
+    const io = new IntersectionObserver((seen) => { if (seen.some((e) => e.isIntersecting)) { io.disconnect(); go(); } }, { threshold: 0.35 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [still, play]);
+
+  const scene: Scene = { n: candlesAt(u, K), airbag };
   const open = airbagOpen(scene, K);
   const pop = useEased(open ? 1 : 0, open ? 560 : 260, still, open ? easeOutBack : easeOut);
   const frame = useMemo(() => (story ? frameOf(story, scene, pop) : null), [story, scene.n, scene.airbag, pop]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -404,44 +358,49 @@ export function CrashStory({ children }: {
   const landed = !!frame?.landed;
   const landedFor = useEased(landed ? 1 : 0, 620, still);
   const thud = landed ? 1 - landedFor : 0;
-  const summary = intro != null ? 0 : 1 - seg(s, 0.08, 0.3);
 
   if (!story || !frame) return <section className="pb-10 pt-12 sm:pt-20">{children}</section>;
 
   const { days, saveIndex: save, crashIndex: crash, line0, debt0, savings, btcKept } = story;
-  const calmDay = days[K.calm - 1], before = days[crash - 1], crashDay = days[crash], saveDay = days[save];
-  const captions: { head: string; text: string }[] = [
-    { head: `You borrow ${usd(debt0)} against 1 bitcoin.`, text: `The loan comes with a line at ${usd(line0)}. If bitcoin's price touches it, even for a minute, your bitcoin is sold to repay the loan.` },
-    { head: "Then bitcoin falls for a week.", text: `From ${usd(calmDay.close)} on ${dayUTC(calmDay.date)} to ${usd(before.low)} on ${dayUTC(before.date)}. Only ${usd(before.low - line0)} of room is left above your line.` },
-    { head: `${dayUTC(crashDay.date)}: it touches the line.`, text: `${(1 - btcKept).toFixed(2)} of your bitcoin is sold near the bottom. By the end of the day bitcoin is back at ${usd(crashDay.close)}, and yours is gone.` },
-    { head: "The same week again, with Airbag.", text: `Your spare dollars, ${usd(savings)} here, wait in savings and earn interest. Airbag checks the odds of a crash every 5 seconds.` },
-    { head: `${dayUTC(saveDay.date)}: the odds pass 5%. The airbag opens.`, text: `Airbag pays down part of your loan with your savings: ${usd(saveDay.inLoan)} that day, ${usd(before.inLoan)} by the next. A smaller loan pushes your line down to ${usd(before.line)}.` },
-    { head: `${dayUTC(crashDay.date)}: bitcoin hits ${usd(crashDay.low)} and lands on the airbag.`, text: `Your line is ${usd(crashDay.low - crashDay.line)} further down. Nothing is sold, and you keep your whole bitcoin.` },
-  ];
-  const active = intro != null ? 0 : Math.min(captions.length, Math.floor(s + 1e-6));
+  const before = days[crash - 1], crashDay = days[crash], saveDay = days[save], last = days[days.length - 1];
+  // the same three steps for both runs: the fall, the day of the crash, the days after
+  const steps: { head: string; text: string }[] = airbag
+    ? [
+        { head: `${dayUTC(saveDay.date)}: the odds pass 5%`, text: `The airbag opens: ${usd(before.inLoan)} of your savings pay the loan down.` },
+        { head: `${dayUTC(crashDay.date)}: bitcoin hits ${usd(crashDay.low)}`, text: "It lands on the airbag. Nothing is sold." },
+        { head: "You keep your bitcoin", text: `Without Airbag: ${btcKept.toFixed(2)} BTC left.` },
+      ]
+    : [
+        { head: "Bitcoin falls for a week", text: `Only ${usd(before.close - line0)} of room is left above your line.` },
+        { head: `${dayUTC(crashDay.date)}: it touches the line`, text: `${(1 - btcKept).toFixed(2)} of your bitcoin is sold, near the bottom.` },
+        { head: "Bitcoin comes back", text: `Yours is gone: ${btcKept.toFixed(2)} BTC left.` },
+      ];
+  const at = stepAt(u);
   const day = days[frame.cur];
   const room = frame.price - frame.level;
 
   return (
-    <section ref={section} aria-label="February 2026's crash, with and without Airbag">
-      {/* The story itself. The stage stays pinned for as long as this block is on screen and no longer, so what comes
-          after the last caption never slides over the chart. */}
-      <div className="story relative lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.32fr)] lg:gap-x-12 xl:gap-x-14">
-        {/* the first screen: the headline beside the stage */}
-        <div data-step="0" className="pb-6 pt-8 sm:pb-9 sm:pt-14 lg:col-start-1 lg:row-start-1 lg:flex lg:min-h-[calc(var(--stage-h)+2.5rem)] lg:flex-col lg:justify-center lg:pb-10 lg:pt-6">
-          {children}
-        </div>
+    <section aria-label="February 2026's crash, with and without Airbag">
+      <div className="story lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.32fr)] lg:items-center lg:gap-x-12 lg:pt-8 xl:gap-x-14">
+        {/* the headline */}
+        <div className="pb-6 pt-8 sm:pb-9 sm:pt-14 lg:py-0">{children}</div>
 
-        {/* the stage: it stays in view while the captions pass */}
-        <div data-stage className="sticky top-[var(--stage-top)] z-10 -mx-5 bg-page px-5 pb-3 pt-2 sm:-mx-8 sm:px-8 lg:col-start-2 lg:row-start-1 lg:row-end-3 lg:mx-0 lg:mt-6 lg:self-start lg:bg-transparent lg:p-0">
-          <div className="flex h-[var(--stage-h)] flex-col overflow-hidden rounded-[22px] border border-panel-line bg-panel text-on-panel shadow-[0_30px_60px_-34px_rgb(0_0_0/0.5)] lg:rounded-[26px]">
+        {/* the chart, and the story's three steps under it */}
+        <div ref={panel} id="how" className="scroll-mt-20">
+          <div className="flex flex-col overflow-hidden rounded-[22px] border border-panel-line bg-panel text-on-panel shadow-[0_30px_60px_-34px_rgb(0_0_0/0.5)] lg:h-[var(--stage-h)] lg:rounded-[26px]">
             <div className="flex items-center justify-between gap-3 px-3.5 pt-3.5 sm:px-5 sm:pt-5">
-              {/* which run is on the chart; pressing one goes to it */}
+              {/* which run is on the chart; pressing one plays it */}
               <div role="group" aria-label="Which run the chart shows" className="inline-flex rounded-full bg-panel-2 p-1 text-[13px] font-semibold sm:text-[14px]">
-                <button type="button" aria-pressed={!scene.airbag} onClick={() => goTo(1.5)} className={cn("rounded-full px-3 py-1.5 transition-colors sm:px-3.5", scene.airbag ? "text-on-panel-faint hover:text-on-panel" : "bg-panel-3 text-on-panel")}>Without Airbag</button>
-                <button type="button" aria-pressed={scene.airbag} onClick={() => goTo(4.85)} className={cn("rounded-full px-3 py-1.5 transition-colors sm:px-3.5", scene.airbag ? "bg-brand text-white" : "text-on-panel-faint hover:text-on-panel")}>With Airbag</button>
+                <button type="button" aria-pressed={!airbag} onClick={() => choose(false)} className={cn("rounded-full px-3 py-1.5 transition-colors sm:px-3.5", airbag ? "text-on-panel-faint hover:text-on-panel" : "bg-panel-3 text-on-panel")}>Without Airbag</button>
+                <button type="button" aria-pressed={airbag} onClick={() => choose(true)} className={cn("rounded-full px-3 py-1.5 transition-colors sm:px-3.5", airbag ? "bg-brand text-white" : "text-on-panel-faint hover:text-on-panel")}>With Airbag</button>
               </div>
-              <p className="hidden text-[13.5px] text-on-panel-faint sm:block">February 2026, real prices</p>
+              <div className="flex items-center gap-3">
+                <p className="hidden text-[13.5px] text-on-panel-faint xl:block">February 2026, real prices</p>
+                <button type="button" onClick={play} aria-label="Play it again" className="inline-flex items-center gap-1.5 rounded-full bg-panel-2 px-2.5 py-2 text-[13px] font-semibold text-on-panel transition-colors hover:bg-panel-3 sm:px-3 sm:py-1.5 sm:text-[14px]">
+                  <RotateCcw size={15} aria-hidden className={cn(playing && "opacity-50")} />
+                  <span className="hidden sm:inline">{playing ? "Playing" : "Play again"}</span>
+                </button>
+              </div>
             </div>
 
             {/* the read-outs: they run as the chart does */}
@@ -461,33 +420,41 @@ export function CrashStory({ children }: {
                 </dd>
               </div>
             </dl>
-            <p className={cn("px-4 text-right text-[13px] text-on-panel-faint transition-opacity duration-300 sm:px-5 sm:text-[14px]", summary > 0.5 ? "opacity-100" : "opacity-0")} aria-hidden={summary <= 0.5}>
-              Without Airbag: {btcKept.toFixed(2)} BTC
-            </p>
 
-            <div className="flex min-h-0 flex-1 px-2 pb-2 sm:px-3 sm:pb-3">
-              <Plot story={story} scene={scene} frame={frame} pop={pop} summary={summary} flash={flash} thud={thud} uid={uid} />
+            <div className="flex h-[var(--plot-h)] shrink-0 px-2 sm:px-3 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink">
+              <Plot story={story} scene={scene} frame={frame} pop={pop} flash={flash} thud={thud} uid={uid} />
             </div>
+
+            {/* the three steps: always written out, so nothing has to be read in a hurry; pressing one goes to it */}
+            <ol className="grid gap-2 p-3 pt-2 sm:grid-cols-3 sm:p-4 sm:pt-2">
+              {steps.map((st, i) => {
+                const current = at === i + 1, reached = i + 1 <= at;
+                return (
+                  <li key={st.head}>
+                    <button
+                      type="button"
+                      onClick={() => goTo(i + 1)}
+                      aria-current={current ? "step" : undefined}
+                      className={cn("block h-full w-full rounded-2xl border px-3.5 py-2.5 text-left transition-[background-color,border-color,opacity] duration-300", current ? "border-on-panel/30 bg-panel-3" : "border-panel-line hover:bg-panel-2", !reached && "opacity-55")}
+                    >
+                      <span className="flex items-baseline gap-2">
+                        <span className={cn("grid size-[1.35rem] shrink-0 translate-y-[1px] place-items-center self-start rounded-full text-[12.5px] font-bold tabular-nums", current ? (airbag ? "bg-brand text-white" : "bg-[#ff7a6e] text-[#2a0d09]") : "bg-panel-2 text-on-panel-2")}>{i + 1}</span>
+                        <span className="text-[16px] font-semibold leading-snug text-on-panel sm:text-[15.5px]">{st.head}</span>
+                      </span>
+                      <span className="mt-1 block text-[14.5px] leading-snug text-on-panel-2 sm:text-[14px]">{st.text}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
-        </div>
-
-        {/* the captions: each stays put beside the stage while its part of the story plays */}
-        <div className="lg:col-start-1 lg:row-start-2">
-          {captions.map((c, i) => (
-            <div key={c.head} data-step={i + 1} id={i === 0 ? "how" : undefined} className={cn("scroll-mt-20", i === captions.length - 1 ? "min-h-[var(--last-step)]" : "min-h-[78svh] lg:min-h-[84svh]")}>
-              <div data-caption className={cn("sticky top-[var(--caption-top)] pb-8 transition-opacity duration-300", active === i + 1 ? "opacity-100" : "opacity-30")}>
-                <h2 className="display max-w-[17ch] text-balance text-[clamp(1.7rem,6.4vw,2.1rem)] text-ink lg:text-[clamp(2rem,2.9vw,2.7rem)]">{c.head}</h2>
-                <p className="mt-3 max-w-[40ch] text-[1.06rem] leading-relaxed text-ink-2 lg:mt-4 lg:text-[1.2rem]">{c.text}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 
       {/* how it was made, and the same story as a table */}
-      <div className="pb-4 pt-5 text-[15px] leading-relaxed text-ink-2 lg:pt-8">
+      <div className="pb-4 pt-5 text-[15px] leading-relaxed text-ink-2 lg:pt-7">
         <p className="max-w-[86ch]">
-          A loan of {usd(debt0)} against 1 bitcoin, with {usd(savings)} in savings, replayed on bitcoin's real daily prices with the bot's own rule. No Gemini prices exist for February, so the odds in this replay are worked out from bitcoin's own swings.
+          A loan of {usd(debt0)} against 1 bitcoin, with {usd(savings)} in savings, replayed on bitcoin's real daily prices with the bot's own rule. The bitcoin is sold if its price touches {usd(line0)}, even for a minute. No Gemini prices exist for February, so the odds in this replay are worked out from bitcoin's own swings.
         </p>
         <details className="mt-3">
           <summary className="cursor-pointer select-none font-semibold text-ink">See every day as a table</summary>

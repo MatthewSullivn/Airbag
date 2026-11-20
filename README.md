@@ -16,11 +16,21 @@ It has already saved real loans. The first was on Nov 17, 2026: pushed into dang
 
 ## Screenshots
 
+### The first screen: February 2026's crash, played on a chart
+
+| With Airbag: the ending | Without Airbag: the bitcoin is sold |
+|---|---|
+| ![The landing page's first screen: the headline "Keep your bitcoin through a crash" beside a chart of bitcoin's daily candles in February 2026, with an airbag drawn between the old line and the lowered one, and three steps written under it. 1 BTC is kept](docs/page-1-first-screen.jpg) | ![The same chart without Airbag: on Feb 6 a candle touches the line at 61,285 dollars, the bitcoin is sold, and 0.10 BTC is left](docs/story-1-sold.jpg) |
+
+| Step 1: the odds pass 5%, the airbag opens | Step 2: the candle of the crash lands on it |
+|---|---|
+| ![With Airbag, step 1: the odds passed 5% on Feb 4, and by Feb 5 9,439 dollars of the owner's savings are in the loan, drawn as an airbag that pushes the line down to 50,309 dollars](docs/story-2-airbag-opens.jpg) | ![With Airbag, step 2: on Feb 6 the candle reaches 60,000 dollars and lands on the airbag. Nothing is sold and the whole bitcoin is kept](docs/story-3-lands.jpg) |
+
 ### The save
 
 | The real loan, live | A real loan pushed to the edge | The same loan, saved 3 seconds later |
 |---|---|---|
-| ![The frame on the first screen: the real loan on Arc Testnet, its chance of losing the bitcoin and the room bitcoin has to fall, live](docs/page-1-first-screen.jpg) | ![The page's replay of the save of Nov 18, 2026, at the moment after the push: at risk, a 41.9% chance of losing the bitcoin](docs/page-2-at-risk.jpg) | ![The same replay three seconds later: Airbag has moved the owner's savings into the loan, and it is safe](docs/page-3-saved.jpg) |
+| ![The landing page's live part: the real loan on Arc Testnet, its chance of losing the bitcoin and the room bitcoin has to fall, live](docs/page-12-real-loan-live.jpg) | ![The page's replay of the save of Nov 18, 2026, at the moment after the push: at risk, a 41.9% chance of losing the bitcoin](docs/page-2-at-risk.jpg) | ![The same replay three seconds later: Airbag has moved the owner's savings into the loan, and it is safe](docs/page-3-saved.jpg) |
 
 ### Gemini
 
@@ -30,7 +40,7 @@ It has already saved real loans. The first was on Nov 17, 2026: pushed into dang
 
 | The market's own odds, hour by hour | The hedge, as an order | Push it on paper: what the bot's rule would do |
 |---|---|---|
-| ![The landing page: Gemini's hourly history for one bet, and a hedge quote](docs/page-5-odds-over-time.jpg) | ![The hedge ticket: buy 4,385 No on Bitcoin 57,500 dollars or above on Nov 30, the live price, the cost and the payout, and the note that Airbag places it for real on Gemini's test site](docs/page-10-hedge-ticket.jpg) | ![The what-if card: the real loan pushed to the edge on paper reads 42%, and Airbag would pay down 3.88 USDC](docs/page-8-what-if.jpg) |
+| ![The landing page's Hour by hour tab: Gemini's hourly history for one bet, and the note that this loan is only lost far lower, so its chance is 0.4%, not 50%](docs/page-5-odds-over-time.jpg) | ![The hedge ticket: buy 4,385 No on Bitcoin 57,500 dollars or above on Nov 30, the live price, the cost and the payout, and the note that Airbag places it for real on Gemini's test site](docs/page-10-hedge-ticket.jpg) | ![The what-if card: the real loan pushed to the edge on paper reads 42%, and Airbag would pay down 3.88 USDC](docs/page-8-what-if.jpg) |
 
 ### Arc
 
@@ -38,7 +48,7 @@ It has already saved real loans. The first was on Nov 17, 2026: pushed into dang
 |---|---|
 | ![The landing page's Arc part: Gemini's odds and QuickNode's wake-up reach the bot, its key presses the guard, the guard moves USDC between savings and loan](docs/page-6-on-chain.jpg) | ![The My loan screen with a connected wallet's real loan: the chance, the price against the price where the bitcoin is lost, the money on Arc, and how the number is made](docs/page-11-my-loan.jpg) |
 
-All of these show real things: the loan the hosted bot guards on Arc Testnet, a connected wallet's real loan, Gemini's live market and its settled markets, and the page's replay of the save of Nov 18, 2026, drawn from its recorded transactions. The page as it looked during the first live saves is under [Live proof](#live-proof).
+The first four are the page's replay of February 2026 on bitcoin's real daily prices, with the bot's own rule ([how it is worked out](#7-the-crash-replay)). The rest show real things: the loan the hosted bot guards on Arc Testnet, a connected wallet's real loan, Gemini's live market and its settled markets, and the page's replay of the save of Nov 18, 2026, drawn from its recorded transactions. The page as it looked during the first live saves is under [Live proof](#live-proof).
 
 ---
 
@@ -418,7 +428,7 @@ Server endpoints:
 
 POST routes need `WEBHOOK_SECRET` (header `x-airbag-key` or `?key=`). With no secret set, they only accept requests from localhost.
 
-**The page.** `/` is the landing page. It opens with a story told by scrolling: February 2026's crash on a chart of bitcoin's real daily candles that stays in view, first without Airbag (a candle touches the line and the bitcoin is sold), then with it (the odds pass 5% two days earlier, the line moves down, the same candle lands above it). After the story: the loan the bot guards, live; a real save replayed from its recorded transactions; **Gemini** (a card with the market's live bets, then one of four at a time: the ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, the check of settled markets, a hedge quote); **Arc** (a picture of who tells the bot and how the money moves between the contracts, what the QuickNode Stream saw, what a move costs). It ends with the three recorded saves as receipts. `/app/` is the app, with two screens: **Live demo** (the loan the bot guards: the chance of losing the bitcoin against the level where Airbag steps in, bitcoin's price above the price where it is lost, and what Airbag did) and **My loan** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
+**The page.** `/` is the landing page. Its first screen plays February 2026's crash on a chart of bitcoin's real daily candles, in three steps that stay written under it: with Airbag (the odds pass 5% two days early, an airbag opens under the price and the line moves down, the candle of the crash lands on it), and, at the press of a switch, without it (the same candle touches the line and the bitcoin is sold). After it: the loan the bot guards, live; a real save replayed from its recorded transactions; **Gemini** (a card with the market's live bets, then one of four at a time: the ladder with the loan's line on it, the odds over time from Gemini's own hourly history and from the bot's readings, the check of settled markets, a hedge quote); **Arc** (a picture of who tells the bot and how the money moves between the contracts, what the QuickNode Stream saw, what a move costs). It ends with the three recorded saves as receipts. `/app/` is the app, with two screens: **Live demo** (the loan the bot guards: the chance of losing the bitcoin against the level where Airbag steps in, bitcoin's price above the price where it is lost, and what Airbag did) and **My loan** (your own wallet, four steps). The source is in [`web/`](web) (React); the built files in `public/` are committed. The old page is still at `/classic/`.
 
 **Demo controls.** On the live bot, press `d` in the app and enter `WEBHOOK_SECRET`. On the simulator they are open at the top of the *Live demo* screen.
 - **Push it to the edge** borrows up to Borrow Kit's maximum. The USDC stays in the wallet, as if spent.

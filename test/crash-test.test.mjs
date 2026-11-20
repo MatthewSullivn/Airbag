@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { INTRO_SECONDS, STORY_END, airbagOpen, candleSoFar, crashStory, frameOf, introAt, sceneAt, storyKeys } from "../src/crash-test.mjs";
+import { PLAY_SECONDS, STEPS, airbagOpen, candleSoFar, candlesAt, crashStory, frameOf, playAt, stepAt, storyKeys } from "../src/crash-test.mjs";
 
 const replay = JSON.parse(readFileSync(new URL("../replay/results.json", import.meta.url), "utf8"));
 
@@ -73,85 +73,83 @@ test("a day while it is still happening: open, then the high, then the low, then
   }
 });
 
-// The page tells the story as the visitor scrolls. Walk it from the top to the end in small steps, the way a slow
-// scroll would, and look at what the chart shows at every one of them.
-function walk(visit) {
+// The page plays the story on its chart in three steps, once without Airbag and once with it. Walk each run from
+// its start to its end in small steps, and look at what the chart shows at every one of them.
+function walk(airbag, visit) {
   const story = crashStory(replay), K = storyKeys(story);
-  for (let i = 0; i <= STORY_END * 1000; i++) {
-    const at = i / 1000, scene = sceneAt(at, K);
+  for (let i = 0; i <= STEPS * 1000; i++) {
+    const at = i / 1000, scene = { n: candlesAt(at, K), airbag };
     visit({ at, scene, story, K, frame: frameOf(story, scene, airbagOpen(scene, K) ? 1 : 0) });
   }
 }
 
-test("walking the story: the chart moves smoothly, and Airbag comes on only where nothing changes on screen", () => {
-  let before = null;
-  walk(({ at, scene, story, K }) => {
-    assert.ok(scene.n >= K.calm - 1e-9 && scene.n <= K.N + 1e-9, `at ${at} the chart shows between the calm and every candle`);
-    if (before) {
-      assert.ok(Math.abs(scene.n - before.scene.n) < 0.06, `at ${at} the chart does not jump`);
-      if (scene.airbag !== before.scene.airbag) {
-        // the switch between the two runs: the same candles on both sides, no airbag open, nothing sold
-        for (const side of [before.scene, scene]) {
-          const f = frameOf(story, side, airbagOpen(side, K) ? 1 : 0);
-          assert.ok(!f.cushion && !f.sold && f.level === story.line0, `at ${at} the run changes on a chart that looks the same either way`);
-        }
-      }
-    }
-    before = { scene };
-  });
+test("walking the story: both runs show the same candles, moving smoothly, and start on the same chart", () => {
+  const story = crashStory(replay), K = storyKeys(story);
+  assert.equal(candlesAt(0, K), K.calm, "it starts on the calm before the fall");
+  assert.equal(candlesAt(1, K), K.crash, "step 1 ends the evening before the crash");
+  assert.equal(candlesAt(2, K), K.crash + 1, "step 2 is the day of the crash");
+  assert.equal(candlesAt(3, K), K.N, "step 3 ends on every candle");
+  assert.ok(K.calm <= K.save && K.save < K.crash, "the airbag opens during step 1");
+  assert.deepEqual([0, 0.4, 1, 1.001, 2, 2.5, 3].map(stepAt), [1, 1, 1, 2, 2, 3, 3]);
+  for (const airbag of [false, true]) {
+    let before = null;
+    walk(airbag, ({ at, scene, frame }) => {
+      if (before != null) assert.ok(scene.n >= before && scene.n - before < 0.02, `at ${at} the chart only moves forward, a little at a time`);
+      before = scene.n;
+      if (at === 0) assert.ok(!frame.cushion && !frame.sold && frame.level === story.line0, "at the start nothing is open and nothing is sold, in either run");
+    });
+  }
 });
 
 test("walking the story: without Airbag the bitcoin is sold exactly when bitcoin touches the line", () => {
   let soldAt = null;
-  walk(({ at, scene, story, frame }) => {
-    if (scene.airbag) return;
+  walk(false, ({ at, story, frame }) => {
     assert.equal(frame.level, story.line0, "left alone, the line never moves");
+    assert.ok(!frame.cushion && !frame.landed);
     const touched = story.days.some((d, i) => (i < frame.full ? d.low <= story.line0 : i === frame.full && frame.forming && frame.candle.low <= story.line0));
     assert.equal(frame.sold, touched, `at ${at}: sold if and only if a candle on the chart reaches the line`);
     if (!frame.sold) assert.ok(frame.price > story.line0, `at ${at}: until then bitcoin is above the line`);
     else if (soldAt == null) soldAt = at;
   });
-  assert.ok(soldAt > 3 && soldAt < 4, "the sale happens in the part of the story that says so");
+  assert.ok(soldAt > 1 && soldAt < 2, "the sale happens in the step that says so");
 });
 
 test("walking the story: with Airbag bitcoin never reaches the line, and it lands on the day of the crash", () => {
   let opened = null, landedAt = null;
-  walk(({ at, scene, story, K, frame }) => {
-    if (!scene.airbag) return;
+  walk(true, ({ at, scene, story, K, frame }) => {
     assert.equal(frame.sold, false);
     assert.ok(frame.level <= story.line0, "Airbag only ever moves the line down");
     assert.ok(frame.candle.low > frame.level && frame.price > frame.level, `at ${at}: bitcoin stays above the line`);
     // and while the airbag is still springing open, drawn a little past its place
     assert.ok(frame.candle.low > frameOf(story, scene, 1.08).level, `at ${at}: also with the airbag drawn at its fullest`);
-    if (frame.cushion && opened == null && at >= 1) opened = at;
-    if (frame.landed && landedAt == null && at >= 1) landedAt = at;
+    if (frame.cushion && opened == null) opened = at;
+    if (frame.landed && landedAt == null) landedAt = at;
     if (frame.landed) assert.ok(frame.cushion && frame.full >= K.crash, "bitcoin lands on an open airbag, on the crash day or after");
     assert.ok(frame.inLoan >= 0 && frame.inLoan <= story.savings + 1e-9, "the airbag is never more than the savings");
   });
-  assert.ok(opened > 5 && opened < 6, "the airbag opens in the part of the story that says so");
-  assert.ok(landedAt > 6 && landedAt < 7, "and bitcoin lands on it in the part that says so");
+  assert.ok(opened > 0 && opened < 1, "the airbag opens in the step that says so");
+  assert.ok(landedAt > 1 && landedAt < 2, "and bitcoin lands on it in the step that says so");
+  // the ending: every candle, the airbag open, the last day's own numbers
+  const K = storyKeys(crashStory(replay)), story = crashStory(replay);
+  const end = frameOf(story, { n: candlesAt(STEPS, K), airbag: true }, 1);
+  assert.ok(end.cushion && end.landed && !end.sold);
+  assert.equal(end.level, story.days[K.N - 1].line);
+  assert.equal(end.price, story.days[K.N - 1].close);
 });
 
-test("the story begins and ends on the whole picture, and plays its ending by itself when the page opens", () => {
-  const story = crashStory(replay), K = storyKeys(story);
-  for (const at of [0, STORY_END]) {
-    const scene = sceneAt(at, K), frame = frameOf(story, scene, 1);
-    assert.deepEqual(scene, { n: K.N, airbag: true });
-    assert.ok(frame.cushion && frame.landed && !frame.sold);
-    assert.equal(frame.level, story.days[K.N - 1].line);
-    assert.equal(frame.price, story.days[K.N - 1].close);
+test("a play by itself goes from the start to the end, never backwards, and holds still after each step", () => {
+  assert.equal(playAt(0), 0);
+  assert.equal(playAt(PLAY_SECONDS), STEPS);
+  assert.equal(playAt(PLAY_SECONDS + 5), STEPS);
+  assert.ok(PLAY_SECONDS >= 10 && PLAY_SECONDS <= 16, "slow enough to follow, short enough to watch");
+  let u = 0, held = { 1: 0, 2: 0 };
+  for (let t = 0; t <= PLAY_SECONDS; t += 0.01) {
+    const next = playAt(t);
+    assert.ok(next >= u - 1e-9 && next - u < 0.02, `at ${t.toFixed(2)} s it only moves forward, a little at a time`);
+    if (next === 1 || next === 2) held[next] += 0.01;
+    u = next;
   }
-  // the ending, by itself: from the calm to every candle, never backwards, past the save and the crash
-  assert.equal(introAt(0, K), K.calm);
-  assert.equal(introAt(INTRO_SECONDS, K), K.N);
-  let n = introAt(0, K);
-  for (let t = 0; t <= INTRO_SECONDS; t += 0.01) {
-    const next = introAt(t, K);
-    assert.ok(next >= n - 1e-9 && next - n < 0.25, "it only moves forward, a little at a time");
-    n = next;
-  }
-  // the first frame it shows is the first frame of the story's first caption, apart from Airbag being on
-  assert.equal(sceneAt(1, K).n, K.calm);
+  assert.ok(held[1] > 1.2 && held[2] > 1.2, "it stops for more than a second where the airbag has opened, and where bitcoin has landed");
 });
 
 test("no story, no facts: a replay where nothing was sold, or where Airbag was too late, shows nothing made up", () => {

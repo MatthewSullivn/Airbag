@@ -1,5 +1,5 @@
-// The first page a visitor sees. It opens with a story told by scrolling: February 2026's crash on a trading chart,
-// without Airbag and then with it (components/crash-story.tsx). After the story: the real loan, live; a real save,
+// The first page a visitor sees. Its first screen plays February 2026's crash on a trading chart, with Airbag and
+// (at the press of a switch) without it (components/crash-story.tsx). After it: the real loan, live; a real save,
 // recorded; where the odds come from (Gemini); where the money moves (Arc); the receipts. Few words per screen.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useScroll } from "motion/react";
@@ -116,7 +116,7 @@ export function Landing() {
 
       <div className={WIDTH}>
         <main>
-          {/* 1. The story: what Airbag is, and February's crash without it and with it, told as you scroll */}
+          {/* 1. The first screen: what Airbag is, and February's crash played on a chart, with it and without it */}
           <CrashStory>
             <h1 className="display max-w-[13ch] text-balance text-[clamp(2.7rem,10vw,3.6rem)] text-ink lg:text-[clamp(3rem,4.3vw,4.1rem)]">Keep your bitcoin through a crash.</h1>
             {/* the problem first, then what Airbag does about it */}
