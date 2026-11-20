@@ -2,7 +2,6 @@
 // how it works step by step (the problem, then a real save replayed), and then in depth how it uses Gemini's
 // prediction market and Arc with Circle's kits. Few words per screen, one real picture each.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
 import { postJson, useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
 import { symbolsOf, useGeminiFeed, useLiveEvents } from "@/lib/gemini-feed";
 import { usePressed } from "@/lib/use-pressed";
@@ -22,9 +21,6 @@ import { SaveReplay } from "@/components/save-replay";
 import { TiltFrame } from "@/components/ui/tilt-frame";
 import { BotBadge } from "@/components/top-bar";
 import { MetalLink, ShinyButton, ShinyLink } from "@/components/ui/cta";
-import { DotPattern } from "@/components/ui/dot-pattern";
-import { FadeIn } from "@/components/ui/fade-in";
-import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const LINK = "underline decoration-current/30 underline-offset-[3px] hover:decoration-current";
 const NAV = [["How it works", "#how"], ["Gemini", "#gemini"], ["Arc", "#arc"], ["My loan", "/app/#mine"]] as const;
@@ -102,31 +98,27 @@ export function Landing() {
           <nav aria-label="On this page" className="hidden items-center gap-7 text-[15px] font-medium text-ink-2 md:flex">
             {NAV.map(([label, href]) => <a key={href} href={href} className="no-underline hover:text-ink">{label}</a>)}
           </nav>
-          <ShinyLink href="/app/" small>Live demo <ArrowRight aria-hidden="true" className="size-4" /></ShinyLink>
+          <ShinyLink href="/app/" small>Live demo</ShinyLink>
         </div>
       </header>
 
       <div className="mx-auto w-full max-w-[1180px] px-5 sm:px-8">
         <main>
-          {/* 1. What it is: the words, then the live app itself in a frame that lies flat as you scroll */}
-          <section className="relative pb-10 pt-10 sm:pt-16">
-            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] [mask-image:radial-gradient(ellipse_at_top,black_25%,transparent_70%)]">
-              <DotPattern width={18} height={18} cr={1.15} className="text-ink/30" />
-            </div>
-            <div className="relative text-center">
-              <p className="eyebrow">Crash insurance for bitcoin loans</p>
-              <h1 className="display mx-auto mt-5 max-w-[14ch] text-[clamp(3rem,8.4vw,6.2rem)] text-ink">
-                An airbag for your <span className="accent">bitcoin loan.</span>
-              </h1>
-              {/* the problem first, in one line, then what Airbag does about it */}
-              <p className="mx-auto mt-6 max-w-[40ch] text-[1.3rem] leading-snug text-ink-2">
-                <strong className="font-semibold text-ink">Borrow against bitcoin, and one bad day can sell it.</strong> Airbag sees the crash coming in Gemini's odds and pays your loan down first, with your own savings.
+          {/* 1. The first screen: what it is, in plain words, and February's crash run without Airbag and with it */}
+          <section className="relative pb-6 pt-12 sm:pt-20">
+            <CrashTest replay={replay} actions={<a href="/app/" className="btn-shiny">Open the live demo</a>}>
+              <h1 className="display max-w-[17ch] text-[clamp(2.7rem,6.2vw,4.9rem)] text-ink">Crash insurance for your bitcoin loan.</h1>
+              {/* the problem first, then what Airbag does about it */}
+              <p className="mt-5 max-w-[46ch] text-[1.08rem] leading-relaxed text-ink-2 sm:mt-6 sm:text-[1.32rem]">
+                Borrow against bitcoin, and one bad day can sell it. Airbag sees the crash coming in Gemini's odds and pays your loan down first, with your own savings.
               </p>
-            </div>
-            {/* the idea in ten seconds: February's crash, without and then with Airbag. It also carries the two ways on:
-                a real save, and the live demo. */}
-            <CrashTest replay={replay} className="relative mx-auto mt-8 max-w-[1040px] sm:mt-10" />
-            <TiltFrame className="relative mt-8 sm:mt-9">
+            </CrashTest>
+          </section>
+
+          {/* 2. The real thing: the loan the bot guards, live */}
+          <section id="live" className="scroll-mt-20 pb-10 pt-14 sm:pt-20">
+            <h2 className="display max-w-[22ch] text-[clamp(2rem,4.2vw,3.2rem)] text-ink">{live ? "And this loan is real. Airbag is guarding it right now." : "Now push a loan into danger yourself."}</h2>
+            <TiltFrame flat className="relative mt-8 sm:mt-10">
               {status ? (
                 <>
                   {/* what this is, in one line, and the one thing to press */}
@@ -170,21 +162,19 @@ export function Landing() {
           </section>
 
           {/* 2. Who it is for */}
+          {/* three people, three plain sentences each: no cards, no icons, just the words */}
           <section id="who" className="scroll-mt-20 py-14 sm:py-20">
-            <FadeIn distance={18} duration={0.7} amount={0.3}>
-              <h2 className="display max-w-[16ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">Who it is <span className="accent">for.</span></h2>
-            </FadeIn>
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <h2 className="display max-w-[16ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">Who it is <span className="accent">for.</span></h2>
+            <div className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-3">
               {([
-                [Bitcoin, "240 89 31", "You borrowed against your bitcoin.", "Keep it through a bad day, without watching charts all night."],
-                [TrendingUp, "57 135 229", "You trade prediction markets.", "The odds you already read now guard a loan."],
-                [PiggyBank, "25 158 112", "You have dollars sitting idle.", "They earn interest in savings until the loan needs them."],
-              ] as const).map(([Icon, glow, who, why]) => (
-                <SpotlightCard key={who} glow={glow}>
-                  <span className="grid size-12 place-items-center rounded-2xl" style={{ background: `rgb(${glow} / 0.18)`, color: `rgb(${glow})` }} aria-hidden="true"><Icon className="size-6" /></span>
-                  <p className="display mt-6 text-[1.7rem] text-on-panel">{who}</p>
-                  <p className="mt-3 text-[1.05rem] leading-snug text-on-panel-2">{why}</p>
-                </SpotlightCard>
+                ["You borrowed against your bitcoin.", "Keep it through a bad day, without watching charts all night."],
+                ["You trade prediction markets.", "The odds you already read now guard a loan."],
+                ["You have dollars sitting idle.", "They earn interest in savings until the loan needs them."],
+              ] as const).map(([who, why]) => (
+                <div key={who} className="border-t-2 border-ink pt-5">
+                  <p className="display text-[1.75rem] leading-[1.05] text-ink">{who}</p>
+                  <p className="mt-3 max-w-[32ch] text-[1.1rem] leading-relaxed text-ink-2">{why}</p>
+                </div>
               ))}
             </div>
           </section>
@@ -274,11 +264,10 @@ export function Landing() {
           </Section>
 
           {/* The way in */}
-          <section className="relative mb-16 overflow-hidden rounded-[36px] bg-panel px-7 py-14 text-center text-on-panel sm:px-12 sm:py-20">
-            <DotPattern width={20} height={20} cr={1.2} className="text-on-panel/20 [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]" />
-            <h2 className="display relative mx-auto max-w-[16ch] text-[clamp(2.4rem,6vw,4.4rem)]">See it <span className="accent">{live ? "live." : "work."}</span></h2>
-            <div className="relative mt-9 flex flex-wrap justify-center gap-3">
-              <ShinyLink href="/app/">Open the live demo <ArrowRight aria-hidden="true" className="size-5" /></ShinyLink>
+          <section className="relative mb-16 overflow-hidden rounded-[28px] bg-panel px-7 py-14 text-on-panel sm:px-12 sm:py-20">
+            <h2 className="display relative max-w-[18ch] text-[clamp(2.4rem,6vw,4.4rem)]">See it <span className="accent">{live ? "live, on a real loan." : "work."}</span></h2>
+            <div className="relative mt-9 flex flex-wrap gap-3">
+              <ShinyLink href="/app/">Open the live demo</ShinyLink>
               <MetalLink href="/app/#mine">Protect my own loan</MetalLink>
             </div>
             <p className="relative mt-6 text-[15px] text-on-panel-faint">

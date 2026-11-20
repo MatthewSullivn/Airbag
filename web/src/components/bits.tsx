@@ -6,7 +6,6 @@ import { ArrowUpRight, Check, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { short, type Tone } from "@/lib/format";
 import { BorderBeam } from "./ui/border-beam";
-import { FadeIn } from "./ui/fade-in";
 
 /** A dark instrument panel: where a live number or a chart sits. The same surface in the light and the dark theme. */
 export function Panel({ className, children, tone, beam, ...rest }: React.HTMLAttributes<HTMLElement> & { tone?: "critical" | null; /** A slow, quiet beam round the border: "this is live". */ beam?: boolean }) {
@@ -134,15 +133,15 @@ export function Wordmark({ className }: { className?: string }) {
 /** A page section on the landing page: one big line, a sentence or two, and one thing to look at. */
 export function Section({ id, eyebrow, step, title, lead, children, className }: { id?: string; eyebrow?: string; /** A step number, e.g. "1", shown big and quiet beside the heading. */ step?: string; title: React.ReactNode; lead?: React.ReactNode; children?: React.ReactNode; className?: string }) {
   return (
+    // No entrance animation: the page's one moving moment is the crash test at the top. Sections are simply there.
     <section id={id} className={cn("scroll-mt-20 py-14 sm:py-20", className)}>
-      {/* the words glide up as the section comes into view, then the picture a moment later */}
-      <FadeIn distance={18} duration={0.7} amount={0.3}>
+      <div>
         {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
         {step && <p className="figure mb-3 text-[3.2rem] text-brand" aria-hidden="true">{step}</p>}
         <h2 className="display max-w-[20ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">{title}</h2>
         {lead && <p className="mt-5 max-w-[46ch] text-[1.15rem] leading-relaxed text-ink-2">{lead}</p>}
-      </FadeIn>
-      {children && <FadeIn distance={24} duration={0.8} delay={0.1} amount={0.06} className="mt-10 sm:mt-12">{children}</FadeIn>}
+      </div>
+      {children && <div className="mt-10 sm:mt-12">{children}</div>}
     </section>
   );
 }

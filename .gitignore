@@ -17,8 +17,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# local tooling
+# local tooling (agent skills installed with `npx skills` land in .claude/, .agents/ and skills-lock.json)
 .claude/
+.agents/
+skills-lock.json
 
 # downloaded tools (cloudflared)
 tools/

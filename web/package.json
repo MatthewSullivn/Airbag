@@ -10,6 +10,7 @@
     "build": "tsc --noEmit -p . && node scripts/clean.mjs && vite build && node scripts/stamp.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
