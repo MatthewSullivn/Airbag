@@ -2,7 +2,7 @@
 
 The video is judged for the Gemini and QuickNode bounties (they don't see a live demo), so it matters as much as the code. Finalists also give a 4 min pitch + 2 min Q&A in person on Saturday Nov 21.
 
-The page has two parts. `/` is the landing page, a walk-through: what it is, who it is for, then four numbered steps (1 the problem, 2 the save, 3 Gemini, 4 Arc) and the receipts. Its top bar jumps to any of them. `/app/` is the app, with two screens: **Live demo** and **My loan**.
+The page has two parts. `/` is the landing page, a walk-through: a crash test at the top (February 2026's real prices as a car hitting a wall, with and without Airbag), what it is, who it is for, then four numbered steps (1 the problem, 2 the save, 3 Gemini, 4 Arc) and the receipts. Its top bar jumps to any of them. `/app/` is the app, with two screens: **Live demo** and **My loan**.
 
 On the live site nobody can push the Live demo's loan from the page: it is real, and the server does not hold its owner's key. The bar at its top says so and offers three ways to see Airbag act: *Push it on paper* (a what-if with two sliders, lower on the same screen), *Watch a real save*, and *Push your own loan*. To push that loan for real, its owner runs `npm run demo:push` on their own machine, and `npm run demo:reset` afterwards.
 
@@ -32,7 +32,7 @@ Record it Thursday evening, not Friday. Talk slowly, with no music over the talk
 
 | Time | Show (exact clicks) | Say |
 |---|---|---|
-| 0:00–0:20 | The landing page, top. Scroll a little: the frame lies flat and the big number in it is live. | "Borrow dollars against your bitcoin and you can lose it in one bad day. Airbag shows one number, the chance you lose your bitcoin, and fixes the loan by itself." |
+| 0:00–0:20 | The landing page, top, freshly loaded: the crash test plays by itself, *Without Airbag* (the car hits the wall, 0.10 BTC left), then *With Airbag* (on Feb 4 the odds pass 5%, the airbag fires, all 1 BTC kept). About 10 s; the toggle replays either. Then scroll a little: the frame lies flat and the big number in it is live. | "Borrow dollars against your bitcoin, and one bad day can sell it. This is February 2026 on real prices. Left alone, the loan was sold and kept a tenth of a bitcoin. With Airbag, the odds passed 5% two days early, Airbag paid the loan down, and the whole bitcoin was kept. And this one is live." (February's odds are modelled from bitcoin's own swings: Gemini's ladders start later. Step 1 says so.) |
 | 0:20–0:40 | Scroll to step **1** (*One bad day can take your bitcoin*). | "February 6, 2026: bitcoin dipped to $60,000. A loan that had borrowed 60% against one bitcoin was sold off and kept a tenth of it. The same loan with Airbag kept the whole bitcoin." |
 | 0:40–1:00 | Scroll to step **2** (*Airbag pays the loan down*). The replay plays by itself. | "This is a real save, recorded on Arc. The loan is pushed to the edge. Three seconds later Airbag has paid part of it back with the owner's savings, so the price that would take the bitcoin is far away again. The fee was one cent, paid in USDC." |
 | 1:00–1:20 | Top bar → **My loan**. Before pressing anything, point at *How this number is made, right now*. Wait for a price to flash. | "This is my own loan. The number comes from Gemini's prediction market, live. These are two of its bets on bitcoin's price, ticking as people trade. From them: the chance bitcoin ends below my price. Doubled, because a dip at any moment counts. Under 5%, so Airbag waits." |
@@ -45,7 +45,7 @@ After the take, press *Calm it down* on My loan, so the loan is ready for the ne
 
 ## The 4-minute live pitch (finalists)
 
-1. **The problem, 30 s.** Landing page, step 1: the left-alone loan is sold off on Feb 6.
+1. **The problem, 30 s.** Landing page, top: the crash test. *Without Airbag*: sold off on Feb 6, 0.10 BTC left. *With Airbag*: the airbag fires on Feb 4, two days early, and all 1 BTC is kept. (Step 1's chart has the same crash day by day, if asked.)
 2. **The number, 30 s.** The app, Live demo: "X% chance of losing the bitcoin by Nov 30. Live, from Gemini." Point at *How this number is made, right now*: two live bets, the chance below the line, doubled, against 5%.
 3. **The save, 75 s.** My loan → *Push it to the edge* → red → hands off → green, all on one screen. Click a "see it" link.
 4. **How the odds work, 40 s.** Landing page, **Gemini**: the market's bets, the curve, the line, estimated below the lowest bet, and the hedge ticket.
@@ -67,6 +67,7 @@ Use these numbers, not the early drafts. Two answers in our first plan did not s
 - **"Can I change the 5%?"** It is the owner's setting. On the Live demo anyone can try another limit on paper: the what-if runs the bot's own rule and says what it would do. On our hosted bot one limit applies to every loan it protects; a limit per wallet is next.
 - **"Is the number really live?"** Yes. The page listens to Gemini's live feed and works the number out itself with the bot's own code. The bot is woken by the same feed and reads the prices again before it decides. Its own last check is printed next to the page's number.
 - **"Isn't this just cross margin?"** Same idea, different default. Cross margin keeps all your spare money inside the position all the time. Airbag keeps it outside, earning interest (4.2% in the vault), and brings in only what is needed, only when the odds say so. In our replay at 60% borrowed, 58% of the savings stayed outside on average. And Arc's bitcoin loans are isolated Morpho markets: there is no cross margin to switch on. What cross margin does better: it needs no bot, so it cannot be offline.
+- **"Is it insurance?"** It works like crash insurance (the page's top line says so), but there is no insurer and no premium. The money that saves the loan is the borrower's own savings, earning interest until it is needed, and it goes back to savings when the market calms down. The part that pays out like a policy is the hedge: "No" contracts on Gemini that pay if bitcoin ends low.
 - **"Isn't this just DeFi Saver?"** The saving idea is the same. Two differences: the trigger is a live market's odds instead of a ratio, and it is built for Arc's bitcoin loans on Circle's kits, where nothing like it existed.
 - **"Why odds instead of the health factor?"**
   - Nobody knows what health 1.31 means; everyone understands "12% chance by Nov 30".

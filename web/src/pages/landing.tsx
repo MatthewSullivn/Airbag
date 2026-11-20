@@ -1,8 +1,8 @@
-// The first page a visitor sees: a walk-through. What Airbag is (with the live app in a frame), who it is for,
+// The first page a visitor sees: a walk-through. What Airbag is (a crash test first, then the live app in a frame), who it is for,
 // how it works step by step (the problem, then a real save replayed), and then in depth how it uses Gemini's
 // prediction market and Arc with Circle's kits. Few words per screen, one real picture each.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
+import { ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
 import { postJson, useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
 import { symbolsOf, useGeminiFeed, useLiveEvents } from "@/lib/gemini-feed";
 import { usePressed } from "@/lib/use-pressed";
@@ -11,6 +11,7 @@ import { pct } from "@/lib/format";
 import { ExplorerLink, Section, Wordmark } from "@/components/bits";
 import { Costs, MoneyMap, StreamList } from "@/components/chain-parts";
 import { CrashCard } from "@/components/crash-card";
+import { CrashTest } from "@/components/crash-test";
 import { GeminiMarketCard } from "@/components/gemini-market-card";
 import { HedgeCard } from "@/components/hedge-card";
 import { LadderCard } from "@/components/ladder-card";
@@ -113,19 +114,19 @@ export function Landing() {
               <DotPattern width={18} height={18} cr={1.15} className="text-ink/30" />
             </div>
             <div className="relative text-center">
-              <p className="eyebrow">Runs on Arc · Odds from Gemini</p>
+              <p className="eyebrow">Crash insurance for bitcoin loans</p>
               <h1 className="display mx-auto mt-5 max-w-[14ch] text-[clamp(3rem,8.4vw,6.2rem)] text-ink">
                 An airbag for your <span className="accent">bitcoin loan.</span>
               </h1>
-              <p className="mx-auto mt-6 max-w-[38ch] text-[1.3rem] leading-snug text-ink-2">
-                When a crash looks likely, it pays down your loan with your own savings. So the crash can't take your bitcoin.
+              {/* the problem first, in one line, then what Airbag does about it */}
+              <p className="mx-auto mt-6 max-w-[40ch] text-[1.3rem] leading-snug text-ink-2">
+                <strong className="font-semibold text-ink">Borrow against bitcoin, and one bad day can sell it.</strong> Airbag sees the crash coming in Gemini's odds and pays your loan down first, with your own savings.
               </p>
-              <div className="mt-9 flex flex-wrap justify-center gap-3">
-                <ShinyLink href="#save">Watch a real save <ArrowDown aria-hidden="true" className="size-5" /></ShinyLink>
-                <MetalLink href="/app/">Open the live demo</MetalLink>
-              </div>
             </div>
-            <TiltFrame className="relative mt-10 sm:mt-12">
+            {/* the idea in ten seconds: February's crash, without and then with Airbag. It also carries the two ways on:
+                a real save, and the live demo. */}
+            <CrashTest replay={replay} className="relative mx-auto mt-8 max-w-[1040px] sm:mt-10" />
+            <TiltFrame className="relative mt-8 sm:mt-9">
               {status ? (
                 <>
                   {/* what this is, in one line, and the one thing to press */}
@@ -190,7 +191,7 @@ export function Landing() {
 
           {/* 3. How it works, step by step */}
           <div id="how" className="scroll-mt-20">
-            <Section step="1" title={<>One bad day can <span className="accent">take your bitcoin.</span></>} lead="You borrowed dollars against your bitcoin. If bitcoin falls below a set price, even for a minute, the bitcoin is sold. In February 2026 that is what happened.">
+            <Section step="1" title={<>One bad day can <span className="accent">take your bitcoin.</span></>} lead="You borrowed dollars against your bitcoin. If bitcoin falls below a set price, even for a minute, the bitcoin is sold. That is what happened in February 2026. Here is the crash test from the top, day by day.">
               <CrashCard replay={replay} />
             </Section>
             {/* "Watch a real save" lands on the replay itself, so the whole card is on screen */}
