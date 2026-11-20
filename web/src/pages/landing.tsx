@@ -1,16 +1,16 @@
-// The first page a visitor sees. Its first screen plays February 2026's crash on a trading chart, with Airbag and
-// (at the press of a switch) without it (components/crash-story.tsx). After it: the real loan, live; a real save,
-// recorded; where the odds come from (Gemini); where the money moves (Arc); the receipts. Few words per screen.
+// The first page a visitor sees: a walk-through. What Airbag is (with the live app in a frame), who it is for,
+// how it works step by step (the problem, then a real save replayed), and then in depth how it uses Gemini's
+// prediction market and Arc with Circle's kits. Few words per screen, one real picture each.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, useScroll } from "motion/react";
-import { postJson, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
+import { ArrowDown, ArrowRight, Bitcoin, PiggyBank, TrendingUp } from "lucide-react";
+import { postJson, useCrashReplay, useGasPrices, useLadders, useMarketHistory, useStatus } from "@/lib/api";
 import { symbolsOf, useGeminiFeed, useLiveEvents } from "@/lib/gemini-feed";
 import { usePressed } from "@/lib/use-pressed";
 import { ADDRESSES, EXPLORER, LIVE_URL, SAVES } from "@/recorded/proof";
 import { pct } from "@/lib/format";
 import { ExplorerLink, Section, Wordmark } from "@/components/bits";
 import { Costs, MoneyMap, StreamList } from "@/components/chain-parts";
-import { CrashStory } from "@/components/crash-story";
+import { CrashCard } from "@/components/crash-card";
 import { GeminiMarketCard } from "@/components/gemini-market-card";
 import { HedgeCard } from "@/components/hedge-card";
 import { LadderCard } from "@/components/ladder-card";
@@ -18,31 +18,27 @@ import { OverTime } from "@/components/market-parts";
 import { OddsCheck } from "@/components/odds-check";
 import { LoanCards } from "@/components/loan-cards";
 import { SaveReplay } from "@/components/save-replay";
+import { TiltFrame } from "@/components/ui/tilt-frame";
 import { BotBadge } from "@/components/top-bar";
 import { MetalLink, ShinyButton, ShinyLink } from "@/components/ui/cta";
-import { SegmentedControl } from "@/components/ui/segmented-control";
+import { DotPattern } from "@/components/ui/dot-pattern";
+import { FadeIn } from "@/components/ui/fade-in";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const LINK = "underline decoration-current/30 underline-offset-[3px] hover:decoration-current";
-const WIDTH = "mx-auto w-full max-w-[1240px] px-5 sm:px-8";
 const NAV = [["How it works", "#how"], ["Gemini", "#gemini"], ["Arc", "#arc"], ["My loan", "/app/#mine"]] as const;
-// more about the odds, one thing at a time
-const DEEPER = [
-  { value: "curve", label: "Your loan on the curve" },
-  { value: "time", label: "Hour by hour" },
-  { value: "check", label: "Are the odds any good?" },
-  { value: "hedge", label: "Insurance" },
-];
 
 export function Landing() {
   const { data: status, error } = useStatus();
   const { data: ladders } = useLadders();
+  const { data: replay } = useCrashReplay();
   const { data: gas } = useGasPrices();
   const live = status?.mode === "live";
   const reading = status?.reading ?? null;
   // what the bot did for its own loan (a connected wallet's moves are marked with that wallet, and belong to My loan)
   const botLog = useMemo(() => (status?.log ?? []).filter((e) => !e.who), [status]);
   const botActions = useMemo(() => botLog.filter((e) => e.level === "action"), [botLog]);
-  // The simulator's own button: push the simulated loan to the edge, right there on the page.
+  // The first screen's own button: push the simulated loan to the edge, right there in the frame.
   // (The live bot's loan can only be pushed with the team's key, from the app.)
   const pressed = usePressed(status, botActions[0]?.t ?? null);
   const [pushing, setPushing] = useState(false);
@@ -78,10 +74,9 @@ export function Landing() {
   // the bet nearest bitcoin's price: its Yes price in cents is the example in the steps (54 until it has loaded)
   const nearest = event && spot != null ? [...event.live].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot))[0] : null;
   const cents = nearest ? Math.round(nearest.pAbove * 100) : 54;
-  const [deeper, setDeeper] = useState("curve");
 
   // A link like /#save from the app: the target only exists once this has drawn, and the cards above it grow as
-  // their data arrives. So go there now, and again each time one of them loads, until the visitor moves.
+  // their data arrives. So go there now, and again each time one of the three loads, until the visitor moves.
   const moved = useRef(false);
   useEffect(() => {
     const stop = () => { moved.current = true; };
@@ -92,98 +87,120 @@ export function Landing() {
     addEventListener("pointerdown", stop, opts);
     return () => { for (const e of ["wheel", "touchmove", "keydown", "pointerdown"]) removeEventListener(e, stop); };
   }, []);
-  const loaded = `${!!status}${!!ladders}`;
+  const loaded = `${!!status}${!!replay}${!!ladders}`;
   useEffect(() => {
     if (location.hash && !moved.current) document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "instant" });
   }, [loaded]);
-
-  // how far down the page the visitor is: a thin line along the bar's lower edge
-  const { scrollYProgress } = useScroll();
 
   return (
     <>
       {/* one bar for the whole walk: it stays in view, so any part is one click away */}
       <header className="sticky top-0 z-50 border-b border-line bg-page/85 backdrop-blur-md">
-        <div className={`${WIDTH} flex items-center justify-between gap-4 py-3`}>
+        <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
           <a href="/" className="no-underline" aria-label="Airbag, home"><Wordmark /></a>
           <nav aria-label="On this page" className="hidden items-center gap-7 text-[15px] font-medium text-ink-2 md:flex">
             {NAV.map(([label, href]) => <a key={href} href={href} className="no-underline hover:text-ink">{label}</a>)}
           </nav>
-          <ShinyLink href="/app/" small>Live demo</ShinyLink>
+          <ShinyLink href="/app/" small>Live demo <ArrowRight aria-hidden="true" className="size-4" /></ShinyLink>
         </div>
-        <motion.div aria-hidden="true" className="absolute inset-x-0 -bottom-px h-0.5 origin-left bg-brand" style={{ scaleX: scrollYProgress }} />
       </header>
 
-      <div className={WIDTH}>
+      <div className="mx-auto w-full max-w-[1180px] px-5 sm:px-8">
         <main>
-          {/* 1. The first screen: what Airbag is, and February's crash played on a chart, with it and without it */}
-          <CrashStory>
-            <h1 className="display max-w-[13ch] text-balance text-[clamp(2.7rem,10vw,3.6rem)] text-ink lg:text-[clamp(3rem,4.3vw,4.1rem)]">Keep your bitcoin through a crash.</h1>
-            {/* the problem first, then what Airbag does about it */}
-            <p className="mt-5 max-w-[42ch] text-[1.1rem] leading-relaxed text-ink-2 sm:text-[1.25rem] lg:mt-6">
-              Borrow against bitcoin, and one bad day can sell it. Airbag sees the crash coming in Gemini's odds and pays your loan down first, with your own savings.
-            </p>
-            {/* on a phone the chart comes straight after the sentence, and the bar's own button is the way to the demo */}
-            <div className="mt-8 hidden flex-wrap items-center gap-x-6 gap-y-3 sm:flex">
-              <a href="/app/" className="btn-shiny">Open the live demo</a>
-              <a href="#how" className={`${LINK} text-[1.05rem] font-medium text-ink`}>See how it works</a>
+          {/* 1. What it is: the words, then the live app itself in a frame that lies flat as you scroll */}
+          <section className="relative pb-10 pt-10 sm:pt-16">
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] [mask-image:radial-gradient(ellipse_at_top,black_25%,transparent_70%)]">
+              <DotPattern width={18} height={18} cr={1.15} className="text-ink/30" />
             </div>
-            {/* what it is built on, for those who look for it (on a phone the chart comes first; the page's last line says it too) */}
-            <p className="mt-8 hidden max-w-[44ch] text-[15px] leading-relaxed text-faint sm:block">
-              Live on Arc Testnet with Circle's kits. Odds from Gemini's prediction market. Woken by a QuickNode Stream.
-            </p>
-          </CrashStory>
+            <div className="relative text-center">
+              <p className="eyebrow">Runs on Arc · Odds from Gemini</p>
+              <h1 className="display mx-auto mt-5 max-w-[14ch] text-[clamp(3rem,8.4vw,6.2rem)] text-ink">
+                An airbag for your <span className="accent">bitcoin loan.</span>
+              </h1>
+              <p className="mx-auto mt-6 max-w-[38ch] text-[1.3rem] leading-snug text-ink-2">
+                When a crash looks likely, it pays down your loan with your own savings. So the crash can't take your bitcoin.
+              </p>
+              <div className="mt-9 flex flex-wrap justify-center gap-3">
+                <ShinyLink href="#save">Watch a real save <ArrowDown aria-hidden="true" className="size-5" /></ShinyLink>
+                <MetalLink href="/app/">Open the live demo</MetalLink>
+              </div>
+            </div>
+            <TiltFrame className="relative mt-10 sm:mt-12">
+              {status ? (
+                <>
+                  {/* what this is, in one line, and the one thing to press */}
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-1 pt-0.5 sm:px-2">
+                    <p className="flex min-w-0 flex-1 basis-64 items-start gap-2.5 text-[15px] leading-snug text-ink-2 sm:text-[16px]">
+                      <span aria-hidden="true" className="relative mt-[0.4em] flex size-2.5 shrink-0">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-good opacity-60" />
+                        <span className="relative inline-flex size-2.5 rounded-full bg-good" />
+                      </span>
+                      <span>
+                        <strong className="font-semibold text-ink">{live ? "Live on Arc Testnet." : "Live demo."}</strong>{" "}
+                        {live
+                          ? "A real bitcoin loan. Airbag is watching it right now."
+                          : spent
+                            ? "This simulated loan has been pushed many times and its savings are used up."
+                            : "A simulated bitcoin loan with the market's real odds. Push it into danger and watch."}
+                      </span>
+                    </p>
+                    {live ? (
+                      // on the real loan there is nothing for a visitor to press: show that the bot is at work
+                      <BotBadge status={status} error={error} />
+                    ) : (
+                      <ShinyButton small onClick={push} disabled={pushing || !!pressed.pending || atRisk || spent}>Push it to the edge</ShinyButton>
+                    )}
+                  </div>
+                  {pushNote && <p role="status" className="mb-3 px-1 text-[14.5px] text-ink-2 sm:px-2">{pushNote}</p>}
+                  <LoanCards
+                    status={status}
+                    reading={reading}
+                    samples={status.samples}
+                    actions={botActions}
+                    pending={pressed.pending}
+                    split="md"
+                    footer={<a href="#gemini" className="underline decoration-on-panel-faint/60 underline-offset-[3px] hover:decoration-on-panel">Where does this number come from?</a>}
+                  />
+                </>
+              ) : (
+                <div className="min-h-[24rem] rounded-[28px] bg-panel" aria-hidden="true" />
+              )}
+            </TiltFrame>
+          </section>
 
-          {/* 2. The real thing: the loan the bot guards, live */}
-          <Section
-            id="live"
-            title={live ? <>That was a replay. <span className="accent">This loan is real, right now.</span></> : <>That was a replay. <span className="accent">Now push a loan yourself.</span></>}
-            lead={live
-              ? "A real bitcoin loan on Arc Testnet. Its number is worked out from Gemini's live prices, and Airbag is watching it as you read this."
-              : spent
-                ? "This simulated loan has been pushed many times, and its savings are used up."
-                : "A simulated bitcoin loan with the market's real odds. Push it into danger and watch Airbag step in."}
-          >
-            {status ? (
-              <>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-                  <p className="text-[15.5px] text-ink-2">
-                    <strong className="font-semibold text-ink">{live ? "Live on Arc Testnet." : "Simulator."}</strong>{" "}
-                    {live ? "Nobody can push this loan from the page: it is real." : "No wallet needed."}
-                  </p>
-                  {live ? (
-                    // on the real loan there is nothing for a visitor to press: show that the bot is at work
-                    <BotBadge status={status} error={error} />
-                  ) : (
-                    <ShinyButton small onClick={push} disabled={pushing || !!pressed.pending || atRisk || spent}>Push it to the edge</ShinyButton>
-                  )}
-                </div>
-                {pushNote && <p role="status" className="mb-3 text-[14.5px] text-ink-2">{pushNote}</p>}
-                <LoanCards
-                  status={status}
-                  reading={reading}
-                  samples={status.samples}
-                  actions={botActions}
-                  pending={pressed.pending}
-                  split="md"
-                  footer={<a href="#gemini" className="underline decoration-on-panel-faint/60 underline-offset-[3px] hover:decoration-on-panel">Where does this number come from?</a>}
-                />
-              </>
-            ) : (
-              <div className="min-h-[24rem] rounded-[28px] bg-panel" aria-hidden="true" />
-            )}
-          </Section>
+          {/* 2. Who it is for */}
+          <section id="who" className="scroll-mt-20 py-14 sm:py-20">
+            <FadeIn distance={18} duration={0.7} amount={0.3}>
+              <h2 className="display max-w-[16ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">Who it is <span className="accent">for.</span></h2>
+            </FadeIn>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {([
+                [Bitcoin, "240 89 31", "You borrowed against your bitcoin.", "Keep it through a bad day, without watching charts all night."],
+                [TrendingUp, "57 135 229", "You trade prediction markets.", "The odds you already read now guard a loan."],
+                [PiggyBank, "25 158 112", "You have dollars sitting idle.", "They earn interest in savings until the loan needs them."],
+              ] as const).map(([Icon, glow, who, why]) => (
+                <SpotlightCard key={who} glow={glow}>
+                  <span className="grid size-12 place-items-center rounded-2xl" style={{ background: `rgb(${glow} / 0.18)`, color: `rgb(${glow})` }} aria-hidden="true"><Icon className="size-6" /></span>
+                  <p className="display mt-6 text-[1.7rem] text-on-panel">{who}</p>
+                  <p className="mt-3 text-[1.05rem] leading-snug text-on-panel-2">{why}</p>
+                </SpotlightCard>
+              ))}
+            </div>
+          </section>
 
-          {/* 3. A real save: every step a transaction on Arc ("Watch a real save" in the app lands on the card itself) */}
-          <Section
-            title={<>A real save, <span className="accent">recorded on Arc.</span></>}
-            lead="No replayed prices this time. A wallet pushed its own loan to the edge on Arc Testnet, and three seconds later Airbag had paid part of it back with the owner's savings. Later it gave them back."
-          >
-            <SaveReplay id="save" />
-          </Section>
+          {/* 3. How it works, step by step */}
+          <div id="how" className="scroll-mt-20">
+            <Section step="1" title={<>One bad day can <span className="accent">take your bitcoin.</span></>} lead="You borrowed dollars against your bitcoin. If bitcoin falls below a set price, even for a minute, the bitcoin is sold. In February 2026 that is what happened.">
+              <CrashCard replay={replay} />
+            </Section>
+            {/* "Watch a real save" lands on the replay itself, so the whole card is on screen */}
+            <Section step="2" title={<>Airbag pays the loan down <span className="accent">before that happens.</span></>} lead="Your spare dollars wait in a savings account, earning interest. When the danger gets too high, Airbag pays back part of the loan with them. A smaller loan means bitcoin must fall much further before yours is sold. Later it puts the dollars back.">
+              <SaveReplay id="save" />
+            </Section>
+          </div>
 
-          {/* 4. Gemini's prediction market: where the number comes from, then more for those who want it */}
-          <Section id="gemini" title={<>The odds come from <span className="accent">Gemini's market.</span></>} lead="On Gemini, people bet real money on where bitcoin will be on a date. Those prices are odds. Airbag checks the loan against them every 5 seconds.">
+          {/* 4. In depth: Gemini's prediction market */}
+          <Section id="gemini" step="3" title={<>The danger is read from <span className="accent">Gemini's market.</span></>} lead="On Gemini, people bet real money on where bitcoin will be on a date. Those prices are odds. Airbag checks the loan against them every 5 seconds.">
             <div className="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[0.85fr_1.15fr]">
               <GeminiMarketCard event={event} spot={spot} feed={feed} />
               <ol className="space-y-8 border-l border-line pl-7">
@@ -200,22 +217,16 @@ export function Landing() {
                 ))}
               </ol>
             </div>
-            {/* one of four at a time: the curve, the market's history, the check of its odds, and the hedge */}
-            <div className="mt-14">
-              <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-                <SegmentedControl aria-label="More about the odds" value={deeper} onValueChange={setDeeper} options={DEEPER} size="md" className="w-max border-line bg-ink/5 [&_button]:whitespace-nowrap" pillColor="var(--paper)" />
-              </div>
-              <div className="mt-5">
-                {deeper === "curve" && <LadderCard ladders={ladders} reading={reading} limit={status?.limit} />}
-                {deeper === "time" && (status ? <OverTime history={history} spot={spot} samples={status.samples} actions={botActions} limit={status.limit} ofWallet={false} own={own} /> : null)}
-                {deeper === "check" && <OddsCheck />}
-                {deeper === "hedge" && (status ? <HedgeCard ladders={ladders} reading={reading} lltv={status.lltv} feed={feed} hedge={status.hedge} /> : null)}
-              </div>
+            <div className="mt-10 grid gap-4">
+              <LadderCard ladders={ladders} reading={reading} limit={status?.limit} />
+              {status && <OverTime history={history} spot={spot} samples={status.samples} actions={botActions} limit={status.limit} ofWallet={false} own={own} />}
+              <OddsCheck />
+              {status && <HedgeCard ladders={ladders} reading={reading} lltv={status.lltv} feed={feed} hedge={status.hedge} />}
             </div>
           </Section>
 
-          {/* 5. Arc, Circle and QuickNode: where the money moves */}
-          <Section id="arc" title={<>The money moves on <span className="accent">Arc.</span></>} lead="The loan and the savings are Circle's own kits on Arc, where fees are paid in dollars. Our guard contract sits between them, and a QuickNode Stream wakes the bot the moment the loan moves.">
+          {/* 5. In depth: Arc, Circle and QuickNode */}
+          <Section id="arc" step="4" title={<>The money moves on <span className="accent">Arc.</span></>} lead="The loan and the savings are Circle's own kits on Arc, where fees are paid in dollars. Our guard contract sits between them, and a QuickNode Stream wakes the bot the moment the loan moves.">
             <div className="grid gap-4">
               <MoneyMap status={status} marketUrl={event?.url ?? null} />
               <div className="grid gap-4 lg:grid-cols-2">
@@ -261,28 +272,12 @@ export function Landing() {
             </details>
           </Section>
 
-          {/* 7. Who it is for: three people, a plain sentence each */}
-          <section id="who" className="scroll-mt-20 py-14 sm:py-20">
-            <h2 className="display max-w-[16ch] text-[clamp(2.2rem,5.2vw,3.9rem)] text-ink">Who it is <span className="accent">for.</span></h2>
-            <div className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-3">
-              {([
-                ["You borrowed against your bitcoin.", "Keep it through a bad day, without watching charts all night."],
-                ["You trade prediction markets.", "The odds you already read now guard a loan."],
-                ["You have dollars sitting idle.", "They earn interest in savings until the loan needs them."],
-              ] as const).map(([who, why]) => (
-                <div key={who} className="border-t-2 border-ink pt-5">
-                  <p className="display text-[1.75rem] leading-[1.05] text-ink">{who}</p>
-                  <p className="mt-3 max-w-[32ch] text-[1.1rem] leading-relaxed text-ink-2">{why}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* The way in */}
-          <section className="relative mb-16 overflow-hidden rounded-[28px] bg-panel px-7 py-14 text-on-panel sm:px-12 sm:py-20">
-            <h2 className="display relative max-w-[18ch] text-[clamp(2.4rem,6vw,4.4rem)]">See it <span className="accent">{live ? "live, on a real loan." : "work."}</span></h2>
-            <div className="relative mt-9 flex flex-wrap gap-3">
-              <ShinyLink href="/app/">Open the live demo</ShinyLink>
+          <section className="relative mb-16 overflow-hidden rounded-[36px] bg-panel px-7 py-14 text-center text-on-panel sm:px-12 sm:py-20">
+            <DotPattern width={20} height={20} cr={1.2} className="text-on-panel/20 [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]" />
+            <h2 className="display relative mx-auto max-w-[16ch] text-[clamp(2.4rem,6vw,4.4rem)]">See it <span className="accent">{live ? "live." : "work."}</span></h2>
+            <div className="relative mt-9 flex flex-wrap justify-center gap-3">
+              <ShinyLink href="/app/">Open the live demo <ArrowRight aria-hidden="true" className="size-5" /></ShinyLink>
               <MetalLink href="/app/#mine">Protect my own loan</MetalLink>
             </div>
             <p className="relative mt-6 text-[15px] text-on-panel-faint">

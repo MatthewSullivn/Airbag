@@ -12,7 +12,7 @@
     "checkJs": false,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "paths": { "@/*": ["./src/*"], "@brain": ["../src/brain.d.mts"], "@hedge": ["../src/hedge.d.mts"], "@history": ["../src/market-history.d.mts"], "@live": ["../src/gemini-live.d.mts"], "@crash": ["../src/crash-test.d.mts"], "@replay": ["../replay/results.json"] },
+    "paths": { "@/*": ["./src/*"], "@brain": ["../src/brain.d.mts"], "@hedge": ["../src/hedge.d.mts"], "@history": ["../src/market-history.d.mts"], "@live": ["../src/gemini-live.d.mts"] },
     "types": ["vite/client"]
   },
   "include": ["src", "vite.config.ts"]
